@@ -17,6 +17,7 @@ import { useDragSheet } from "./use-drag-sheet";
 // Pantalla 01 · Viaje (docs/diseño.md): mapa de fondo y la lista de ciudades encima como sheet.
 
 const LIST_TOP = 340; // donde arranca la lista; el resto de arriba es mapa
+const PEEK = 170; // lo que se ve de la lista abajo del todo (rayita + "Empieza el viaje" + aire para los botones de abajo)
 
 const MODE_ICON: Record<LegMode, LucideIcon> = { plane: Plane, train: TrainFront, bus: Bus, car: Car, other: Ellipsis };
 const MODE_CLASS: Record<LegMode, string> = {
@@ -58,7 +59,8 @@ export function TripScreen({
   const [openCity, setOpenCity] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const { top: sheetTop, animating: sheetAnimating, toggle: toggleSheet } = useDragSheet(sheetRef, listRef, LIST_TOP);
+  // Abajo del todo se ven la rayita y "Empieza el viaje" por encima del control Viaje / Gastos y del +.
+  const { top: sheetTop, animating: sheetAnimating, toggle: toggleSheet } = useDragSheet(sheetRef, listRef, LIST_TOP, PEEK);
 
   // De la posición de la lista salen el header blanco, las esquinas y el margen de arriba (como en el diseño).
   const headerOpacity = Math.min(1, Math.max(0, 1 - sheetTop / 112));

@@ -200,3 +200,8 @@ El detalle de uso está en `diseño.md`.
 
 Quien entra con el link de invitación (reclamando un integrante o sumándose como nuevo) arranca como **Solo ver**; el organizador le da permiso de editar a quien quiera. Los integrantes sin cuenta que crea el organizador también arrancan como Solo ver. Los permisos se cambian en el sheet de Integrantes. La base lo controla con Row Level Security (no alcanza con esconder botones): un Solo ver no puede escribir aunque lo intente. En la interfaz, a un Solo ver no se le muestran los controles de edición (steppers, "+", botones de guardar) y los sheets se abren en modo lectura.
 **Por qué:** decisión de Ale; puede haber alguien en el grupo que no quiera que toque cosas.
+
+### 035 · Nombre de la app: Vamo y vamo
+**Fecha:** 2026-10-08
+**Decisión:** la app se llama **Vamo y vamo**. Es el nombre que aparece en el ícono de la pantalla de inicio, en la pestaña del navegador, en el login y en el remitente de los mails. El repo, el proyecto de Vercel y la URL siguen como `travelapp` por ahora.
+**Por qué:** decisión de Ale.

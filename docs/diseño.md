@@ -1,4 +1,4 @@
-# Diseño — Viajes en grupo
+# Diseño — Vamo y vamo
 
 Diseño final, tomado del prototipo de Claude Design (proyecto "Viajes en grupo", archivo `Viajes en grupo.dc.html`, con `TripMap.js` para el mapa). Reemplaza al brief anterior. Si algo de acá contradice a `decisiones.md`, manda `decisiones.md`.
 

@@ -2,24 +2,54 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
-// Lista que se arrastra como en Google Maps: el sheet sigue al dedo entre `max` (abajo, con el mapa
-// arriba) y 0 (pantalla completa). El contenido recién se scrollea cuando el sheet está arriba del
-// todo; si estás arriba del contenido y tirás para abajo, baja el sheet. Al soltar se acomoda arriba
-// o abajo según la velocidad o la mitad del recorrido. En la compu, la ruedita sube o baja el sheet.
+// Lista que se arrastra como en Google Maps, con tres posiciones:
+//   0      → pantalla completa (header blanco),
+//   middle → al medio, con el mapa arriba (donde arranca),
+//   low    → abajo del todo: solo se ven la rayita y el encabezado (`peek` px desde abajo).
+// El sheet sigue al dedo; el contenido recién se scrollea con el sheet arriba del todo, y si estás
+// arriba del contenido y tirás para abajo, baja el sheet. Al soltar va a la posición más cercana, o a la
+// siguiente si lo tiraste con fuerza. En la compu, la ruedita lo mueve de a una posición.
 export function useDragSheet(
   sheetRef: RefObject<HTMLElement | null>,
   scrollRef: RefObject<HTMLElement | null>,
-  max: number,
+  middle: number,
+  peek: number,
 ) {
-  const [top, setTop] = useState(max);
+  const [top, setTop] = useState(middle);
   const [animating, setAnimating] = useState(false);
-  const topRef = useRef(max);
+  const [low, setLow] = useState(middle); // se calcula con el alto real de la pantalla
+  const topRef = useRef(middle);
+  const lowRef = useRef(middle);
 
   const moveTo = useCallback((value: number, animate: boolean) => {
     topRef.current = value;
     setAnimating(animate);
     setTop(value);
   }, []);
+
+  // Posición "abajo del todo": alto de la pantalla menos lo que se ve (más la barra de inicio del iPhone).
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    const container = sheet?.parentElement;
+    if (!sheet || !container) return;
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:absolute;visibility:hidden;height:var(--safe-bottom)";
+    container.appendChild(probe);
+    const measure = () => {
+      const value = Math.max(middle, container.clientHeight - peek - probe.offsetHeight);
+      lowRef.current = value;
+      setLow(value);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      probe.remove();
+    };
+  }, [sheetRef, middle, peek]);
+
+  const snaps = useCallback(() => [0, middle, lowRef.current], [middle]);
 
   useEffect(() => {
     const sheet = sheetRef.current;
@@ -32,6 +62,11 @@ export function useDragSheet(
     let lastTime = 0;
     let velocity = 0;
     let dragging = false;
+    let wheelLock = 0;
+
+    const nextUp = (from: number) => [...snaps()].reverse().find((s) => s < from - 1) ?? 0;
+    const nextDown = (from: number) => snaps().find((s) => s > from + 1) ?? lowRef.current;
+    const nearest = (from: number) => snaps().reduce((a, b) => (Math.abs(b - from) < Math.abs(a - from) ? b : a));
 
     const onStart = (e: TouchEvent) => {
       startY = lastY = e.touches[0].clientY;
@@ -52,7 +87,7 @@ export function useDragSheet(
       if (!fullyOpen || pullingDownAtTop || dragging) {
         e.preventDefault(); // el gesto mueve el sheet, no el contenido
         dragging = true;
-        moveTo(Math.min(max, Math.max(0, startTop + dy)), false);
+        moveTo(Math.min(lowRef.current, Math.max(0, startTop + dy)), false);
       }
     };
 
@@ -60,19 +95,19 @@ export function useDragSheet(
       if (!dragging) return;
       dragging = false;
       const current = topRef.current;
-      const target = velocity < -0.3 ? 0 : velocity > 0.3 ? max : current < max / 2 ? 0 : max;
+      const target = velocity < -0.3 ? nextUp(current) : velocity > 0.3 ? nextDown(current) : nearest(current);
       moveTo(target, true);
     };
 
     const onWheel = (e: WheelEvent) => {
       const current = topRef.current;
-      if (current > 0 && e.deltaY > 0) {
-        e.preventDefault();
-        moveTo(0, true);
-      } else if (current <= 0 && scroller.scrollTop <= 0 && e.deltaY < 0) {
-        e.preventDefault();
-        moveTo(max, true);
-      }
+      const openMore = e.deltaY > 0 && current > 0;
+      const closeMore = e.deltaY < 0 && scroller.scrollTop <= 0 && current < lowRef.current;
+      if (!openMore && !closeMore) return;
+      e.preventDefault();
+      if (e.timeStamp < wheelLock) return; // una posición por gesto de ruedita
+      wheelLock = e.timeStamp + 450;
+      moveTo(openMore ? nextUp(current) : nextDown(current), true);
     };
 
     sheet.addEventListener("touchstart", onStart, { passive: true });
@@ -87,16 +122,18 @@ export function useDragSheet(
       sheet.removeEventListener("touchcancel", onEnd);
       sheet.removeEventListener("wheel", onWheel);
     };
-  }, [sheetRef, scrollRef, max, moveTo]);
+  }, [sheetRef, scrollRef, moveTo, snaps]);
 
-  /** Sube o baja el sheet entero (por ejemplo, al tocar la rayita). */
+  /** Tocar la rayita: abajo → medio → arriba → medio. */
   const toggle = useCallback(() => {
-    if (topRef.current > 0) moveTo(0, true);
+    const current = topRef.current;
+    if (current >= lowRef.current - 1) moveTo(middle, true);
+    else if (current > 0) moveTo(0, true);
     else {
       scrollRef.current?.scrollTo({ top: 0 });
-      moveTo(max, true);
+      moveTo(middle, true);
     }
-  }, [max, moveTo, scrollRef]);
+  }, [middle, moveTo, scrollRef]);
 
-  return { top, animating, toggle };
+  return { top, low, animating, toggle };
 }

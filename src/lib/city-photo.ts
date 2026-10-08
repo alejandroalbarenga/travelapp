@@ -5,7 +5,7 @@ import { NOT_A_PHOTO, pickPhoto, type MediaList, type Summary } from "./photo-ur
 // La foto principal del artículo muchas veces es la bandera o el escudo, así que se descarta
 // y se busca la primera foto de verdad del artículo.
 
-const HEADERS = { "User-Agent": "ViajesEnGrupo/0.1 (https://travelapp-two-cyan.vercel.app)" };
+const HEADERS = { "User-Agent": "VamoYVamo/0.1 (https://travelapp-two-cyan.vercel.app)" };
 
 async function getJson<T>(url: string): Promise<T | null> {
   try {

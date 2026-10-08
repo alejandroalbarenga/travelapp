@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = { title: "Entrar · Viajes en grupo" };
+export const metadata: Metadata = { title: "Entrar · Vamo y vamo" };
 
 export default function LoginPage() {
   return (
@@ -16,7 +16,7 @@ export default function LoginPage() {
           <circle cx="18" cy="5" r="3" />
         </svg>
       </div>
-      <h1 className="mt-6 text-[30px] leading-[1.1] font-extrabold tracking-[-0.02em]">Viajes en grupo</h1>
+      <h1 className="mt-6 text-[30px] leading-[1.1] font-extrabold tracking-[-0.02em]">Vamo y vamo</h1>
       <LoginForm />
     </main>
   );
