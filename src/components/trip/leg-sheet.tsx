@@ -296,14 +296,14 @@ export function LegSheet({
               <button
                 type="button"
                 onClick={() => onViewTicket(fromStopId, myTicket.id)}
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-button border border-line bg-white text-base font-bold text-navy"
+                className={`flex h-14 w-full items-center justify-center gap-2 rounded-button text-base font-bold ${readOnly ? "bg-navy-gradient text-white" : "border border-line bg-white text-navy"}`}
               >
                 <Ticket size={18} /> {myTicket.member_id ? "Ver mi pasaje" : "Ver pasaje"}
               </button>
             )}
             {readOnly ? (
               !myTicket && (
-                <button type="button" onClick={close} className="h-14 w-full rounded-button border border-line bg-white text-base font-bold text-navy">
+                <button type="button" onClick={close} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white">
                   Cerrar
                 </button>
               )

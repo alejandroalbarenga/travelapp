@@ -50,6 +50,7 @@ export function CitySheet({
   onRemoveReceipt,
   onViewReceipt,
   onUnlock,
+  nightsEditable = true,
 }: {
   trip: Trip;
   stopId: string;
@@ -69,6 +70,8 @@ export function CitySheet({
   onViewReceipt: (stayId: string, attachmentId: string) => void;
   /** Desbloquear la ciudad (decisión 042); solo si está bloqueada y podés editar. */
   onUnlock?: () => Promise<string | null>;
+  /** Sin el más y el menos cuando no se pueden cambiar (solo ver, bloqueada o ya pasó). */
+  nightsEditable?: boolean;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
   const i = stops.findIndex((s) => s.id === stopId);
@@ -244,6 +247,11 @@ export function CitySheet({
                 <Calendar size={20} className="shrink-0" />
                 <span className="truncate text-ink">{stop.nights === 0 ? `${formatDay(arrival)} · de paso` : formatRange(arrival, departure)}</span>
               </div>
+              {!nightsEditable ? (
+                <span className="flex h-14 shrink-0 items-center rounded-full bg-white/[.92] px-5 text-base font-extrabold shadow-[0_2px_8px_rgb(0_41_61/0.08),inset_0_1px_0_#fff]">
+                  {stop.nights === 0 ? "De paso" : `${stop.nights} ${stop.nights === 1 ? "noche" : "noches"}`}
+                </span>
+              ) : (
               <div className="flex h-14 shrink-0 items-center rounded-full bg-white/[.92] shadow-[0_2px_8px_rgb(0_41_61/0.08),inset_0_1px_0_#fff]">
                 <button type="button" aria-label="Menos noches" onClick={() => onNights(-1)} className="flex h-14 w-11 items-center justify-center" style={{ opacity: stop.nights === 0 ? 0.35 : 1 }}>
                   <Minus size={20} />
@@ -255,6 +263,7 @@ export function CitySheet({
                   <Plus size={20} />
                 </button>
               </div>
+              )}
             </div>
 
             </fieldset>
@@ -486,7 +495,7 @@ export function CitySheet({
           <div className="shrink-0 border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
             {error && <p className="mb-2 text-[13px] font-bold text-danger">{error}</p>}
             {readOnly ? (
-              <button type="button" onClick={close} className="h-14 w-full rounded-button border border-line bg-white text-base font-bold text-navy">
+              <button type="button" onClick={close} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white">
                 Cerrar
               </button>
             ) : confirmDelete ? (
