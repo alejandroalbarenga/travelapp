@@ -236,3 +236,12 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 - El botón de ticket de la lista abre tu pasaje, o el del grupo si no tenés uno propio.
 - El alojamiento tiene un comprobante (PDF o captura), con el mismo visor sin la tarjeta de Wallet.
 **Por qué:** completa la Etapa 4.
+
+### 041 · Inicio, nuevo viaje y borrar viaje
+**Fecha:** 2026-10-08
+**Decisión:**
+- El inicio muestra "Hola, {nombre}", **Próximos viajes** (los en curso y los que vienen, del más cercano) como tarjetas con la foto de su primera ciudad, las fechas, la cuenta regresiva ("10 días", "Mañana", "Hoy · empieza", "Ya · en curso"), "12 destinos · 34 noches" y los avatares, y abajo **Viajes pasados**. Las estadísticas (países, noches afuera) quedan para después.
+- "Nuevo viaje" pide nombre, desde y hasta (con los mensajes del diseño) y abre el viaje vacío, que invita a "Agregar la primera ciudad". El que lo crea queda como organizador, con el nombre y el color que ya usa en otros viajes.
+- El organizador puede borrar el viaje entero desde Integrantes ("Borrar este viaje", con confirmación). Lo hace `delete_trip()` (migración 0007), que borra primero gastos y saldos; la app borra antes los archivos del bucket.
+- Quien se suma con la invitación como integrante nuevo queda en todas las ciudades del viaje (antes no quedaba en ninguna); si no hace todo el viaje, se ajusta en "Quién está".
+**Por qué:** Ale quiere armar viajes de prueba desde cero, además del real.

@@ -56,6 +56,7 @@ export function TripScreen({
   deleteExpense,
   settleDebt,
   undoSettlement,
+  deleteTrip,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -73,6 +74,7 @@ export function TripScreen({
   deleteExpense?: (expenseId: string) => Promise<{ error: string } | null>;
   settleDebt?: (tripId: string, from: string, to: string, amountCents: number, note?: string | null) => Promise<{ id: string } | { error: string }>;
   undoSettlement?: (settlementId: string) => Promise<{ error: string } | null>;
+  deleteTrip?: (tripId: string) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
@@ -507,6 +509,22 @@ export function TripScreen({
           </div>
           <Dots height={14} />
 
+          {view.stops.length === 0 && (
+            <div className="mx-1 mt-1 rounded-card border-[1.5px] border-dashed border-dash bg-white p-5 text-center">
+              <div className="text-[15px] font-bold">Todavía no hay ciudades</div>
+              <p className="mt-1 text-[13px] leading-[1.4] text-ink-2">Cargá la primera y después las que siguen, con sus noches. Las fechas se calculan solas.</p>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setCitySearch({ kind: "add", afterStopId: null })}
+                  className="bg-navy-gradient mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-button text-[15px] font-bold text-white"
+                >
+                  <MapPin size={18} /> Agregar la primera ciudad
+                </button>
+              )}
+            </div>
+          )}
+
           {view.stops.map((stop, i) => (
             <div key={stop.id}>
               <StopCard stop={stop} canEdit={canEdit} onChange={(d) => changeNights(stop.id, d)} onOpen={() => setOpenCity(stop.id)} />
@@ -666,7 +684,22 @@ export function TripScreen({
         <CitySearchSheet trip={current} mode={citySearch} onClose={() => setCitySearch(null)} search={findPlaces} onPick={pickPlace} />
       )}
       {openMembers && (
-        <MembersSheet trip={current} myMemberId={myMemberId} balances={expensesView.balances} onClose={() => setOpenMembers(false)} onRoleChange={changeRole} />
+        <MembersSheet
+          trip={current}
+          myMemberId={myMemberId}
+          balances={expensesView.balances}
+          onClose={() => setOpenMembers(false)}
+          onRoleChange={changeRole}
+          onDeleteTrip={
+            deleteTrip &&
+            (async () => {
+              const result = await deleteTrip(trip.id);
+              if (result) return result.error;
+              router.push("/");
+              return null;
+            })
+          }
+        />
       )}
       {openExpense && (
         <ExpenseSheet
