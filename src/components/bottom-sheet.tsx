@@ -12,6 +12,7 @@ export function BottomSheet({
   label,
   top = "calc(var(--safe-top) + 52px)",
   scrim = 0.45,
+  overlayHandle = false,
   children,
 }: {
   onClose: () => void;
@@ -19,6 +20,8 @@ export function BottomSheet({
   /** Hasta dónde sube el sheet. "auto" = lo que ocupe el contenido. */
   top?: string;
   scrim?: number;
+  /** La rayita va encima del contenido (por ejemplo, sobre una foto) en vez de ocupar una franja propia. */
+  overlayHandle?: boolean;
   /** Recibe `close`, que anima la salida y después llama a onClose. */
   children: (close: () => void) => ReactNode;
 }) {
@@ -66,7 +69,7 @@ export function BottomSheet({
       >
         {/* Handle: se puede arrastrar hacia abajo para cerrar. */}
         <div
-          className="flex shrink-0 cursor-grab touch-none justify-center pt-2 pb-1"
+          className={`flex shrink-0 cursor-grab touch-none justify-center pt-2 pb-1 ${overlayHandle ? "absolute inset-x-0 top-0 z-10" : ""}`}
           onPointerDown={(e) => {
             start.current = e.clientY;
             setDragging(true);
@@ -88,7 +91,7 @@ export function BottomSheet({
             setDrag(0);
           }}
         >
-          <div className="h-[5px] w-10 rounded-full bg-handle" />
+          <div className={`h-[5px] w-10 rounded-full ${overlayHandle ? "bg-white/70" : "bg-handle"}`} />
         </div>
         {children(close)}
       </div>

@@ -3,7 +3,7 @@
 import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Minus, Plane, Plus, Share, Ticket, TrainFront, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
 import type { ChipDisplay } from "@/lib/legs";
 import type { Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
@@ -55,6 +55,8 @@ export function TripScreen({
   }
   const [openLeg, setOpenLeg] = useState<string | null>(null);
   const [openCity, setOpenCity] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false); // la lista subida tapando el mapa
+  const listRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
 
   async function storeStop(input: SaveStopInput, stay: Stay | null): Promise<string | null> {
@@ -133,16 +135,41 @@ export function TripScreen({
     <div className="fixed inset-0 overflow-hidden bg-white">
       <TripMap points={points} visibleTop={56} visibleBottom={LIST_TOP} onPinClick={setOpenCity} />
 
-      {/* Lista: arranca a LIST_TOP y al scrollear tapa el mapa. */}
-      <div className="pointer-events-none absolute inset-0 z-[1] overflow-x-hidden overflow-y-auto [scrollbar-width:none]">
-        <div style={{ height: LIST_TOP }} />
+      {/* Lista: arranca en LIST_TOP con el mapa arriba. Al scrollear sube hasta debajo de los botones
+          y al volver arriba de todo baja de nuevo (como Google Maps). El mapa de arriba sigue tocable. */}
+      {/* Con la lista arriba de todo, la parte de arriba es un header blanco y el mapa no se ve. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-[2] border-b border-navy/[.07] bg-white/[.88] backdrop-blur-[20px] backdrop-saturate-[1.8] transition-opacity duration-300"
+        style={{ height: "calc(var(--safe-top) + 64px)", opacity: expanded ? 1 : 0 }}
+      />
+      <div
+        className={`absolute inset-x-0 bottom-0 z-[1] overflow-hidden bg-white transition-[top,border-radius,box-shadow] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] ${
+          expanded ? "rounded-none shadow-none" : "rounded-t-[28px] shadow-[0_-6px_24px_rgb(0_41_61/0.14)]"
+        }`}
+        style={{ top: expanded ? 0 : LIST_TOP }}
+      >
         <div
-          className="pointer-events-auto relative min-h-full rounded-t-[28px] bg-white px-4 shadow-[0_-6px_24px_rgb(0_41_61/0.14)]"
-          style={{ paddingBottom: "calc(var(--safe-bottom) + 120px)" }}
+          ref={listRef}
+          onScroll={(e) => setExpanded(e.currentTarget.scrollTop > 4)}
+          className="h-full overflow-x-hidden overflow-y-auto overscroll-contain px-4 transition-[padding] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] [scrollbar-width:none]"
+          style={{
+            // Subida, la lista llega hasta arriba y pasa por debajo del header translúcido.
+            paddingTop: expanded ? "calc(var(--safe-top) + 64px)" : 0,
+            paddingBottom: "calc(var(--safe-bottom) + 120px)",
+          }}
         >
-          <div className="flex justify-center pt-2 pb-2">
+          <button
+            type="button"
+            aria-label={expanded ? "Bajar la lista" : "Subir la lista"}
+            onClick={() => {
+              if (expanded) listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+              setExpanded(!expanded);
+            }}
+            className="flex w-full justify-center pt-2 pb-2"
+          >
             <div className="h-[5px] w-10 rounded-full bg-handle" />
-          </div>
+          </button>
 
           <div className="flex items-center gap-3 pt-1.5">
             <div className="bg-navy-gradient ml-[22px] flex size-11 shrink-0 items-center justify-center rounded-full text-white shadow-[0_4px_12px_rgb(0_41_61/0.25)]">
@@ -184,7 +211,7 @@ export function TripScreen({
       </div>
 
       {/* Botones flotantes de arriba */}
-      <div className="pointer-events-none absolute inset-x-4 z-[2] h-11" style={{ top: "calc(var(--safe-top) + 12px)" }}>
+      <div className="pointer-events-none absolute inset-x-4 z-[3] h-11" style={{ top: "calc(var(--safe-top) + 12px)" }}>
         <Link href="/" aria-label="Volver al inicio" className="glass pointer-events-auto absolute top-0 left-0 flex size-11 items-center justify-center rounded-full">
           <ChevronLeft size={20} />
         </Link>
@@ -200,13 +227,22 @@ export function TripScreen({
           <button type="button" aria-label="Calendario del viaje" className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
             <Calendar size={20} />
           </button>
-          <button type="button" aria-label="Integrantes" className="glass pointer-events-auto relative flex size-11 items-center justify-center rounded-full">
+          {/* Con la lista arriba, estos dos se esconden para no taparla (como en el diseño). */}
+          <button
+            type="button"
+            aria-label="Integrantes"
+            className={`glass relative flex size-11 items-center justify-center rounded-full transition-opacity duration-200 ${expanded ? "pointer-events-none opacity-0" : "pointer-events-auto"}`}
+          >
             <Users size={20} />
             <span className="absolute -top-[3px] -right-[3px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-orange px-[5px] text-[10px] font-extrabold text-white">
               {travellers}
             </span>
           </button>
-          <button type="button" aria-label="Compartir viaje" className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
+          <button
+            type="button"
+            aria-label="Compartir viaje"
+            className={`glass flex size-11 items-center justify-center rounded-full transition-opacity duration-200 ${expanded ? "pointer-events-none opacity-0" : "pointer-events-auto"}`}
+          >
             <Share size={20} />
           </button>
         </div>

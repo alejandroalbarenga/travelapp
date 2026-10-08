@@ -174,12 +174,12 @@ export function CitySheet({
   const legOut = trip.legs.find((l) => l.from_stop_id === stopId) ?? null;
 
   return (
-    <BottomSheet onClose={onClose} label={stop.city} top="calc(var(--safe-top) + 12px)">
+    <BottomSheet onClose={onClose} label={stop.city} top="calc(var(--safe-top) + 12px)" overlayHandle>
       {(close) => (
         <>
           <div className="relative flex-1 overflow-y-auto [scrollbar-width:none]">
             {/* Foto grande */}
-            <div className="relative -mt-[18px] h-[300px] bg-cover bg-center" style={{ backgroundColor: "#4E6F86", backgroundImage: photo ? `url("${photo}")` : undefined }}>
+            <div className="relative h-[300px] bg-cover bg-center" style={{ backgroundColor: "#4E6F86", backgroundImage: photo ? `url("${photo}")` : undefined }}>
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(15_16_18/0.3)_0%,rgb(15_16_18/0.3)_55%,#fff_100%)]" />
               <div className="relative flex flex-col items-center px-6 pt-12 text-center text-white">
                 <div className="flex items-center gap-2 text-[15px] font-bold [text-shadow:0_1px_6px_rgb(0_0_0/0.35)]">
@@ -194,10 +194,10 @@ export function CitySheet({
                 <div className="mt-1.5 w-full truncate text-[44px] leading-[1.1] font-extrabold tracking-[-0.03em] [text-shadow:0_2px_16px_rgb(0_0_0/0.35)]">{stop.city}</div>
                 {stop.tagline && <div className="font-hand mt-1 text-[28px] leading-[1.05] text-balance [text-shadow:0_1px_10px_rgb(0_0_0/0.45)]">{stop.tagline}</div>}
               </div>
-              <button type="button" onClick={close} aria-label="Cerrar" className="glass absolute top-4 left-4 flex size-11 items-center justify-center rounded-full">
+              <button type="button" onClick={close} aria-label="Cerrar" className="absolute top-4 left-4 flex size-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-ink shadow-[0_6px_18px_rgb(0_0_0/0.18)] backdrop-blur-xl">
                 <X size={20} />
               </button>
-              <button type="button" onClick={() => setConfirmDelete(true)} aria-label="Borrar ciudad" className="glass absolute top-4 right-4 flex size-11 items-center justify-center rounded-full text-danger">
+              <button type="button" onClick={() => setConfirmDelete(true)} aria-label="Borrar ciudad" className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-danger shadow-[0_6px_18px_rgb(0_0_0/0.18)] backdrop-blur-xl">
                 <Trash2 size={18} />
               </button>
             </div>
