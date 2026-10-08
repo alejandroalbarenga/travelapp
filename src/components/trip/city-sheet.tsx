@@ -51,6 +51,8 @@ export function CitySheet({
   onViewReceipt,
   onUnlock,
   nightsEditable = true,
+  canPickArrival = false,
+  onOpenCalendar,
 }: {
   trip: Trip;
   stopId: string;
@@ -72,6 +74,10 @@ export function CitySheet({
   onUnlock?: () => Promise<string | null>;
   /** Sin el más y el menos cuando no se pueden cambiar (solo ver, bloqueada o ya pasó). */
   nightsEditable?: boolean;
+  /** Si se puede elegir el día de llegada (cambia las noches de la anterior). */
+  canPickArrival?: boolean;
+  /** Abre el calendario con esta ciudad marcada; con pick, para elegir la llegada. */
+  onOpenCalendar?: (pick: boolean) => void;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
   const i = stops.findIndex((s) => s.id === stopId);
@@ -243,9 +249,20 @@ export function CitySheet({
             <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
             {/* Fechas y noches */}
             <div className="glass relative mx-4 -mt-[62px] flex h-[68px] items-center rounded-full p-1.5">
-              <div className="flex min-w-0 flex-1 items-center gap-2.5 pl-3.5 text-base font-bold text-navy">
+              {/* Tocar las fechas abre el calendario con esta ciudad marcada; si se puede, para elegir la llegada (decisión 020).
+                  Es un div y no un button: así se abre también en modo lectura (fieldset disabled). */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenCalendar?.(canPickArrival)}
+                onKeyDown={(e) => e.key === "Enter" && onOpenCalendar?.(canPickArrival)}
+                aria-label={canPickArrival ? "Elegir el día de llegada" : "Ver en el calendario"}
+                className="flex h-14 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-full pl-3.5 text-left text-base font-bold text-navy"
+              >
                 <Calendar size={20} className="shrink-0" />
-                <span className="truncate text-ink">{stop.nights === 0 ? `${formatDay(arrival)} · de paso` : formatRange(arrival, departure)}</span>
+                <span className={`truncate text-ink ${canPickArrival ? "underline decoration-navy/30 decoration-2 underline-offset-4" : ""}`}>
+                  {stop.nights === 0 ? `${formatDay(arrival)} · de paso` : formatRange(arrival, departure)}
+                </span>
               </div>
               {!nightsEditable ? (
                 <span className="flex h-14 shrink-0 items-center rounded-full bg-white/[.92] px-5 text-base font-extrabold shadow-[0_2px_8px_rgb(0_41_61/0.08),inset_0_1px_0_#fff]">
