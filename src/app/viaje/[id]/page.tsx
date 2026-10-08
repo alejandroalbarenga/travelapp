@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { TripScreen } from "@/components/trip/trip-screen";
+import { deleteTrip } from "@/app/actions";
 import { getTrip } from "@/lib/trip-data";
 import {
   addStop,
@@ -37,5 +38,6 @@ async function Trip({ params }: { params: PageProps<"/viaje/[id]">["params"] }) 
       deleteExpense={deleteExpense}
       settleDebt={settleDebt}
       undoSettlement={undoSettlement}
+      deleteTrip={deleteTrip}
     />;
 }

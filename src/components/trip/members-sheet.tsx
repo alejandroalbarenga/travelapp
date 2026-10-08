@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, X } from "lucide-react";
+import { Link2, Trash2, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { formatEuros } from "@/lib/money";
 import type { Member, MemberRole, Trip } from "@/lib/trip-types";
@@ -29,6 +29,7 @@ export function MembersSheet({
   balances,
   onClose,
   onRoleChange,
+  onDeleteTrip,
 }: {
   trip: Trip;
   myMemberId: string | null;
@@ -37,7 +38,10 @@ export function MembersSheet({
   onClose: () => void;
   /** Cambia el permiso de un integrante. Devuelve un mensaje si falló. */
   onRoleChange: (memberId: string, role: MemberRole) => Promise<string | null>;
+  /** Borra el viaje entero (solo el organizador). Sin esto no se ofrece. */
+  onDeleteTrip?: () => Promise<string | null>;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const me = trip.members.find((m) => m.id === myMemberId);
   const isAdmin = me?.role === "admin";
   const [copied, setCopied] = useState(false);
@@ -154,6 +158,39 @@ export function MembersSheet({
               <Link2 size={20} />
               {copied ? "Link copiado" : "Invitar con un link"}
             </button>
+            {isAdmin && onDeleteTrip && (
+              <div className="mt-3">
+                {confirmDelete ? (
+                  <>
+                    <p className="mb-2 text-[13px] leading-[1.4] text-ink-2">
+                      Se borra <strong>{trip.name}</strong> para todos: ciudades, tramos, pasajes, gastos y saldos. No se puede deshacer.
+                    </p>
+                    <div className="grid grid-cols-[1fr_2fr] gap-2">
+                      <button type="button" onClick={() => setConfirmDelete(false)} className="h-12 rounded-button bg-surface text-sm font-bold">
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() =>
+                          startTransition(async () => {
+                            const message = await onDeleteTrip();
+                            if (message) setError(message);
+                          })
+                        }
+                        className="h-12 rounded-button bg-delete text-sm font-bold text-white disabled:opacity-50"
+                      >
+                        {pending ? "Borrando…" : "Borrar el viaje"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <button type="button" onClick={() => setConfirmDelete(true)} className="flex h-11 w-full items-center justify-center gap-2 text-[13px] font-bold text-danger">
+                    <Trash2 size={16} /> Borrar este viaje
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}

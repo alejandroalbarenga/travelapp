@@ -69,7 +69,12 @@ export function TripMap({
 
   function fit(L: typeof import("leaflet")) {
     const m = map.current;
-    if (!m || !el.current || points.length === 0) return;
+    if (!m || !el.current) return;
+    // Un viaje sin ciudades todavía: Europa entera.
+    if (points.length === 0) {
+      m.setView([48, 10], 4, { animate: false });
+      return;
+    }
     const h = el.current.clientHeight;
     m.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lng])), {
       paddingTopLeft: [30, visibleTop + 14],
