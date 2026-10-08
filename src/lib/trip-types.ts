@@ -85,6 +85,26 @@ export type Settlement = {
   to_member_id: string;
   amount_cents: number;
   settled_at: string;
+  /** Nota de una transferencia cargada a mano ("Bizum", "efectivo"). */
+  note: string | null;
+};
+
+export type ActivityAction = "expense_added" | "expense_edited" | "expense_deleted" | "settled" | "settle_undone";
+
+/** Un movimiento del historial de gastos (migración 0006). Nadie lo edita ni lo borra. */
+export type Activity = {
+  id: string;
+  actor_member_id: string | null;
+  actor_name: string | null;
+  action: ActivityAction;
+  description: string | null;
+  from_name: string | null;
+  to_name: string | null;
+  amount_cents: number | null;
+  previous_amount_cents: number | null;
+  /** Qué cambió en una edición: amount, description, payer, split, city, category. */
+  changes: string[] | null;
+  created_at: string;
 };
 
 export type Trip = {
@@ -99,4 +119,6 @@ export type Trip = {
   stays: Stay[];
   expenses: Expense[];
   settlements: Settlement[];
+  /** Historial de movimientos, del más nuevo al más viejo. */
+  activity: Activity[];
 };

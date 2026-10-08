@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_TRIP } from "./demo-trip";
-import { applyKey, defaultStopId, type Key } from "./expense-form";
+import { applyKey, cleanAmount, defaultStopId, type Key } from "./expense-form";
 
 const type = (keys: Key[], start = "") => keys.reduce(applyKey, start);
 
@@ -25,6 +25,16 @@ describe("applyKey", () => {
   it("borrar", () => {
     expect(type(["del"], "64,50")).toBe("64,5");
     expect(type(["del"], "")).toBe("");
+  });
+});
+
+describe("cleanAmount", () => {
+  it("deja dígitos y una coma, con punto como coma", () => {
+    expect(cleanAmount("64,50")).toBe("64,50");
+    expect(cleanAmount("64.5")).toBe("64,5");
+    expect(cleanAmount("€ 1a2,345")).toBe("12,34");
+    expect(cleanAmount("1234567")).toBe("123456");
+    expect(cleanAmount("")).toBe("");
   });
 });
 

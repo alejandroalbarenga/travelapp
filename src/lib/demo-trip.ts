@@ -1,5 +1,5 @@
 import { zonedToInstant } from "./legs";
-import type { Expense, Leg, LegMode, Stop, Trip } from "./trip-types";
+import type { Activity, Expense, Leg, LegMode, Stop, Trip } from "./trip-types";
 
 // El viaje de ejemplo de docs/diseño.md, igual que supabase/seed.sql.
 // Se usa en las pruebas y en la ruta /demo (solo en desarrollo).
@@ -98,9 +98,31 @@ const expenses: Expense[] = [
   { id: "e2", stop_id: "s1", leg_id: null, stay_id: "st1", description: "Hotel cerca de Grand-Place · 4 noches", category: "lodging", amount_cents: 26400, paid_by_member_id: RO, created_at: "2026-10-01T10:01:00Z", splits: split(26400) },
   { id: "e3", stop_id: "s1", leg_id: "l1", stay_id: null, description: "Tren Bruselas → Ámsterdam", category: "transport", amount_cents: 18000, paid_by_member_id: JO, created_at: "2026-10-01T10:02:00Z", splits: split(18000) },
   { id: "e4", stop_id: "s2", leg_id: null, stay_id: "st2", description: "Departamento en De Pijp · 3 noches", category: "lodging", amount_cents: 42000, paid_by_member_id: AL, created_at: "2026-10-01T10:03:00Z", splits: split(42000) },
-  { id: "e5", stop_id: "s2", leg_id: null, stay_id: null, description: "Cena en De Pijp", category: "food", amount_cents: 15600, paid_by_member_id: JO, created_at: "2026-10-01T10:04:00Z", splits: split(15600) },
-  { id: "e6", stop_id: "s2", leg_id: null, stay_id: null, description: "Museo Van Gogh", category: "activities", amount_cents: 8800, paid_by_member_id: RO, created_at: "2026-10-01T10:05:00Z", splits: split(8800) },
+  { id: "e5", stop_id: "s2", leg_id: null, stay_id: null, description: "Cena en De Pijp", category: "food", amount_cents: 15600, paid_by_member_id: JO, created_at: "2026-10-22T19:40:00Z", splits: split(15600) },
+  { id: "e6", stop_id: "s2", leg_id: null, stay_id: null, description: "Museo Van Gogh", category: "activities", amount_cents: 8800, paid_by_member_id: RO, created_at: "2026-10-23T09:15:00Z", splits: split(8800) },
 ];
+
+// Historial: la carga de cada gasto, más una edición y un gasto borrado.
+const NAMES: Record<string, string> = { [AL]: "Ale", [RO]: "Rodrigo", [JO]: "Josué" };
+const activity: Activity[] = [
+  ...expenses.map((e, i) => ({
+    id: `a${i + 1}`,
+    actor_member_id: e.paid_by_member_id,
+    actor_name: NAMES[e.paid_by_member_id],
+    action: "expense_added" as const,
+    description: e.description,
+    from_name: null,
+    to_name: null,
+    amount_cents: e.id === "e5" ? 14200 : e.amount_cents,
+    previous_amount_cents: null,
+    changes: null,
+    created_at: e.created_at,
+  })),
+  { id: "a7", actor_member_id: RO, actor_name: "Rodrigo", action: "expense_added", description: "Entradas Atomium", from_name: null, to_name: null, amount_cents: 5400, previous_amount_cents: null, changes: null, created_at: "2026-10-19T12:10:00Z" },
+  { id: "a8", actor_member_id: RO, actor_name: "Rodrigo", action: "expense_deleted", description: "Entradas Atomium", from_name: null, to_name: null, amount_cents: 5400, previous_amount_cents: null, changes: null, created_at: "2026-10-19T12:12:00Z" },
+  { id: "a9", actor_member_id: JO, actor_name: "Josué", action: "expense_edited", description: "Cena en De Pijp", from_name: null, to_name: null, amount_cents: 15600, previous_amount_cents: 14200, changes: ["amount"], created_at: "2026-10-22T20:05:00Z" },
+] satisfies Activity[];
+activity.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
 export const DEMO_MY_MEMBER_ID = AL;
 
@@ -140,4 +162,5 @@ export const DEMO_TRIP: Trip = {
   ],
   expenses,
   settlements: [],
+  activity,
 };
