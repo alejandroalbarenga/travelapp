@@ -532,7 +532,7 @@ export function TripScreen({
   const expensesView = buildExpensesView(current, myMemberId);
   const firstMissingLeg = ordered.slice(0, -1).find((s) => !current.legs.some((l) => l.from_stop_id === s.id))?.id ?? null;
 
-  const ring = `conic-gradient(${RING_COLOR[view.nightsStatus]} ${Math.min(100, (view.plannedNights / Math.max(1, view.tripNights)) * 100)}%, #D3DBE4 0)`;
+  const ringProgress = Math.min(1, view.plannedNights / Math.max(1, view.tripNights));
   const travellers = trip.members.length;
 
   return (
@@ -543,7 +543,7 @@ export function TripScreen({
       {/* Header blanco: aparece de a poco cuando la lista llega arriba (el mapa deja de verse). */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-[2] border-b border-navy/[.07] bg-white/[.88] backdrop-blur-[20px] backdrop-saturate-[1.8]"
+        className={`pointer-events-none absolute inset-x-0 top-0 z-[2] border-b border-navy/[.07] bg-white/[.88] backdrop-blur-[20px] backdrop-saturate-[1.8] ${tab === "expenses" ? "hidden" : ""}`}
         style={{ height: "calc(var(--safe-top) + 64px)", opacity: headerOpacity }}
       />
 
@@ -583,9 +583,22 @@ export function TripScreen({
               <div className="mt-0.5 text-xs font-bold tracking-[0.06em] text-ink-2">{view.startLabel}</div>
             </div>
             <div className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-navy/[.06] bg-surface pr-3 pl-[7px]">
-              <div className="flex size-[22px] items-center justify-center rounded-full" style={{ background: ring }}>
-                <div className="size-[15px] rounded-full bg-surface" />
-              </div>
+              <svg viewBox="0 0 22 22" className="size-[22px] shrink-0 -rotate-90" aria-hidden>
+                <circle cx="11" cy="11" r="8.5" fill="none" stroke="#D3DBE4" strokeWidth="3.5" />
+                {ringProgress > 0 && (
+                  <circle
+                    cx="11"
+                    cy="11"
+                    r="8.5"
+                    fill="none"
+                    stroke={RING_COLOR[view.nightsStatus]}
+                    strokeWidth="3.5"
+                    strokeLinecap={ringProgress < 1 ? "round" : "butt"}
+                    pathLength={100}
+                    strokeDasharray={`${ringProgress * 100} 100`}
+                  />
+                )}
+              </svg>
               <span className="text-[13px] whitespace-nowrap">
                 <strong style={{ color: view.nightsStatus === "over" ? "#A8382B" : "#00293D" }}>
                   {view.plannedNights}/{view.tripNights}
@@ -763,6 +776,7 @@ export function TripScreen({
           onSave={storeStop}
           onDelete={removeStop}
           readOnly={!canEdit || !!current.stops.find((s) => s.id === openCity)?.locked}
+          nightsEditable={canEdit && !nightsLock(current, openCity, today)}
           onUnlock={canEdit ? () => toggleLock(openCity) : undefined}
           onChangePlace={() => setCitySearch({ kind: "change", stopId: openCity })}
           onAddReceipt={(stayId, input) => addAttachment({ kind: "stay", tripId: trip.id, stayId }, input)}
@@ -935,11 +949,12 @@ function StopCard({
         )}
       </div>
       {stop.locked ? (
-        <div className="flex w-[88px] shrink-0 flex-col items-center gap-1 text-navy">
-          <span className="flex items-center gap-1 text-[17px] leading-none font-extrabold">
-            <Lock size={14} /> {stop.nights}
-          </span>
-          <span className="text-[10px] font-bold text-ink-2">Bloqueada</span>
+        <div className="flex shrink-0 items-center gap-2 pr-3" aria-label={`Bloqueada · ${stop.nights} ${stop.nightsLabel}`}>
+          <Lock size={16} className="text-navy" />
+          <div className="w-8 text-center">
+            <div className="text-[17px] leading-none font-extrabold">{stop.nights}</div>
+            <div className="mt-[3px] text-[10px] font-bold text-ink-2">{stop.nightsLabel}</div>
+          </div>
         </div>
       ) : !canEdit ? (
         <div className="w-14 shrink-0 text-center">
