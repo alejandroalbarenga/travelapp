@@ -3,12 +3,14 @@
 import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, MapPin, Minus, Plane, Plus, Receipt, Route, Share, Ticket, TrainFront, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import type { SaveExpenseInput, SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
 import { buildExpensesView, type ExpenseRowView, type TransferView } from "@/lib/expenses-view";
 import type { ChipDisplay } from "@/lib/legs";
 import type { Place } from "@/lib/places";
-import type { Activity, Expense, Leg, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
+import { fileKind, sortTickets, ticketTitle } from "@/lib/attachments";
+import { addLinkAttachment, deleteAttachment, signedUrl, uploadAttachment, type AttachmentTarget } from "@/lib/supabase/attachments";
+import type { Activity, Attachment, Expense, Leg, LegAttachment, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import { TripTabs, type TripTab } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
@@ -18,6 +20,8 @@ import { ExpenseSheet } from "./expense-sheet";
 import { ExpensesScreen } from "./expenses-screen";
 import { MembersSheet } from "./members-sheet";
 import { TransferSheet, type TransferInput } from "./transfer-sheet";
+import type { AttachmentInput } from "./attachment-controls";
+import { TicketViewer, type ViewerItem } from "./ticket-viewer";
 import { TripMap } from "./trip-map";
 import { useDragSheet } from "./use-drag-sheet";
 
@@ -87,6 +91,8 @@ export function TripScreen({
   // Gasto abierto: "new" para uno nuevo, o el id del que se edita.
   const [openExpense, setOpenExpense] = useState<string | null>(null);
   const [openTransfer, setOpenTransfer] = useState(false);
+  // Visor de pasajes y comprobantes (pantalla 03).
+  const [viewer, setViewer] = useState<{ title: string; items: ViewerItem[]; startIndex: number; wallet: boolean; airlineUrl?: string | null } | null>(null);
   // Permisos (decisión 034): "solo ver" no ve los controles de edición y los sheets se abren en modo lectura.
   const myRole = current.members.find((m) => m.id === myMemberId)?.role ?? "viewer";
   const canEdit = myRole === "admin" || myRole === "editor";
@@ -170,6 +176,79 @@ export function TripScreen({
     });
     setOpenCity(id);
     return null;
+  }
+
+  // ─── Pasajes y comprobantes ───
+  // En la app real el archivo va directo a Storage; en /demo queda en el navegador (local_url).
+  const live = !!saveLeg;
+
+  async function addAttachment(target: AttachmentTarget, input: AttachmentInput): Promise<string | null> {
+    let attachment: Attachment | LegAttachment;
+    if (live) {
+      const result = "file" in input ? await uploadAttachment(target, input.file, myMemberId) : await addLinkAttachment(target, input.url, myMemberId);
+      if ("error" in result) return result.error;
+      attachment = result.attachment;
+      router.refresh();
+    } else {
+      const kind = "file" in input ? fileKind(input.file) : "link";
+      if (!kind) return "Tiene que ser un PDF o una imagen.";
+      attachment = {
+        id: `adjunto-${Date.now()}`,
+        kind,
+        storage_path: null,
+        url: "url" in input ? input.url : null,
+        file_name: "file" in input ? input.file.name : null,
+        size_bytes: "file" in input ? input.file.size : null,
+        local_url: "file" in input ? URL.createObjectURL(input.file) : undefined,
+      };
+    }
+    setCurrent((t) =>
+      target.kind === "leg"
+        ? { ...t, legs: t.legs.map((l) => (l.id === target.legId ? { ...l, attachments: [...l.attachments, { member_id: target.memberId, ...attachment }] } : l)) }
+        : { ...t, stays: t.stays.map((s) => (s.id === target.stayId ? { ...s, attachments: [...s.attachments, attachment] } : s)) },
+    );
+    return null;
+  }
+
+  async function removeAttachment(kind: "leg" | "stay", parentId: string, attachment: Attachment): Promise<string | null> {
+    if (live) {
+      const message = await deleteAttachment(kind, attachment);
+      if (message) return message;
+      router.refresh();
+    }
+    setCurrent((t) =>
+      kind === "leg"
+        ? { ...t, legs: t.legs.map((l) => (l.id === parentId ? { ...l, attachments: l.attachments.filter((a) => a.id !== attachment.id) } : l)) }
+        : { ...t, stays: t.stays.map((s) => (s.id === parentId ? { ...s, attachments: s.attachments.filter((a) => a.id !== attachment.id) } : s)) },
+    );
+    return null;
+  }
+
+  const attachmentUrl = useCallback(
+    async (a: Attachment) => a.local_url ?? (live && a.storage_path ? signedUrl(a.storage_path) : null),
+    [live],
+  );
+
+  /** Abre el visor con los pasajes del tramo que sale de esa parada, en el pedido (o el tuyo). */
+  function viewTickets(fromStopId: string, ticketId?: string) {
+    const leg = current.legs.find((l) => l.from_stop_id === fromStopId);
+    if (!leg?.attachments.length) return setOpenLeg(fromStopId);
+    const stops = [...current.stops].sort((a, b) => a.position - b.position);
+    const i = stops.findIndex((s) => s.id === fromStopId);
+    // Los links van en "Abrir en la web de la aerolínea"; si solo hay links, se muestran igual.
+    const files = leg.attachments.filter((a) => a.kind !== "link");
+    const tickets = sortTickets(files.length ? files : leg.attachments, myMemberId, current.members);
+    const items = tickets.map((a) => ({ attachment: a, title: a.kind === "link" ? "Link" : ticketTitle(a.member_id, myMemberId, current.members) }));
+    const start = Math.max(0, ticketId ? items.findIndex((it) => it.attachment.id === ticketId) : 0);
+    const airlineUrl = leg.attachments.find((a) => a.kind === "link")?.url ?? null;
+    setViewer({ title: `${stops[i]?.city ?? ""} → ${stops[i + 1]?.city ?? "casa"}`, items, startIndex: start, wallet: true, airlineUrl });
+  }
+
+  function viewStayAttachment(stayId: string, attachmentId: string) {
+    const stay = current.stays.find((s) => s.id === stayId);
+    if (!stay) return;
+    const items = stay.attachments.map((a) => ({ attachment: a, title: "Comprobante" }));
+    setViewer({ title: stay.name ?? "Alojamiento", items, startIndex: Math.max(0, items.findIndex((it) => it.attachment.id === attachmentId)), wallet: false });
   }
 
   // En /demo no hay base que anote el historial (migración 0006): se anota acá.
@@ -431,7 +510,13 @@ export function TripScreen({
           {view.stops.map((stop, i) => (
             <div key={stop.id}>
               <StopCard stop={stop} canEdit={canEdit} onChange={(d) => changeNights(stop.id, d)} onOpen={() => setOpenCity(stop.id)} />
-              <LegRow stop={stop} canEdit={canEdit} onOpen={() => setOpenLeg(stop.id)} onAddCity={() => setCitySearch({ kind: "add", afterStopId: stop.id })} />
+              <LegRow
+                stop={stop}
+                canEdit={canEdit}
+                onOpen={() => setOpenLeg(stop.id)}
+                onTicket={() => (stop.leg?.hasTicket ? viewTickets(stop.id) : setOpenLeg(stop.id))}
+                onAddCity={() => setCitySearch({ kind: "add", afterStopId: stop.id })}
+              />
               {i === view.stops.length - 1 && (
                 <div className="flex items-center gap-2.5 pl-7">
                   <span className="flex size-8 items-center justify-center rounded-full border border-navy/[.07] bg-white text-ink-2 shadow-card">
@@ -559,10 +644,23 @@ export function TripScreen({
           onDelete={removeStop}
           readOnly={!canEdit}
           onChangePlace={() => setCitySearch({ kind: "change", stopId: openCity })}
+          onAddReceipt={(stayId, input) => addAttachment({ kind: "stay", tripId: trip.id, stayId }, input)}
+          onRemoveReceipt={(stayId, a) => removeAttachment("stay", stayId, a)}
+          onViewReceipt={viewStayAttachment}
         />
       )}
       {openLeg && (
-        <LegSheet trip={current} fromStopId={openLeg} myMemberId={myMemberId} onClose={() => setOpenLeg(null)} onSave={storeLeg} readOnly={!canEdit} />
+        <LegSheet
+          trip={current}
+          fromStopId={openLeg}
+          myMemberId={myMemberId}
+          onClose={() => setOpenLeg(null)}
+          onSave={storeLeg}
+          onAddTicket={(legId, memberId, input) => addAttachment({ kind: "leg", tripId: trip.id, legId, memberId }, input)}
+          onRemoveTicket={(legId, ticket) => removeAttachment("leg", legId, ticket)}
+          onViewTicket={viewTickets}
+          readOnly={!canEdit}
+        />
       )}
       {citySearch && findPlaces && (
         <CitySearchSheet trip={current} mode={citySearch} onClose={() => setCitySearch(null)} search={findPlaces} onPick={pickPlace} />
@@ -578,6 +676,17 @@ export function TripScreen({
           onClose={() => setOpenExpense(null)}
           onSave={storeExpense}
           onDelete={removeExpense}
+        />
+      )}
+      {viewer && (
+        <TicketViewer
+          title={viewer.title}
+          items={viewer.items}
+          startIndex={viewer.startIndex}
+          wallet={viewer.wallet}
+          airlineUrl={viewer.airlineUrl}
+          getUrl={attachmentUrl}
+          onClose={() => setViewer(null)}
         />
       )}
       {openTransfer && (
@@ -664,7 +773,19 @@ function StopCard({ stop, canEdit, onChange, onOpen }: { stop: StopView; canEdit
   );
 }
 
-function LegRow({ stop, canEdit, onOpen, onAddCity }: { stop: StopView; canEdit: boolean; onOpen: () => void; onAddCity: () => void }) {
+function LegRow({
+  stop,
+  canEdit,
+  onOpen,
+  onTicket,
+  onAddCity,
+}: {
+  stop: StopView;
+  canEdit: boolean;
+  onOpen: () => void;
+  onTicket: () => void;
+  onAddCity: () => void;
+}) {
   const leg = stop.leg;
   const Icon = leg ? MODE_ICON[leg.mode] : null;
   return (
@@ -694,7 +815,7 @@ function LegRow({ stop, canEdit, onOpen, onAddCity }: { stop: StopView; canEdit:
             <ChevronRight size={16} className="shrink-0 text-ink-2" />
           </button>
           {(leg.hasTicket || canEdit) && (
-          <button type="button" aria-label={leg.hasTicket ? "Ver pasaje" : "Adjuntar pasaje"} className="relative ml-1.5 flex size-11 shrink-0 items-center justify-center">
+          <button type="button" onClick={onTicket} aria-label={leg.hasTicket ? "Ver pasaje" : "Adjuntar pasaje"} className="relative ml-1.5 flex size-11 shrink-0 items-center justify-center">
             {leg.hasTicket ? (
               <span className="bg-navy-gradient flex size-[34px] items-center justify-center rounded-full text-white shadow-button">
                 <Ticket size={16} />

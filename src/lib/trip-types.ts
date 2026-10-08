@@ -32,12 +32,24 @@ export type Stop = {
   member_ids: string[];
 };
 
-export type LegAttachment = {
+export type AttachmentKind = "pdf" | "image" | "link";
+
+/** Un pasaje o un comprobante: archivo en el bucket privado `attachments` o un link. */
+export type Attachment = {
   id: string;
-  member_id: string | null;
-  kind: "pdf" | "image" | "link";
+  kind: AttachmentKind;
+  /** Ruta en Storage (`{trip_id}/...`); null si es un link. */
+  storage_path: string | null;
+  /** El link, si es un link. */
+  url: string | null;
   file_name: string | null;
+  size_bytes: number | null;
+  /** Solo en /demo: el archivo elegido, para verlo sin subirlo. */
+  local_url?: string;
 };
+
+/** Pasaje de un tramo; member_id es de quién es (decisión 023), null si es del grupo. */
+export type LegAttachment = Attachment & { member_id: string | null };
 
 export type Leg = {
   id: string;
@@ -62,6 +74,8 @@ export type Stay = {
   paid_by_member_id: string | null;
   /** División del gasto del alojamiento; vacía si no tiene precio. */
   split: { member_id: string; amount_cents: number }[];
+  /** Comprobantes de la reserva. */
+  attachments: Attachment[];
 };
 
 export type ExpenseCategory = "transport" | "lodging" | "food" | "activities" | "other";
