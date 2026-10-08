@@ -41,7 +41,7 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - [x] Agregar ciudad (con ubicación, país y huso automáticos), cambiarla y borrarla. *(Borrar es desde la ciudad, con confirmación; sin deslizar.)*
 - [x] Pantalla de ciudad: quién está, notas, alojamiento (dónde se reservó, precio, comprobante) y transporte.
 - [ ] Calendario con días partidos y elección del día de llegada.
-- [ ] Deslizar una ciudad: a la izquierda "Borrar"; a la derecha "Bloquear" (ya está todo reservado y pago: no se cambian noches, quién está ni alojamiento; se pueden seguir cargando gastos). Pedido de Ale, falta definir el detalle.
+- [x] Deslizar una ciudad: a la izquierda "Borrar" con "Deshacer"; a la derecha "Bloquear" (decisión 042, migración 0008).
 - **Listo cuando:** se puede armar el viaje real desde el teléfono y las fechas cuadran.
 
 ## Etapa 4 · Tramos y pasajes (lun 12 – mar 13 oct)

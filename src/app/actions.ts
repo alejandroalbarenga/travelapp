@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { initialsFor, validateNewTrip } from "@/lib/home";
+import { validateNewTrip } from "@/lib/home";
+import { initialsFor } from "@/lib/members";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signOut() {

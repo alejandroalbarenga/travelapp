@@ -42,7 +42,7 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
       .select(
         `id, name, start_date, end_date, invite_code,
          trip_members (id, display_name, initials, color, user_id, role),
-         stops (id, position, city, country, country_code, code, tagline, notes, nights, timezone, lat, lng, photo_url,
+         stops (id, position, city, country, country_code, code, tagline, notes, nights, timezone, lat, lng, photo_url, locked,
                 stop_members (member_id),
                 stays (id, stop_id, name, booked_via, total_price_cents, paid_by_member_id,
                        expense:expenses!stays_expense_id_fkey (expense_splits (member_id, amount_cents)),
@@ -85,6 +85,7 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
       lat: s.lat,
       lng: s.lng,
       photo_url: s.photo_url,
+      locked: s.locked,
       member_ids: s.stop_members.map((m) => m.member_id),
     })),
     legs: row.legs.map(({ leg_attachments, expense, ...l }) => ({

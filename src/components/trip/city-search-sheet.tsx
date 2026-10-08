@@ -71,7 +71,7 @@ export function CitySearchSheet({
   }
 
   return (
-    <BottomSheet onClose={onClose} label={mode.kind === "add" ? "Agregar ciudad" : "Cambiar ciudad"} top="auto" scrim={0.4}>
+    <BottomSheet onClose={onClose} label={mode.kind === "add" ? "Agregar ciudad" : "Cambiar ciudad"} top="calc(var(--safe-top) + 12px)" scrim={0.4}>
       {(close) => (
         <>
           <div className="flex items-start justify-between gap-3 px-5 pt-2">
@@ -182,8 +182,8 @@ export function CitySearchSheet({
             <button
               type="button"
               onClick={() => confirm(close)}
-              disabled={!picked || pending}
-              className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-45"
+              disabled={pending}
+              className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-70"
             >
               {pending ? "Guardando…" : mode.kind === "add" ? "Agregar ciudad" : "Cambiar ciudad"}
             </button>

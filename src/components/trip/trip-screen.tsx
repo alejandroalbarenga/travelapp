@@ -1,16 +1,18 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, MapPin, Minus, Plane, Plus, Receipt, Route, Share, Ticket, TrainFront, Users, type LucideIcon } from "lucide-react";
+import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Share, Ticket, TrainFront, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { deleteLock, lockMessage, nightsLock } from "@/lib/stop-lock";
 import type { SaveExpenseInput, SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
 import { buildExpensesView, type ExpenseRowView, type TransferView } from "@/lib/expenses-view";
 import type { ChipDisplay } from "@/lib/legs";
 import type { Place } from "@/lib/places";
 import { fileKind, sortTickets, ticketTitle } from "@/lib/attachments";
 import { addLinkAttachment, deleteAttachment, signedUrl, uploadAttachment, type AttachmentTarget } from "@/lib/supabase/attachments";
-import type { Activity, Attachment, Expense, Leg, LegAttachment, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
+import { initialsFor, pickColor } from "@/lib/members";
+import type { Activity, Attachment, Expense, Leg, LegAttachment, LegMode, Member, MemberRole, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import { TripTabs, type TripTab } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
@@ -22,6 +24,7 @@ import { MembersSheet } from "./members-sheet";
 import { TransferSheet, type TransferInput } from "./transfer-sheet";
 import type { AttachmentInput } from "./attachment-controls";
 import { TicketViewer, type ViewerItem } from "./ticket-viewer";
+import { SwipeRow, type SwipeSide } from "./swipe-row";
 import { TripMap } from "./trip-map";
 import { useDragSheet } from "./use-drag-sheet";
 
@@ -57,12 +60,16 @@ export function TripScreen({
   settleDebt,
   undoSettlement,
   deleteTrip,
+  setStopLocked,
+  addMember,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
   myMemberId: string | null;
   /** Guardan en la base. Sin esto (en /demo) los cambios quedan solo en pantalla. */
-  saveNights?: (stopId: string, nights: number) => Promise<void>;
+  saveNights?: (stopId: string, nights: number) => Promise<{ error: string } | null>;
+  setStopLocked?: (stopId: string, locked: boolean) => Promise<{ error: string } | null>;
+  addMember?: (tripId: string, name: string) => Promise<{ member: Member } | { error: string }>;
   saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | null>;
   saveStop?: (input: SaveStopInput) => Promise<{ error: string } | null>;
   deleteStop?: (stopId: string) => Promise<{ error: string } | null>;
@@ -93,6 +100,13 @@ export function TripScreen({
   // Gasto abierto: "new" para uno nuevo, o el id del que se edita.
   const [openExpense, setOpenExpense] = useState<string | null>(null);
   const [openTransfer, setOpenTransfer] = useState(false);
+  // Deslizar ciudades (decisión 042): cuál está abierta, las borradas que todavía se pueden
+  // deshacer, y el aviso de abajo.
+  const [swiped, setSwiped] = useState<{ stopId: string; side: SwipeSide } | null>(null);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const deleteTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const [toast, setToast] = useState<{ id: number; text: string; action?: { label: string; run: () => void } } | null>(null);
+  const today = localToday();
   // Visor de pasajes y comprobantes (pantalla 03).
   const [viewer, setViewer] = useState<{ title: string; items: ViewerItem[]; startIndex: number; wallet: boolean; airlineUrl?: string | null } | null>(null);
   // Permisos (decisión 034): "solo ver" no ve los controles de edición y los sheets se abren en modo lectura.
@@ -143,6 +157,11 @@ export function TripScreen({
       return null;
     }
 
+    // Entra con 2 noches: antes de una ciudad bloqueada le correría las fechas (decisión 042).
+    const afterPosition = current.stops.find((s) => s.id === afterStopId)?.position ?? -1;
+    const lockedAfter = [...current.stops].sort((a, b) => a.position - b.position).find((s) => s.locked && s.position > afterPosition);
+    if (lockedAfter) return `${lockedAfter.city} está bloqueada y sus fechas no se pueden correr. Agregá la ciudad después.`;
+
     let id = `nueva-${Date.now()}`;
     if (addStop) {
       const result = await addStop(trip.id, afterStopId, place);
@@ -168,6 +187,7 @@ export function TripScreen({
         lat: place.lat,
         lng: place.lng,
         photo_url: null,
+        locked: false,
         member_ids: after ? after.member_ids : t.members.map((m) => m.id),
       };
       return {
@@ -384,6 +404,61 @@ export function TripScreen({
     return null;
   }
 
+  const toastSeq = useRef(0);
+  function showToast(text: string, action?: { label: string; run: () => void }) {
+    toastSeq.current += 1;
+    setToast({ id: toastSeq.current, text, action });
+  }
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast((t) => (t?.id === toast.id ? null : t)), toast.action ? 5000 : 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // Borrar deslizando: la ciudad desaparece al toque y se borra de verdad a los 5 segundos,
+  // salvo que se toque "Deshacer" (como en el diseño).
+  function swipeDelete(stopId: string) {
+    const stop = current.stops.find((s) => s.id === stopId);
+    if (!stop) return;
+    const blocked = deleteLock(current, stopId);
+    if (blocked) return showToast(blocked);
+    setHidden((h) => [...h, stopId]);
+    const timer = setTimeout(async () => {
+      deleteTimers.current.delete(stopId);
+      const message = await removeStop(stopId);
+      setHidden((h) => h.filter((id) => id !== stopId));
+      if (message) showToast(message);
+    }, 5000);
+    deleteTimers.current.set(stopId, timer);
+    showToast(`Borraste ${stop.city}`, {
+      label: "Deshacer",
+      run: () => {
+        clearTimeout(deleteTimers.current.get(stopId));
+        deleteTimers.current.delete(stopId);
+        setHidden((h) => h.filter((id) => id !== stopId));
+        setToast(null);
+      },
+    });
+  }
+
+  async function toggleLock(stopId: string): Promise<string | null> {
+    const stop = current.stops.find((s) => s.id === stopId);
+    if (!stop) return null;
+    const locked = !stop.locked;
+    if (setStopLocked) {
+      const result = await setStopLocked(stopId, locked);
+      if (result) {
+        showToast(result.error);
+        return result.error;
+      }
+      router.refresh();
+    }
+    setCurrent((t) => ({ ...t, stops: t.stops.map((s) => (s.id === stopId ? { ...s, locked } : s)) }));
+    showToast(locked ? `${stop.city} quedó bloqueada: ya no se cambia nada, salvo los gastos.` : `Desbloqueaste ${stop.city}.`);
+    return null;
+  }
+
   async function removeStop(stopId: string): Promise<string | null> {
     if (deleteStop) {
       const result = await deleteStop(stopId);
@@ -424,15 +499,27 @@ export function TripScreen({
     });
     return null;
   }
-  const view = buildTripView(current, { chipDisplay, myMemberId });
+  const view = buildTripView(hidden.length ? { ...current, stops: current.stops.filter((s) => !hidden.includes(s.id)) } : current, {
+    chipDisplay,
+    myMemberId,
+  });
 
   function changeNights(stopId: string, delta: number) {
     const stop = current.stops.find((s) => s.id === stopId);
     if (!stop) return;
     const value = Math.max(0, Math.min(60, stop.nights + delta));
     if (value === stop.nights) return;
+    const lock = nightsLock(current, stopId, today);
+    if (lock) return showToast(lockMessage(lock, stop.city));
     setCurrent((t) => ({ ...t, stops: t.stops.map((s) => (s.id === stopId ? { ...s, nights: value } : s)) }));
-    if (saveNights) startTransition(() => saveNights(stopId, value));
+    if (saveNights)
+      startTransition(async () => {
+        const result = await saveNights(stopId, value);
+        if (result) {
+          showToast(result.error);
+          router.refresh();
+        }
+      });
   }
 
   const points = [...current.stops]
@@ -527,7 +614,22 @@ export function TripScreen({
 
           {view.stops.map((stop, i) => (
             <div key={stop.id}>
-              <StopCard stop={stop} canEdit={canEdit} onChange={(d) => changeNights(stop.id, d)} onOpen={() => setOpenCity(stop.id)} />
+              <SwipeRow
+                enabled={canEdit}
+                locked={stop.locked}
+                open={swiped?.stopId === stop.id ? swiped.side : null}
+                onOpenChange={(side) => setSwiped(side ? { stopId: stop.id, side } : null)}
+                onLock={() => toggleLock(stop.id)}
+                onDelete={() => swipeDelete(stop.id)}
+              >
+                <StopCard
+                  stop={stop}
+                  canEdit={canEdit}
+                  nightsFrozen={!!nightsLock(current, stop.id, today)}
+                  onChange={(d) => changeNights(stop.id, d)}
+                  onOpen={() => setOpenCity(stop.id)}
+                />
+              </SwipeRow>
               <LegRow
                 stop={stop}
                 canEdit={canEdit}
@@ -660,7 +762,8 @@ export function TripScreen({
           onOpenLeg={(fromStopId) => setOpenLeg(fromStopId)}
           onSave={storeStop}
           onDelete={removeStop}
-          readOnly={!canEdit}
+          readOnly={!canEdit || !!current.stops.find((s) => s.id === openCity)?.locked}
+          onUnlock={canEdit ? () => toggleLock(openCity) : undefined}
           onChangePlace={() => setCitySearch({ kind: "change", stopId: openCity })}
           onAddReceipt={(stayId, input) => addAttachment({ kind: "stay", tripId: trip.id, stayId }, input)}
           onRemoveReceipt={(stayId, a) => removeAttachment("stay", stayId, a)}
@@ -690,6 +793,31 @@ export function TripScreen({
           balances={expensesView.balances}
           onClose={() => setOpenMembers(false)}
           onRoleChange={changeRole}
+          onAddMember={async (name) => {
+            let member: Member;
+            if (addMember) {
+              const result = await addMember(trip.id, name);
+              if ("error" in result) return result.error;
+              member = result.member;
+              router.refresh();
+            } else {
+              if (!name.trim()) return "Escribí el nombre.";
+              member = {
+                id: `m-${Date.now()}`,
+                display_name: name.trim(),
+                initials: initialsFor(name),
+                color: pickColor(current.members.map((m) => m.color)),
+                user_id: null,
+                role: "viewer",
+              };
+            }
+            setCurrent((t) => ({
+              ...t,
+              members: [...t.members, member],
+              stops: t.stops.map((s) => (s.locked ? s : { ...s, member_ids: [...s.member_ids, member.id] })),
+            }));
+            return null;
+          }}
           onDeleteTrip={
             deleteTrip &&
             (async () => {
@@ -710,6 +838,20 @@ export function TripScreen({
           onSave={storeExpense}
           onDelete={removeExpense}
         />
+      )}
+      {toast && (
+        <div
+          role="status"
+          className="fixed inset-x-4 z-[70] mx-auto flex max-w-[440px] items-center gap-3 rounded-2xl bg-navy px-4 py-3 text-sm font-semibold text-white shadow-button"
+          style={{ bottom: "calc(var(--safe-bottom) + 92px)" }}
+        >
+          <span className="min-w-0 flex-1 leading-[1.35]">{toast.text}</span>
+          {toast.action && (
+            <button type="button" onClick={toast.action.run} className="h-9 shrink-0 rounded-full px-2 text-sm font-extrabold text-toast-action">
+              {toast.action.label}
+            </button>
+          )}
+        </div>
       )}
       {viewer && (
         <TicketViewer
@@ -734,6 +876,12 @@ export function TripScreen({
   );
 }
 
+/** Fecha de hoy en el teléfono, como "YYYY-MM-DD". */
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function Dots({ height }: { height: number }) {
   return (
     <div className="relative" style={{ height }}>
@@ -742,7 +890,20 @@ function Dots({ height }: { height: number }) {
   );
 }
 
-function StopCard({ stop, canEdit, onChange, onOpen }: { stop: StopView; canEdit: boolean; onChange: (delta: number) => void; onOpen: () => void }) {
+function StopCard({
+  stop,
+  canEdit,
+  nightsFrozen,
+  onChange,
+  onOpen,
+}: {
+  stop: StopView;
+  canEdit: boolean;
+  /** No se pueden cambiar las noches (bloqueada, ya pasó o hay una bloqueada después): el stepper se atenúa. */
+  nightsFrozen: boolean;
+  onChange: (delta: number) => void;
+  onOpen: () => void;
+}) {
   return (
     <div
       role="button"
@@ -773,13 +934,20 @@ function StopCard({ stop, canEdit, onChange, onOpen }: { stop: StopView; canEdit
           </span>
         )}
       </div>
-      {!canEdit ? (
+      {stop.locked ? (
+        <div className="flex w-[88px] shrink-0 flex-col items-center gap-1 text-navy">
+          <span className="flex items-center gap-1 text-[17px] leading-none font-extrabold">
+            <Lock size={14} /> {stop.nights}
+          </span>
+          <span className="text-[10px] font-bold text-ink-2">Bloqueada</span>
+        </div>
+      ) : !canEdit ? (
         <div className="w-14 shrink-0 text-center">
           <div className="text-[17px] leading-none font-extrabold">{stop.nights}</div>
           <div className="mt-[3px] text-[10px] font-bold text-ink-2">{stop.nightsLabel}</div>
         </div>
       ) : (
-      <div className="flex shrink-0 items-center">
+      <div className="flex shrink-0 items-center" style={{ opacity: nightsFrozen ? 0.4 : 1 }}>
         <button type="button" aria-label="Menos noches" onClick={(e) => {
             e.stopPropagation();
             onChange(-1);

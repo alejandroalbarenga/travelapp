@@ -1,14 +1,29 @@
 "use server";
 
 import { searchPlaces, type Place } from "@/lib/places";
+import { initialsFor, pickColor } from "@/lib/members";
 import { createClient } from "@/lib/supabase/server";
+import type { BookingSource, Member } from "@/lib/trip-types";
+
+// Si la base rechazó por una ciudad bloqueada (migración 0008), su mensaje ya está en castellano.
+function lockedError(error: { message: string } | null): string | null {
+  return error && error.message.includes("bloqueada") ? error.message : null;
+}
 
 // Cambiar las noches de una parada. También corre los horarios de los tramos siguientes.
 // RLS controla que la parada sea de un viaje tuyo.
-export async function saveNights(stopId: string, nights: number) {
-  if (!Number.isInteger(nights) || nights < 0 || nights > 60) return;
+export async function saveNights(stopId: string, nights: number): Promise<{ error: string } | null> {
+  if (!Number.isInteger(nights) || nights < 0 || nights > 60) return { error: "Cantidad de noches inválida." };
   const supabase = await createClient();
-  await supabase.rpc("set_stop_nights", { p_stop_id: stopId, p_nights: nights });
+  const { error } = await supabase.rpc("set_stop_nights", { p_stop_id: stopId, p_nights: nights });
+  return error ? { error: lockedError(error) ?? "No pudimos cambiar las noches." } : null;
+}
+
+// Bloquear o desbloquear una ciudad (decisión 042). RLS: solo los que pueden editar.
+export async function setStopLocked(stopId: string, locked: boolean): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("stops").update({ locked }).eq("id", stopId).select("id");
+  return error || !data?.length ? { error: locked ? "No pudimos bloquear la ciudad." : "No pudimos desbloquearla." } : null;
 }
 
 export type SaveStopInput = {
@@ -16,7 +31,7 @@ export type SaveStopInput = {
   memberIds: string[];
   notes: string;
   stayName: string;
-  bookedVia: "booking" | "airbnb" | "direct" | "other" | null;
+  bookedVia: BookingSource | null;
   stayPriceCents: number | null;
   stayPaidByMemberId: string | null;
   stayDescription: string;
@@ -40,7 +55,7 @@ export async function saveStop(input: SaveStopInput): Promise<{ error: string } 
   if (!error) return null;
   if (error.message.includes("no suma")) return { error: "La división del alojamiento no suma el total." };
   if (error.message.includes("al menos")) return { error: "Tiene que quedar al menos una persona." };
-  return { error: "No pudimos guardar los cambios." };
+  return { error: lockedError(error) ?? "No pudimos guardar los cambios." };
 }
 
 // Buscar una ciudad (Nominatim). Corre en el servidor para mandar el User-Agent que pide OpenStreetMap.
@@ -63,7 +78,7 @@ export async function addStop(tripId: string, afterStopId: string | null, place:
     p_timezone: place.timezone,
     p_nights: 2,
   });
-  if (error || !data) return { error: error?.message.includes("permiso") ? "No tenés permiso para editar este viaje." : "No pudimos agregar la ciudad." };
+  if (error || !data) return { error: lockedError(error) ?? (error?.message.includes("permiso") ? "No tenés permiso para editar este viaje." : "No pudimos agregar la ciudad.") };
   return { id: data as string };
 }
 
@@ -84,8 +99,37 @@ export async function changeStopPlace(stopId: string, place: Place): Promise<{ e
     })
     .eq("id", stopId)
     .select("id");
-  if (error || !data?.length) return { error: "No pudimos cambiar la ciudad." };
+  if (error || !data?.length) return { error: lockedError(error) ?? "No pudimos cambiar la ciudad." };
   return null;
+}
+
+// El organizador suma a alguien que todavía no entró (decisión 044): queda "todavía no entró",
+// arranca como Solo ver y en todas las ciudades no bloqueadas. Al entrar con el link, lo reclama.
+export async function addMember(tripId: string, name: string): Promise<{ member: Member } | { error: string }> {
+  const displayName = name.trim();
+  if (!displayName) return { error: "Escribí el nombre." };
+  const supabase = await createClient();
+  const [{ data: members }, { data: stops }] = await Promise.all([
+    supabase.from("trip_members").select("color, display_name").eq("trip_id", tripId),
+    supabase.from("stops").select("id").eq("trip_id", tripId).eq("locked", false),
+  ]);
+  if (members?.some((m) => m.display_name.toLocaleLowerCase("es") === displayName.toLocaleLowerCase("es"))) {
+    return { error: `Ya hay alguien que se llama ${displayName}.` };
+  }
+  const { data, error } = await supabase
+    .from("trip_members")
+    .insert({
+      trip_id: tripId,
+      display_name: displayName,
+      initials: initialsFor(displayName),
+      color: pickColor((members ?? []).map((m) => m.color)),
+      role: "viewer",
+    })
+    .select("id, display_name, initials, color, user_id, role")
+    .single();
+  if (error || !data) return { error: "Solo el organizador puede sumar integrantes." };
+  if (stops?.length) await supabase.from("stop_members").insert(stops.map((s) => ({ stop_id: s.id, member_id: data.id })));
+  return { member: data as Member };
 }
 
 // Cambia el permiso de un integrante (decisión 034). Solo lo puede hacer el organizador: lo controla RLS.
@@ -100,7 +144,7 @@ export async function setMemberRole(memberId: string, role: "editor" | "viewer")
 export async function deleteStop(stopId: string): Promise<{ error: string } | null> {
   const supabase = await createClient();
   const { error } = await supabase.from("stops").delete().eq("id", stopId);
-  return error ? { error: "No pudimos borrar la ciudad." } : null;
+  return error ? { error: lockedError(error) ?? "No pudimos borrar la ciudad." } : null;
 }
 
 export type SaveLegInput = {
