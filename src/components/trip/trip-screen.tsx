@@ -2,11 +2,14 @@
 
 import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Minus, Plane, Plus, Share, Ticket, TrainFront, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import type { SaveLegInput } from "@/app/viaje/[id]/actions";
 import type { ChipDisplay } from "@/lib/legs";
-import type { LegMode, Trip } from "@/lib/trip-types";
+import type { Leg, LegMode, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import { TripTabs } from "../trip-tabs";
+import { LegSheet, type LegDraft } from "./leg-sheet";
 import { TripMap } from "./trip-map";
 
 // Pantalla 01 · Viaje (docs/diseño.md): mapa de fondo y la lista de ciudades encima como sheet.
@@ -28,17 +31,48 @@ export function TripScreen({
   chipDisplay,
   myMemberId,
   saveNights,
+  saveLeg,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
   myMemberId: string | null;
-  /** Guarda las noches de una parada. Sin esto (en /demo) los cambios quedan solo en pantalla. */
+  /** Guardan en la base. Sin esto (en /demo) los cambios quedan solo en pantalla. */
   saveNights?: (stopId: string, nights: number) => Promise<void>;
+  saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | null>;
 }) {
+  const router = useRouter();
   const [nights, setNights] = useState<Record<string, number>>({});
+  const [legEdits, setLegEdits] = useState<Record<string, Leg>>({});
+  const [openLeg, setOpenLeg] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  const current: Trip = { ...trip, stops: trip.stops.map((s) => (s.id in nights ? { ...s, nights: nights[s.id] } : s)) };
+  const current: Trip = {
+    ...trip,
+    stops: trip.stops.map((s) => (s.id in nights ? { ...s, nights: nights[s.id] } : s)),
+    legs: [...trip.legs.filter((l) => !(l.from_stop_id in legEdits)), ...Object.values(legEdits)],
+  };
+
+  async function storeLeg(draft: LegDraft, description: string): Promise<string | null> {
+    if (saveLeg) {
+      const result = await saveLeg({
+        tripId: trip.id,
+        fromStopId: draft.from_stop_id,
+        toStopId: draft.to_stop_id,
+        mode: draft.mode,
+        departsAt: draft.departs_at,
+        arrivesAt: draft.arrives_at,
+        totalPriceCents: draft.total_price_cents,
+        paidByMemberId: draft.paid_by_member_id,
+        description,
+        splits: draft.split,
+      });
+      if (result) return result.error;
+      router.refresh();
+    }
+    const previous = current.legs.find((l) => l.from_stop_id === draft.from_stop_id);
+    setLegEdits((e) => ({ ...e, [draft.from_stop_id]: { ...draft, id: draft.id ?? `nuevo-${draft.from_stop_id}`, attachments: previous?.attachments ?? [] } }));
+    return null;
+  }
   const view = buildTripView(current, { chipDisplay, myMemberId });
 
   function changeNights(stopId: string, delta: number) {
@@ -97,7 +131,7 @@ export function TripScreen({
           {view.stops.map((stop, i) => (
             <div key={stop.id}>
               <StopCard stop={stop} onChange={(d) => changeNights(stop.id, d)} />
-              <LegRow stop={stop} />
+              <LegRow stop={stop} onOpen={() => setOpenLeg(stop.id)} />
               {i === view.stops.length - 1 && (
                 <div className="flex items-center gap-2.5 pl-7">
                   <span className="flex size-8 items-center justify-center rounded-full border border-navy/[.07] bg-white text-ink-2 shadow-card">
@@ -149,6 +183,10 @@ export function TripScreen({
       >
         <Plus size={28} />
       </button>
+
+      {openLeg && (
+        <LegSheet trip={current} fromStopId={openLeg} myMemberId={myMemberId} onClose={() => setOpenLeg(null)} onSave={storeLeg} />
+      )}
     </div>
   );
 }
@@ -205,7 +243,7 @@ function StopCard({ stop, onChange }: { stop: StopView; onChange: (delta: number
   );
 }
 
-function LegRow({ stop }: { stop: StopView }) {
+function LegRow({ stop, onOpen }: { stop: StopView; onOpen: () => void }) {
   const leg = stop.leg;
   const Icon = leg ? MODE_ICON[leg.mode] : null;
   return (
@@ -218,7 +256,7 @@ function LegRow({ stop }: { stop: StopView }) {
       </button>
       {leg && Icon ? (
         <>
-          <button type="button" className="relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full border border-navy/[.07] bg-white pr-3 pl-1.5 shadow-card">
+          <button type="button" onClick={onOpen} className="relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full border border-navy/[.07] bg-white pr-3 pl-1.5 shadow-card">
             <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${MODE_CLASS[leg.mode]}`}>
               <Icon size={16} />
             </span>
@@ -243,7 +281,7 @@ function LegRow({ stop }: { stop: StopView }) {
           </button>
         </>
       ) : (
-        <button type="button" className="relative ml-1.5 flex h-11 items-center gap-2 rounded-full border-[1.5px] border-dashed border-dots bg-white pr-3.5 pl-1.5 text-ink-2">
+        <button type="button" onClick={onOpen} className="relative ml-1.5 flex h-11 items-center gap-2 rounded-full border-[1.5px] border-dashed border-dots bg-white pr-3.5 pl-1.5 text-ink-2">
           <span className="flex size-[30px] items-center justify-center rounded-full border-[1.5px] border-dashed border-dots">
             <Plus size={16} />
           </span>

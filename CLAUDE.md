@@ -92,6 +92,8 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - Migraciones en `supabase/migrations/` (SQL), datos de ejemplo en `supabase/seed.sql`. Se aplican pegándolas en el SQL Editor de Supabase.
 - Los viajes se crean con `create_trip()` (deja al creador como miembro). La invitación usa `get_invite()`, `claim_member()` y `join_trip_as_new()`.
 - Los gastos se guardan **siempre** con `save_expense()`: escribe el gasto y su división en una transacción. Un trigger diferido rechaza cualquier división que no sume el total.
+- Los tramos se guardan con `save_leg()` (crea, actualiza o borra su gasto) y las noches se cambian con `set_stop_nights()`, que corre los horarios de los tramos siguientes en hora local.
+- La fecha de un tramo no se elige: es el día de salida de la parada de origen. Si llegada ≤ salida, se toma como llegada al día siguiente.
 - Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento.
 - Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.
 

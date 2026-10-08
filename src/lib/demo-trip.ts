@@ -72,6 +72,10 @@ const legs: Leg[] = LEGS.flatMap((l, i) => {
       arrives_at: new Date(new Date(departsAt).getTime() + minutes * 60_000).toISOString(),
       total_price_cents: i === 0 ? 48000 : i === 1 ? 18000 : null,
       paid_by_member_id: i === 1 ? JO : AL,
+      split:
+        i === 0 || i === 1
+          ? [AL, RO, JO].map((member_id) => ({ member_id, amount_cents: i === 0 ? 16000 : 6000 }))
+          : [],
       attachments:
         i === 0
           ? [

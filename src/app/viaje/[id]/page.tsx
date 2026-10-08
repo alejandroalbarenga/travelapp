@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { TripScreen } from "@/components/trip/trip-screen";
 import { getTrip } from "@/lib/trip-data";
-import { saveNights } from "./actions";
+import { saveLeg, saveNights } from "./actions";
 
 export default function TripPage({ params }: PageProps<"/viaje/[id]">) {
   return (
@@ -16,5 +16,5 @@ async function Trip({ params }: { params: PageProps<"/viaje/[id]">["params"] }) 
   const { id } = await params;
   const data = await getTrip(id);
   if (!data) notFound();
-  return <TripScreen trip={data.trip} chipDisplay={data.chipDisplay} myMemberId={data.myMemberId} saveNights={saveNights} />;
+  return <TripScreen trip={data.trip} chipDisplay={data.chipDisplay} myMemberId={data.myMemberId} saveNights={saveNights} saveLeg={saveLeg} />;
 }

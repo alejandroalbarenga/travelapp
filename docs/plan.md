@@ -33,7 +33,7 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 ## Etapa 3 · Inicio, Viaje y ciudades (dom 11 oct)
 - [ ] Pantalla de inicio: estadísticas, próximos viajes, viajes pasados y "Nuevo viaje" con fecha de inicio y de fin.
 - [x] Mapa del recorrido de fondo, con la lista encima como sheet.
-- [ ] Lista de paradas con foto (de Wikipedia), fechas calculadas, stepper de noches y anillo de noches planeadas. *(Hecho todo menos las fotos.)*
+- [x] Lista de paradas con foto (de Wikipedia), fechas calculadas, stepper de noches y anillo de noches planeadas.
 - [x] Chips de tramo entre paradas (hora o duración según la preferencia) y "Agregar tramo" para los vacíos.
 - [ ] Botón "+" con menú: Agregar ciudad / Agregar tramo / Agregar gasto.
 - [ ] Agregar ciudad (con ubicación, país y huso automáticos) y borrar deslizando, con "Deshacer".

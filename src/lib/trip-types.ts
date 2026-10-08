@@ -45,6 +45,8 @@ export type Leg = {
   total_price_cents: number | null;
   paid_by_member_id: string | null;
   attachments: LegAttachment[];
+  /** División del gasto del tramo; vacía si no tiene precio. */
+  split: { member_id: string; amount_cents: number }[];
 };
 
 export type Stay = {

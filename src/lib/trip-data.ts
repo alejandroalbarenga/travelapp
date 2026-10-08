@@ -1,3 +1,4 @@
+import { withCityPhotos } from "./city-photo";
 import type { ChipDisplay } from "./legs";
 import { createClient } from "./supabase/server";
 import type { Leg, Member, Stay, Stop, Trip } from "./trip-types";
@@ -12,7 +13,10 @@ type TripRow = {
   invite_code: string;
   trip_members: Member[];
   stops: (Omit<Stop, "member_ids"> & { stop_members: { member_id: string }[]; stays: Stay[] })[];
-  legs: (Omit<Leg, "attachments"> & { leg_attachments: Leg["attachments"] })[];
+  legs: (Omit<Leg, "attachments" | "split"> & {
+    leg_attachments: Leg["attachments"];
+    expense: { expense_splits: Leg["split"] } | null;
+  })[];
 };
 
 export type TripPageData = { trip: Trip; chipDisplay: ChipDisplay; myMemberId: string | null };
@@ -33,7 +37,8 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
                 stop_members (member_id),
                 stays (id, stop_id, name, booked_via, total_price_cents, paid_by_member_id)),
          legs (id, from_stop_id, to_stop_id, mode, departs_at, arrives_at, total_price_cents, paid_by_member_id,
-               leg_attachments (id, member_id, kind, file_name))`,
+               leg_attachments (id, member_id, kind, file_name),
+               expense:expenses!legs_expense_id_fkey (expense_splits (member_id, amount_cents)))`,
       )
       .eq("id", tripId)
       .maybeSingle(),
@@ -65,9 +70,15 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
       photo_url: s.photo_url,
       member_ids: s.stop_members.map((m) => m.member_id),
     })),
-    legs: row.legs.map(({ leg_attachments, ...l }) => ({ ...l, attachments: leg_attachments })),
+    legs: row.legs.map(({ leg_attachments, expense, ...l }) => ({
+      ...l,
+      attachments: leg_attachments,
+      split: expense?.expense_splits ?? [],
+    })),
     stays: row.stops.flatMap((s) => s.stays),
   };
+
+  trip.stops = await withCityPhotos(trip.stops);
 
   return {
     trip,
