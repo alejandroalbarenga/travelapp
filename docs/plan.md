@@ -67,7 +67,7 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - [x] Service worker para que la app cargue rápido con mala conexión (decisión 047).
 - [ ] Prueba en los teléfonos de los viajeros: instalar, entrar, cargar un gasto cada uno.
 - [ ] Borrar los datos de ejemplo y cargar el viaje real: viajeros, tramos y pasajes.
-- [ ] Versión web (layout de dos paneles desde 1100 px). Ale la pidió: ya no es opcional.
+- [x] Versión web: dos paneles desde 1100 px (decisión 048).
 - **16 de octubre:** congelar. El 17 no se deploya nada salvo un arreglo urgente.
 
 ---

@@ -38,6 +38,7 @@ export function ExpensesScreen({
   onSettle,
   onUndo,
   onTransfer,
+  embedded = false,
 }: {
   tripName: string;
   view: ExpensesView;
@@ -48,6 +49,8 @@ export function ExpensesScreen({
   onSettle: (t: TransferView) => Promise<string | null>;
   onUndo: (settlementId: string) => Promise<string | null>;
   onTransfer: () => void;
+  /** En la web va dentro del panel izquierdo: sin su propio header (lo tiene el panel). */
+  embedded?: boolean;
 }) {
   const [showAllActivity, setShowAllActivity] = useState(false);
   const balanceRef = useRef<HTMLDivElement>(null);
@@ -66,8 +69,8 @@ export function ExpensesScreen({
 
   return (
     // El header queda fijo afuera del scroll (no sticky): en el iPhone un header sticky quedaba tapado.
-    <div className="absolute inset-0 z-[1] flex flex-col bg-white">
-      <div className="relative z-[2] shrink-0 bg-white px-5 pb-3.5" style={{ paddingTop: "calc(var(--safe-top) + 12px)" }}>
+    <div className={embedded ? "flex h-full flex-col bg-white" : "absolute inset-0 z-[1] flex flex-col bg-white"}>
+      <div className={`relative z-[2] shrink-0 bg-white px-5 pb-3.5 ${embedded ? "hidden" : ""}`} style={{ paddingTop: "calc(var(--safe-top) + 12px)" }}>
         <div className="flex items-center gap-3">
           <Link href="/" aria-label="Volver al inicio" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_2px_rgb(0_41_61/0.08),0_4px_12px_rgb(0_41_61/0.06)]">
             <ChevronLeft size={20} />
@@ -79,7 +82,10 @@ export function ExpensesScreen({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: "calc(var(--safe-bottom) + 120px)" }}>
+      <div
+        className={`min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] ${embedded ? "mx-auto w-full max-w-[720px] px-8 pt-5" : "px-5"}`}
+        style={{ paddingBottom: embedded ? 48 : "calc(var(--safe-bottom) + 120px)" }}
+      >
 
       {view.groups.length > 0 && (
         <section className="bg-navy-gradient mt-1.5 rounded-card-lg px-3 pt-4 pb-3 shadow-card">

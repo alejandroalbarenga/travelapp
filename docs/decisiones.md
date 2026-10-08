@@ -295,3 +295,18 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 - Al salir de la cuenta se borran las páginas y los pasajes guardados en el teléfono.
 - `proxy.ts` deja pasar `/sw.js` sin sesión: un service worker no se puede registrar detrás de una redirección.
 **Por qué:** en aeropuertos y trenes la señal es mala. No es un modo offline real (sigue en "Para después").
+
+### 048 · Cómo quedó la versión web
+**Fecha:** 2026-10-08
+**Decisión:** desde 1100 px de ancho (`useIsWeb`), el viaje usa `web-trip.tsx`, copiado del diseño ("01 Viaje (web)" en `Viajes en grupo.dc.html`).
+- **Panel izquierdo (58 %).** Header de 128 px: volver, nombre, "rango · N destinos", "34/34 noches planeadas", segmentado Viaje / Gastos, avatares, calendario, compartir y el botón principal ("Agregar ciudad" o "Agregar gasto").
+- **Las ciudades** van en una grilla de 2 a 4 columnas (de 230 px como mínimo, con 56 px entre columnas y 72 entre filas) que se recorre en zigzag.
+  - Arriba de cada foto corre la línea punteada con el número de la ciudad y el chip del tramo que sale.
+  - Entre tarjetas la línea cruza el hueco, y al final de la fila baja por el costado a la siguiente.
+  - La tarjeta es la foto 4:3 sin recuadro, con las noches arriba a la derecha y el alojamiento abajo a la izquierda. Abajo van el nombre, las fechas, el país y el stepper.
+- **Los sheets** (ciudad, tramo, gastos, calendario, integrantes…) suben dentro del panel izquierdo, debajo del header, y el mapa queda a la vista. Al abrir una ciudad, el mapa se acerca a ella.
+- **Solo "Nuevo viaje"** (fuera del viaje) es una ventana centrada.
+- **Mapa a la derecha (42 %)**, con 16 px de margen y radio 24. Pasar el mouse por una ciudad pone su pin naranja.
+- **Bloquear y borrar** (042) aparecen al pasar el mouse por la foto, porque en la compu no se desliza. Esto no está en el diseño.
+- **El móvil no cambia.**
+**Por qué:** Ale la pidió para cargar cosas más cómodo desde la compu (decisión 022).

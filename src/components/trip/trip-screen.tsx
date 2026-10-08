@@ -25,6 +25,10 @@ import { TransferSheet, type TransferInput } from "./transfer-sheet";
 import type { AttachmentInput } from "./attachment-controls";
 import { TicketViewer, type ViewerItem } from "./ticket-viewer";
 import { SwipeRow, type SwipeSide } from "./swipe-row";
+import { NightsRing } from "./nights-ring";
+import { WEB_HEADER_HEIGHT, WebTrip } from "./web-trip";
+import { SheetPanelContext } from "../bottom-sheet";
+import { useIsWeb } from "@/lib/use-is-web";
 import { CalendarSheet, type CalendarMode } from "./calendar-sheet";
 import { arrivalChange } from "@/lib/calendar";
 import { TripMap } from "./trip-map";
@@ -32,6 +36,7 @@ import { useDragSheet } from "./use-drag-sheet";
 
 // Pantalla 01 · Viaje (docs/diseño.md): mapa de fondo y la lista de ciudades encima como sheet.
 
+const WEB_SHEET_PANEL = { left: "0px", width: "58%", top: `${WEB_HEADER_HEIGHT}px` };
 const LIST_TOP = 340; // donde arranca la lista; el resto de arriba es mapa
 const PEEK = 170; // lo que se ve de la lista abajo del todo (rayita + "Empieza el viaje" + aire para los botones de abajo)
 
@@ -43,8 +48,6 @@ const MODE_CLASS: Record<LegMode, string> = {
   car: "bg-car-bg text-car",
   other: "bg-other-bg text-other",
 };
-const RING_COLOR = { missing: "#F5891F", complete: "#1FA971", over: "#A8382B" };
-
 export function TripScreen({
   trip,
   chipDisplay,
@@ -103,6 +106,8 @@ export function TripScreen({
   const [openExpense, setOpenExpense] = useState<string | null>(null);
   const [openTransfer, setOpenTransfer] = useState(false);
   const [calendar, setCalendar] = useState<CalendarMode | null>(null);
+  // Versión web desde 1100 px: dos paneles (web-trip.tsx). Los sheets y avisos son los mismos.
+  const isWeb = useIsWeb();
   // Deslizar ciudades (decisión 042): cuál está abierta, las borradas que todavía se pueden
   // deshacer, y el aviso de abajo.
   const [swiped, setSwiped] = useState<{ stopId: string; side: SwipeSide } | null>(null);
@@ -549,11 +554,48 @@ export function TripScreen({
   const expensesView = buildExpensesView(current, myMemberId);
   const firstMissingLeg = ordered.slice(0, -1).find((s) => !current.legs.some((l) => l.from_stop_id === s.id))?.id ?? null;
 
-  const ringProgress = Math.min(1, view.plannedNights / Math.max(1, view.tripNights));
   const travellers = trip.members.length;
 
   return (
+    // En la web, los sheets suben dentro del panel izquierdo, debajo del header (como en el diseño).
+    <SheetPanelContext.Provider value={isWeb ? WEB_SHEET_PANEL : null}>
     <div className="fixed inset-0 overflow-hidden bg-white">
+      {isWeb ? (
+        <WebTrip
+          view={view}
+          members={current.members}
+          points={points}
+          tab={tab}
+          onTab={setTab}
+          canEdit={canEdit}
+          nightsFrozen={(stopId) => !!nightsLock(current, stopId, today)}
+          onOpenCity={setOpenCity}
+          onOpenLeg={setOpenLeg}
+          focusStopId={openCity}
+          onAddCity={(afterStopId) => setCitySearch({ kind: "add", afterStopId: afterStopId === undefined ? lastBeforeReturn : afterStopId })}
+          onAddExpense={() => setOpenExpense("new")}
+          onNights={changeNights}
+          onLock={(stopId) => toggleLock(stopId)}
+          onDelete={swipeDelete}
+          onCalendar={() => setCalendar({ kind: "view" })}
+          onMembers={() => setOpenMembers(true)}
+          expenses={
+            <ExpensesScreen
+              tripName={current.name}
+              view={expensesView}
+              members={current.members}
+              myMemberId={myMemberId}
+              canEdit={canEdit}
+              onEdit={editExpenseRow}
+              onSettle={settle}
+              onUndo={undoSettle}
+              onTransfer={() => setOpenTransfer(true)}
+              embedded
+            />
+          }
+        />
+      ) : (
+      <>
       <TripMap points={points} visibleTop={56} visibleBottom={LIST_TOP} onPinClick={setOpenCity} />
 
 
@@ -599,30 +641,7 @@ export function TripScreen({
               <div className="text-[15px] font-bold">Empieza el viaje</div>
               <div className="mt-0.5 text-xs font-bold tracking-[0.06em] text-ink-2">{view.startLabel}</div>
             </div>
-            <div className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-navy/[.06] bg-surface pr-3 pl-[7px]">
-              <svg viewBox="0 0 22 22" className="size-[22px] shrink-0 -rotate-90" aria-hidden>
-                <circle cx="11" cy="11" r="8.5" fill="none" stroke="#D3DBE4" strokeWidth="3.5" />
-                {ringProgress > 0 && (
-                  <circle
-                    cx="11"
-                    cy="11"
-                    r="8.5"
-                    fill="none"
-                    stroke={RING_COLOR[view.nightsStatus]}
-                    strokeWidth="3.5"
-                    strokeLinecap={ringProgress < 1 ? "round" : "butt"}
-                    pathLength={100}
-                    strokeDasharray={`${ringProgress * 100} 100`}
-                  />
-                )}
-              </svg>
-              <span className="text-[13px] whitespace-nowrap">
-                <strong style={{ color: view.nightsStatus === "over" ? "#A8382B" : "#00293D" }}>
-                  {view.plannedNights}/{view.tripNights}
-                </strong>{" "}
-                noches
-              </span>
-            </div>
+            <NightsRing view={view} />
           </div>
           <Dots height={14} />
 
@@ -782,6 +801,9 @@ export function TripScreen({
       </button>
       )}
 
+      </>
+      )}
+
       {openCity && current.stops.some((s) => s.id === openCity) && (
         <CitySheet
           trip={current}
@@ -924,6 +946,7 @@ export function TripScreen({
         />
       )}
     </div>
+    </SheetPanelContext.Provider>
   );
 }
 

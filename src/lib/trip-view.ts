@@ -26,6 +26,7 @@ export type StopView = {
   id: string;
   number: number;
   name: string;
+  country: string | null;
   code: string;
   photoUrl: string | null;
   tint: string;
@@ -95,6 +96,7 @@ export function buildTripView(trip: Trip, options: { chipDisplay: ChipDisplay; m
         id: stop.id,
         number: i + 1,
         name: stop.city,
+        country: stop.country,
         code: stop.code ?? stop.city.slice(0, 3).toUpperCase(),
         photoUrl: stop.photo_url,
         locked: stop.locked,

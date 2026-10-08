@@ -13,13 +13,21 @@ export function TripMap({
   visibleTop,
   visibleBottom,
   onPinClick,
+  highlightStopId = null,
+  focusStopId = null,
 }: {
   points: MapPoint[];
   /** Píxeles tapados arriba (botones flotantes) y desde dónde tapa la lista, para centrar el recorrido en lo visible. */
   visibleTop: number;
   visibleBottom: number;
   onPinClick?: (stopId: string) => void;
+  /** Ciudad resaltada (en la web, al pasar el mouse por su tarjeta): pin naranja y más grande. */
+  highlightStopId?: string | null;
+  /** En la web, la ciudad abierta: el mapa se acerca a ella; al cerrarla vuelve al recorrido. */
+  focusStopId?: string | null;
 }) {
+  const focusRef = useRef(focusStopId);
+  const highlightRef = useRef(highlightStopId);
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<LeafletMap | null>(null);
   const layer = useRef<LayerGroup | null>(null);
@@ -62,6 +70,21 @@ export function TripMap({
   }, []);
 
   useEffect(() => {
+    focusRef.current = focusStopId;
+    if (!map.current) return;
+    import("leaflet").then((L) => fit(L));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusStopId]);
+
+  // Resaltar no re-encuadra el mapa (si no, saltaría con cada movimiento del mouse).
+  useEffect(() => {
+    highlightRef.current = highlightStopId;
+    if (!map.current) return;
+    import("leaflet").then((L) => draw(L, false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightStopId]);
+
+  useEffect(() => {
     if (!map.current) return;
     import("leaflet").then((L) => draw(L));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,6 +93,11 @@ export function TripMap({
   function fit(L: typeof import("leaflet")) {
     const m = map.current;
     if (!m || !el.current) return;
+    const focus = focusRef.current ? points.find((p) => p.stopId === focusRef.current) : null;
+    if (focus) {
+      m.setView([focus.lat, focus.lng], 11, { animate: true });
+      return;
+    }
     // Un viaje sin ciudades todavía: Europa entera.
     if (points.length === 0) {
       m.setView([48, 10], 4, { animate: false });
@@ -84,7 +112,7 @@ export function TripMap({
     });
   }
 
-  function draw(L: typeof import("leaflet")) {
+  function draw(L: typeof import("leaflet"), refit = true) {
     const g = layer.current;
     if (!g) return;
     g.clearLayers();
@@ -94,25 +122,28 @@ export function TripMap({
     L.polyline(line, { color: "#00293D", weight: 3, dashArray: "1 7", lineCap: "round", interactive: false }).addTo(g);
 
     // Una ciudad que aparece dos veces (Madrid) comparte pin: "1 · 13".
-    const groups = new Map<string, { lat: number; lng: number; labels: string[]; stopId: string }>();
+    const groups = new Map<string, { lat: number; lng: number; labels: string[]; stopId: string; stopIds: string[] }>();
     for (const p of points) {
       const key = `${p.lat.toFixed(2)},${p.lng.toFixed(2)}`;
-      const g2 = groups.get(key) ?? { lat: p.lat, lng: p.lng, labels: [], stopId: p.stopId };
+      const g2 = groups.get(key) ?? { lat: p.lat, lng: p.lng, labels: [], stopId: p.stopId, stopIds: [] };
       g2.labels.push(p.label);
+      g2.stopIds.push(p.stopId);
       groups.set(key, g2);
     }
     for (const pin of groups.values()) {
+      const on = !!highlightRef.current && pin.stopIds.includes(highlightRef.current);
       L.marker([pin.lat, pin.lng], {
+        zIndexOffset: on ? 1000 : 0,
         icon: L.divIcon({
           className: "",
-          html: `<div style="transform:translate(-50%,-50%);display:inline-flex;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#00293D;color:#fff;font:800 12px var(--font-jakarta),system-ui,sans-serif;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap">${pin.labels.join(" · ")}</div>`,
+          html: `<div style="transform:translate(-50%,-50%) scale(${on ? 1.3 : 1});transition:transform .15s;display:inline-flex;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:${on ? "#F5891F" : "#00293D"};color:#fff;font:800 12px var(--font-jakarta),system-ui,sans-serif;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap">${pin.labels.join(" · ")}</div>`,
           iconSize: [0, 0],
         }),
       })
         .on("click", () => clickRef.current?.(pin.stopId))
         .addTo(g);
     }
-    fit(L);
+    if (refit) fit(L);
   }
 
   return <div ref={el} className="absolute inset-0 z-0 bg-[#E8EEF4]" />;
