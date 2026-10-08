@@ -83,3 +83,58 @@ Cada decisión con qué se decidió, por qué y cuándo. Si algo de acá contrad
 **Fecha:** 2026-10-07
 **Decisión:** al agregar una ciudad, la app busca automáticamente la foto principal de su artículo en Wikipedia y guarda esa URL en `stops.photo_url`. Si no encuentra, se muestra una imagen por defecto. Más adelante se podrá cambiar la foto a mano.
 **Por qué:** Wikipedia es gratis, no pide cuenta ni clave, y tiene foto para todas las ciudades del viaje. Unsplash da fotos más lindas pero pide registrarse y una clave; se puede sumar después.
+
+### 017 · Quién está en cada ciudad
+**Fecha:** 2026-10-07
+**Decisión:** cada parada guarda qué miembros están ahí (`stop_members`). Al crear una parada se marcan todos; se puede sacar a alguien. Los gastos de esa parada (y su alojamiento) se dividen por defecto entre los que están.
+**Por qué:** no todos hacen el viaje completo; alguien puede sumarse o irse a mitad de camino.
+
+### 018 · Alojamiento por parada
+**Fecha:** 2026-10-07
+**Decisión:** cada parada puede tener uno o más alojamientos (`stays`) con nombre, dirección, precio, quién pagó y comprobantes adjuntos (`stay_attachments`, en el mismo bucket privado que los pasajes). Si tiene precio, crea o actualiza su gasto asociado, igual que un tramo.
+**Por qué:** salió en el diseño; el alojamiento es uno de los gastos más grandes y la reserva hay que tenerla a mano.
+
+### 019 · Notas, país y frase en cada parada
+**Fecha:** 2026-10-07
+**Decisión:** las paradas suman `country`, `tagline` (una frase corta que se muestra en la tarjeta) y `notes` (texto libre).
+**Por qué:** salió en el diseño; da contexto a cada ciudad y un lugar para anotar cosas sueltas.
+
+### 020 · Calendario con días partidos
+**Fecha:** 2026-10-07
+**Decisión:** en la vista de calendario, el día en que se viaja de una ciudad a otra se muestra partido entre las dos.
+**Por qué:** ese día pertenece a las dos ciudades; mostrarlo en una sola confunde.
+
+### 021 · Qué muestra el chip del tramo
+**Fecha:** 2026-10-07
+**Decisión:** cada usuario elige qué muestra el chip del tramo entre paradas, y la preferencia se guarda en `profiles.chip_display`.
+**Por qué:** salió en el diseño; es una preferencia personal, no del viaje.
+
+### 022 · Zona horaria
+**Fecha:** 2026-10-07
+**Decisión:** la zona horaria de cada parada se completa sola a partir de la ciudad; los horarios de los tramos se muestran en la hora local de salida y de llegada. Complementa la 009.
+**Por qué:** que nadie tenga que saber ni elegir un identificador como `Europe/Riga`.
+
+### 023 · Un pasaje por viajero
+**Fecha:** 2026-10-07
+**Decisión:** cada adjunto de un tramo puede indicar de quién es (`leg_attachments.member_id`). Al abrir "Ver pasaje" se muestra primero el tuyo. Un adjunto sin dueño es del grupo. Amplía la 010.
+**Por qué:** cada persona tiene su propio pasaje con su nombre y código.
+
+### 024 · Sin selector de moneda
+**Fecha:** 2026-10-07
+**Decisión:** el diseño saca el selector "EUR ▾" de los montos. Todo se muestra y se carga en la moneda del viaje. Confirma la 005.
+**Por qué:** con una sola moneda por viaje, el selector no hacía nada y confundía.
+
+### 025 · Montos distintos por persona
+**Fecha:** 2026-10-07
+**Decisión:** el diseño suma la opción de dividir con montos distintos por persona, tanto en gastos como en tramos y alojamientos. Se guarda igual que en la 007.
+**Por qué:** la 007 ya lo contemplaba en los datos; faltaba en la interfaz.
+
+### 026 · Colores nuevos
+**Fecha:** 2026-10-07
+**Decisión:** el sistema visual cambia de colores; los valores nuevos salen de los diseños finales de Claude Design y reemplazan a los de `diseño.md`.
+**Por qué:** ajuste de Ale mientras diseñaba.
+
+### 027 · Versión web
+**Fecha:** 2026-10-07
+**Decisión:** además del iPhone, la app tiene que poder usarse desde el navegador de una computadora.
+**Por qué:** para cargar cosas más cómodo (pasajes, reservas) desde la compu.

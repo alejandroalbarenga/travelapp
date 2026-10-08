@@ -60,22 +60,26 @@ Los diseños finales los arma Ale en Claude Design y los va a pasar más adelant
 - **Miembros sin cuenta**: `trip_members.user_id` puede ser null; al entrar con el link de invitación, el usuario reclama su miembro.
 - **División de gastos**: por defecto en partes iguales entre los elegidos, con opción de montos distintos por persona. Se guarda el monto de cada uno en `expense_splits.amount_cents` (la suma da el total).
 - **Permisos**: todos los miembros de un viaje pueden ver y editar todo lo de ese viaje. Nadie ve viajes de los que no es miembro.
-- **Pasajes** en un bucket privado, servidos con URLs firmadas.
+- **Pasajes y comprobantes de alojamiento** en un bucket privado, servidos con URLs firmadas.
 
 ## Modelo de datos acordado
 
 Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 
+- `profiles`: user_id (= `auth.users.id`), chip_display (qué muestra el chip del tramo, ver decisión 021)
 - `trips`: id, name, start_date, currency, invite_code, created_by, created_at
 - `trip_members`: id, trip_id, user_id (nullable), display_name, initials, color
-- `stops`: id, trip_id, position, city, code, nights (≥ 0), timezone, photo_url
+- `stops`: id, trip_id, position, city, country, code, tagline (frase), notes, nights (≥ 0), timezone, photo_url
+- `stop_members`: stop_id, member_id (quién está en cada parada)
+- `stays`: id, stop_id, name, address, total_price_cents, paid_by_member_id, expense_id, notes
+- `stay_attachments`: id, stay_id, kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at
 - `legs`: id, trip_id, from_stop_id, to_stop_id, mode (car/train/plane/bus/other), departs_at, arrives_at, total_price_cents, paid_by_member_id, expense_id
-- `leg_attachments`: id, leg_id, kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at
-- `expenses`: id, trip_id, stop_id (opcional), leg_id (opcional), description, category, amount_cents, paid_by_member_id, created_by, created_at
+- `leg_attachments`: id, leg_id, member_id (de quién es el pasaje, nullable), kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at
+- `expenses`: id, trip_id, stop_id (opcional), leg_id (opcional), stay_id (opcional), description, category, amount_cents, paid_by_member_id, created_by, created_at
 - `expense_splits`: expense_id, member_id, amount_cents
 - `settlements`: id, trip_id, from_member_id, to_member_id, amount_cents, settled_at
 
-Un tramo con precio crea o actualiza su gasto asociado (dividido por defecto entre todos).
+Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en esa parada (`stop_members`).
 
 ## Lógica clave
 
