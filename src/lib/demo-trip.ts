@@ -1,5 +1,5 @@
 import { zonedToInstant } from "./legs";
-import type { Leg, LegMode, Stop, Trip } from "./trip-types";
+import type { Expense, Leg, LegMode, Stop, Trip } from "./trip-types";
 
 // El viaje de ejemplo de docs/diseño.md, igual que supabase/seed.sql.
 // Se usa en las pruebas y en la ruta /demo (solo en desarrollo).
@@ -88,6 +88,20 @@ const legs: Leg[] = LEGS.flatMap((l, i) => {
   ];
 });
 
+// Gastos del ejemplo (los mismos del seed): todos entre Ale, Rodrigo y Josué.
+const split = (total: number) => {
+  const base = Math.floor(total / 3);
+  return [AL, RO, JO].map((member_id, i) => ({ member_id, amount_cents: base + (i < total - base * 3 ? 1 : 0) }));
+};
+const expenses: Expense[] = [
+  { id: "e1", stop_id: "s0", leg_id: "l0", stay_id: null, description: "Vuelo Madrid → Bruselas", category: "transport", amount_cents: 48000, paid_by_member_id: AL, created_at: "2026-10-01T10:00:00Z", splits: split(48000) },
+  { id: "e2", stop_id: "s1", leg_id: null, stay_id: "st1", description: "Hotel cerca de Grand-Place · 4 noches", category: "lodging", amount_cents: 26400, paid_by_member_id: RO, created_at: "2026-10-01T10:01:00Z", splits: split(26400) },
+  { id: "e3", stop_id: "s1", leg_id: "l1", stay_id: null, description: "Tren Bruselas → Ámsterdam", category: "transport", amount_cents: 18000, paid_by_member_id: JO, created_at: "2026-10-01T10:02:00Z", splits: split(18000) },
+  { id: "e4", stop_id: "s2", leg_id: null, stay_id: "st2", description: "Departamento en De Pijp · 3 noches", category: "lodging", amount_cents: 42000, paid_by_member_id: AL, created_at: "2026-10-01T10:03:00Z", splits: split(42000) },
+  { id: "e5", stop_id: "s2", leg_id: null, stay_id: null, description: "Cena en De Pijp", category: "food", amount_cents: 15600, paid_by_member_id: JO, created_at: "2026-10-01T10:04:00Z", splits: split(15600) },
+  { id: "e6", stop_id: "s2", leg_id: null, stay_id: null, description: "Museo Van Gogh", category: "activities", amount_cents: 8800, paid_by_member_id: RO, created_at: "2026-10-01T10:05:00Z", splits: split(8800) },
+];
+
 export const DEMO_MY_MEMBER_ID = AL;
 
 export const DEMO_TRIP: Trip = {
@@ -124,4 +138,6 @@ export const DEMO_TRIP: Trip = {
       split: [AL, RO, JO].map((member_id) => ({ member_id, amount_cents: 14000 })),
     },
   ],
+  expenses,
+  settlements: [],
 };

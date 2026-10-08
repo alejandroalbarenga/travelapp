@@ -96,7 +96,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - Los tramos se guardan con `save_leg()` (crea, actualiza o borra su gasto) y las noches se cambian con `set_stop_nights()`, que corre los horarios de los tramos siguientes en hora local.
 - La pantalla de ciudad guarda con `save_stop()`: quién está, notas y alojamiento con su gasto, todo junto.
 - Los sheets usan `src/components/bottom-sheet.tsx` (entra desde abajo, se cierra con el fondo, Escape o arrastrando el handle).
-- El panel del navegador de Claude a veces no redibuja hasta que hay una interacción: si una captura no muestra un sheet que el DOM dice que está abierto, redimensionar la ventana para forzar el redibujado.
+- El panel del navegador de Claude a veces no genera cuadros de animación sin una interacción: los sheets no entran y el contenido en streaming queda en "Cargando…" (llegó, pero React lo muestra en el próximo cuadro). Sacar una captura o redimensionar la ventana lo destraba. En un teléfono no pasa.
 - La fecha de un tramo no se elige: es el día de salida de la parada de origen. Si llegada ≤ salida, se toma como llegada al día siguiente.
 - Permisos (migración 0004): `can_edit_trip()` y `is_trip_admin()` en las políticas; un solo `admin` por viaje (índice único) que no se puede degradar ni borrar. En la interfaz, `canEdit` oculta los controles y los sheets reciben `readOnly`. En `/demo`, `?como=jo` muestra la app como alguien de solo ver.
 - Agregar ciudad: `add_stop()` (migración 0005) inserta después de otra, copia quién está y borra el tramo que salía de la anterior. La búsqueda es con Nominatim desde el servidor (`src/lib/places.ts`) y la zona horaria sale de las coordenadas con `@photostructure/tz-lookup`.

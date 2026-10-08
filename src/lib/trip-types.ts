@@ -64,6 +64,29 @@ export type Stay = {
   split: { member_id: string; amount_cents: number }[];
 };
 
+export type ExpenseCategory = "transport" | "lodging" | "food" | "activities" | "other";
+
+export type Expense = {
+  id: string;
+  stop_id: string | null;
+  leg_id: string | null;
+  stay_id: string | null;
+  description: string;
+  category: ExpenseCategory;
+  amount_cents: number;
+  paid_by_member_id: string;
+  created_at: string;
+  splits: { member_id: string; amount_cents: number }[];
+};
+
+export type Settlement = {
+  id: string;
+  from_member_id: string;
+  to_member_id: string;
+  amount_cents: number;
+  settled_at: string;
+};
+
 export type Trip = {
   id: string;
   name: string;
@@ -74,4 +97,6 @@ export type Trip = {
   stops: Stop[];
   legs: Leg[];
   stays: Stay[];
+  expenses: Expense[];
+  settlements: Settlement[];
 };

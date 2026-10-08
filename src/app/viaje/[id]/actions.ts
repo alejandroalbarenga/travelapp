@@ -134,3 +134,62 @@ export async function saveLeg(input: SaveLegInput): Promise<{ error: string } | 
   if (error) return { error: error.message.includes("no suma") ? "La división no suma el total." : "No pudimos guardar el tramo." };
   return null;
 }
+
+export type SaveExpenseInput = {
+  id: string | null;
+  tripId: string;
+  stopId: string | null;
+  description: string;
+  category: "transport" | "lodging" | "food" | "activities" | "other";
+  amountCents: number;
+  paidByMemberId: string;
+  splits: { member_id: string; amount_cents: number }[];
+};
+
+// Gasto suelto (los de tramos y alojamientos se guardan desde su pantalla). save_expense escribe
+// el gasto y su división juntos; la base rechaza una división que no sume el total.
+export async function saveExpense(input: SaveExpenseInput): Promise<{ id: string } | { error: string }> {
+  if (input.amountCents <= 0) return { error: "Ingresá un monto." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("save_expense", {
+    p_expense_id: input.id,
+    p_trip_id: input.tripId,
+    p_stop_id: input.stopId,
+    p_leg_id: null,
+    p_stay_id: null,
+    p_description: input.description.trim() || "Gasto",
+    p_category: input.category,
+    p_amount_cents: input.amountCents,
+    p_paid_by_member_id: input.paidByMemberId,
+    p_splits: input.splits,
+  });
+  if (error || !data) {
+    if (error?.message.includes("no suma")) return { error: "La división no suma el total." };
+    return { error: "No pudimos guardar el gasto." };
+  }
+  return { id: data as string };
+}
+
+export async function deleteExpense(expenseId: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("expenses").delete().eq("id", expenseId).select("id");
+  return error || !data?.length ? { error: "No pudimos borrar el gasto." } : null;
+}
+
+// "Marcar como saldado" crea un settlement; "Deshacer" lo borra.
+export async function settleDebt(tripId: string, fromMemberId: string, toMemberId: string, amountCents: number): Promise<{ id: string } | { error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("settlements")
+    .insert({ trip_id: tripId, from_member_id: fromMemberId, to_member_id: toMemberId, amount_cents: amountCents })
+    .select("id")
+    .single();
+  if (error || !data) return { error: "No pudimos marcarlo como saldado." };
+  return { id: data.id as string };
+}
+
+export async function undoSettlement(settlementId: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("settlements").delete().eq("id", settlementId).select("id");
+  return error || !data?.length ? { error: "No pudimos deshacerlo." } : null;
+}

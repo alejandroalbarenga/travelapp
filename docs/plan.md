@@ -27,7 +27,7 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - [x] Lógica de fechas, división de gastos, balance y horarios, con pruebas.
 - [ ] Login con código de 6 dígitos por email.
 - [ ] Link de invitación al viaje; al entrar, elegir qué miembro sos (reclamar).
-- [ ] Sheet de integrantes: qué parte del viaje hace cada uno, su balance e "Invitar con un link". *(Hecho todo menos el balance, que llega con Gastos.)*
+- [x] Sheet de integrantes: qué parte del viaje hace cada uno, su balance e "Invitar con un link".
 - [x] Permisos (decisión 034): organizador, puede editar o solo ver; RLS en la base y modo lectura en la interfaz.
 - **Listo cuando:** Ale y otra persona entran desde dos teléfonos y ven el mismo viaje.
 
@@ -50,11 +50,11 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - **Listo cuando:** se abre un pasaje real en menos de 3 toques desde la pantalla Viaje.
 
 ## Etapa 5 · Gastos y balance (mié 14 – jue 15 oct)
-- [ ] Pantalla Gastos: total, por persona, lista agrupada por ciudad.
-- [ ] Nuevo gasto con teclado numérico propio, ciudad, quién pagó y entre quiénes.
-- [ ] Montos distintos por persona además de partes iguales.
-- [ ] Editar y borrar gastos.
-- [ ] Balance simplificado, "Marcar como saldado" y "Deshacer".
+- [x] Pantalla Gastos: total, por persona, lista agrupada por ciudad.
+- [x] Nuevo gasto con teclado numérico propio, ciudad, categoría, quién pagó y entre quiénes.
+- [x] Montos distintos por persona además de partes iguales.
+- [x] Editar y borrar gastos.
+- [x] Balance simplificado, "Marcar como saldado" y "Deshacer".
 - **Listo cuando:** los números del ejemplo de `diseño.md` dan igual (total €1.588; Josué le debe €193,33 y Rodrigo €177,33 a Ale).
 
 ## Etapa 6 · Pulido y prueba real (jue 15 – vie 16 oct)

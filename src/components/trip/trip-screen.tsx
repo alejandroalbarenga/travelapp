@@ -4,15 +4,18 @@ import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, Ho
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import type { SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
+import type { SaveExpenseInput, SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
+import { buildExpensesView, type ExpenseRowView, type TransferView } from "@/lib/expenses-view";
 import type { ChipDisplay } from "@/lib/legs";
 import type { Place } from "@/lib/places";
-import type { Leg, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
+import type { Expense, Leg, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
-import { TripTabs } from "../trip-tabs";
+import { TripTabs, type TripTab } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
 import { CitySearchSheet, type CitySearchMode } from "./city-search-sheet";
 import { LegSheet, type LegDraft } from "./leg-sheet";
+import { ExpenseSheet } from "./expense-sheet";
+import { ExpensesScreen } from "./expenses-screen";
 import { MembersSheet } from "./members-sheet";
 import { TripMap } from "./trip-map";
 import { useDragSheet } from "./use-drag-sheet";
@@ -44,6 +47,10 @@ export function TripScreen({
   findPlaces,
   addStop,
   changeStopPlace,
+  saveExpense,
+  deleteExpense,
+  settleDebt,
+  undoSettlement,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -57,6 +64,10 @@ export function TripScreen({
   findPlaces?: (query: string) => Promise<Place[]>;
   addStop?: (tripId: string, afterStopId: string | null, place: Place) => Promise<{ id: string } | { error: string }>;
   changeStopPlace?: (stopId: string, place: Place) => Promise<{ error: string } | null>;
+  saveExpense?: (input: SaveExpenseInput) => Promise<{ id: string } | { error: string }>;
+  deleteExpense?: (expenseId: string) => Promise<{ error: string } | null>;
+  settleDebt?: (tripId: string, from: string, to: string, amountCents: number) => Promise<{ id: string } | { error: string }>;
+  undoSettlement?: (settlementId: string) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
@@ -71,6 +82,9 @@ export function TripScreen({
   const [openMembers, setOpenMembers] = useState(false);
   const [citySearch, setCitySearch] = useState<CitySearchMode | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
+  const [tab, setTab] = useState<TripTab>("trip");
+  // Gasto abierto: "new" para uno nuevo, o el id del que se edita.
+  const [openExpense, setOpenExpense] = useState<string | null>(null);
   // Permisos (decisión 034): "solo ver" no ve los controles de edición y los sheets se abren en modo lectura.
   const myRole = current.members.find((m) => m.id === myMemberId)?.role ?? "viewer";
   const canEdit = myRole === "admin" || myRole === "editor";
@@ -156,6 +170,73 @@ export function TripScreen({
     return null;
   }
 
+  async function storeExpense(input: SaveExpenseInput): Promise<string | null> {
+    let id = input.id ?? `nuevo-${Date.now()}`;
+    if (saveExpense) {
+      const result = await saveExpense(input);
+      if ("error" in result) return result.error;
+      id = result.id;
+      router.refresh();
+    }
+    setCurrent((t) => {
+      const previous = t.expenses.find((e) => e.id === input.id);
+      const expense: Expense = {
+        id,
+        stop_id: input.stopId,
+        leg_id: null,
+        stay_id: null,
+        description: input.description.trim() || "Gasto",
+        category: input.category,
+        amount_cents: input.amountCents,
+        paid_by_member_id: input.paidByMemberId,
+        created_at: previous?.created_at ?? new Date().toISOString(),
+        splits: input.splits,
+      };
+      return { ...t, expenses: [...t.expenses.filter((e) => e.id !== input.id), expense] };
+    });
+    return null;
+  }
+
+  async function removeExpense(expenseId: string): Promise<string | null> {
+    if (deleteExpense) {
+      const result = await deleteExpense(expenseId);
+      if (result) return result.error;
+      router.refresh();
+    }
+    setCurrent((t) => ({ ...t, expenses: t.expenses.filter((e) => e.id !== expenseId) }));
+    return null;
+  }
+
+  async function settle(transfer: TransferView): Promise<string | null> {
+    let id = `saldo-${Date.now()}`;
+    if (settleDebt) {
+      const result = await settleDebt(trip.id, transfer.from, transfer.to, transfer.amountCents);
+      if ("error" in result) return result.error;
+      id = result.id;
+      router.refresh();
+    }
+    const settlement = { id, from_member_id: transfer.from, to_member_id: transfer.to, amount_cents: transfer.amountCents, settled_at: new Date().toISOString() };
+    setCurrent((t) => ({ ...t, settlements: [...t.settlements, settlement] }));
+    return null;
+  }
+
+  async function undoSettle(settlementId: string): Promise<string | null> {
+    if (undoSettlement) {
+      const result = await undoSettlement(settlementId);
+      if (result) return result.error;
+      router.refresh();
+    }
+    setCurrent((t) => ({ ...t, settlements: t.settlements.filter((s) => s.id !== settlementId) }));
+    return null;
+  }
+
+  function editExpenseRow(row: ExpenseRowView) {
+    const target = row.editTarget;
+    if (target.kind === "leg") setOpenLeg(target.fromStopId);
+    else if (target.kind === "stay") setOpenCity(target.stopId);
+    else if (canEdit) setOpenExpense(target.id);
+  }
+
   async function changeRole(memberId: string, role: MemberRole): Promise<string | null> {
     if (role === "admin") return "Solo hay un organizador.";
     if (setMemberRole) {
@@ -225,6 +306,7 @@ export function TripScreen({
   const ordered = [...current.stops].sort((a, b) => a.position - b.position);
   // "Agregar ciudad" desde el +: antes de la última (que suele ser la vuelta), como en el diseño.
   const lastBeforeReturn = (ordered[ordered.length - 2] ?? ordered[ordered.length - 1])?.id ?? null;
+  const expensesView = buildExpensesView(current, myMemberId);
   const firstMissingLeg = ordered.slice(0, -1).find((s) => !current.legs.some((l) => l.from_stop_id === s.id))?.id ?? null;
 
   const ring = `conic-gradient(${RING_COLOR[view.nightsStatus]} ${Math.min(100, (view.plannedNights / Math.max(1, view.tripNights)) * 100)}%, #D3DBE4 0)`;
@@ -308,8 +390,21 @@ export function TripScreen({
         </div>
       </div>
 
+      {tab === "expenses" && (
+        <ExpensesScreen
+          tripName={current.name}
+          view={expensesView}
+          members={current.members}
+          myMemberId={myMemberId}
+          canEdit={canEdit}
+          onEdit={editExpenseRow}
+          onSettle={settle}
+          onUndo={undoSettle}
+        />
+      )}
+
       {/* Botones flotantes de arriba */}
-      <div className="pointer-events-none absolute inset-x-4 z-[3] h-11" style={{ top: "calc(var(--safe-top) + 12px)" }}>
+      <div className={`pointer-events-none absolute inset-x-4 z-[3] h-11 ${tab === "expenses" ? "hidden" : ""}`} style={{ top: "calc(var(--safe-top) + 12px)" }}>
         <Link href="/" aria-label="Volver al inicio" className="glass pointer-events-auto absolute top-0 left-0 flex size-11 items-center justify-center rounded-full">
           <ChevronLeft size={20} />
         </Link>
@@ -349,7 +444,13 @@ export function TripScreen({
         </div>
       </div>
 
-      <TripTabs />
+      <TripTabs
+        tab={tab}
+        onChange={(t) => {
+          setTab(t);
+          setFabOpen(false);
+        }}
+      />
       {canEdit && fabOpen && (
         <>
           <button type="button" aria-label="Cerrar el menú" onClick={() => setFabOpen(false)} className="fixed inset-0 z-[3] bg-[rgb(15_16_18/0.38)]" />
@@ -357,7 +458,7 @@ export function TripScreen({
             {[
               { label: "Agregar ciudad", Icon: MapPin, onClick: () => setCitySearch({ kind: "add", afterStopId: lastBeforeReturn }) },
               { label: "Agregar tramo", Icon: Route, onClick: () => (firstMissingLeg ? setOpenLeg(firstMissingLeg) : undefined), disabled: !firstMissingLeg },
-              { label: "Agregar gasto", Icon: Receipt, onClick: () => undefined, disabled: true },
+              { label: "Agregar gasto", Icon: Receipt, onClick: () => setOpenExpense("new"), disabled: false },
             ].map(({ label, Icon, onClick, disabled }) => (
               <button
                 key={label}
@@ -382,7 +483,7 @@ export function TripScreen({
       <button
         type="button"
         aria-label="Agregar"
-        onClick={() => setFabOpen((o) => !o)}
+        onClick={() => (tab === "expenses" ? setOpenExpense("new") : setFabOpen((o) => !o))}
         className="fixed right-5 z-[2] flex size-14 items-center justify-center rounded-full border border-white/[.18] bg-[linear-gradient(180deg,rgb(6_56_80/0.95)_0%,rgb(0_41_61/0.95)_100%)] text-white shadow-[0_10px_30px_rgb(0_41_61/0.3),inset_0_1px_0_rgb(255_255_255/0.18)] backdrop-blur-xl"
         style={{ bottom: "calc(var(--safe-bottom) + 20px)" }}
       >
@@ -410,7 +511,19 @@ export function TripScreen({
       {citySearch && findPlaces && (
         <CitySearchSheet trip={current} mode={citySearch} onClose={() => setCitySearch(null)} search={findPlaces} onPick={pickPlace} />
       )}
-      {openMembers && <MembersSheet trip={current} myMemberId={myMemberId} onClose={() => setOpenMembers(false)} onRoleChange={changeRole} />}
+      {openMembers && (
+        <MembersSheet trip={current} myMemberId={myMemberId} balances={expensesView.balances} onClose={() => setOpenMembers(false)} onRoleChange={changeRole} />
+      )}
+      {openExpense && (
+        <ExpenseSheet
+          trip={current}
+          expense={openExpense === "new" ? null : (current.expenses.find((e) => e.id === openExpense) ?? null)}
+          myMemberId={myMemberId}
+          onClose={() => setOpenExpense(null)}
+          onSave={storeExpense}
+          onDelete={removeExpense}
+        />
+      )}
     </div>
   );
 }
