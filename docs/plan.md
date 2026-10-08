@@ -27,8 +27,8 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - [x] Lógica de fechas, división de gastos, balance y horarios, con pruebas.
 - [ ] Login con código de 6 dígitos por email.
 - [ ] Link de invitación al viaje; al entrar, elegir qué miembro sos (reclamar).
-- [ ] Sheet de integrantes: qué parte del viaje hace cada uno, su balance e "Invitar con un link".
-- [ ] Permisos (decisión 034): organizador, puede editar o solo ver; RLS en la base y modo lectura en la interfaz.
+- [ ] Sheet de integrantes: qué parte del viaje hace cada uno, su balance e "Invitar con un link". *(Hecho todo menos el balance, que llega con Gastos.)*
+- [x] Permisos (decisión 034): organizador, puede editar o solo ver; RLS en la base y modo lectura en la interfaz.
 - **Listo cuando:** Ale y otra persona entran desde dos teléfonos y ven el mismo viaje.
 
 ## Etapa 3 · Inicio, Viaje y ciudades (dom 11 oct)

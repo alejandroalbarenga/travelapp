@@ -42,6 +42,14 @@ export async function saveStop(input: SaveStopInput): Promise<{ error: string } 
   return { error: "No pudimos guardar los cambios." };
 }
 
+// Cambia el permiso de un integrante (decisión 034). Solo lo puede hacer el organizador: lo controla RLS.
+export async function setMemberRole(memberId: string, role: "editor" | "viewer"): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("trip_members").update({ role }).eq("id", memberId).select("id");
+  if (error || !data?.length) return { error: "No pudimos cambiar el permiso." };
+  return null;
+}
+
 // Borra una ciudad. La base borra también su tramo, el tramo que llegaba a ella y sus gastos asociados.
 export async function deleteStop(stopId: string): Promise<{ error: string } | null> {
   const supabase = await createClient();

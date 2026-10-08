@@ -35,7 +35,7 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
       .from("trips")
       .select(
         `id, name, start_date, end_date, invite_code,
-         trip_members (id, display_name, initials, color, user_id),
+         trip_members (id, display_name, initials, color, user_id, role),
          stops (id, position, city, country, country_code, code, tagline, notes, nights, timezone, lat, lng, photo_url,
                 stop_members (member_id),
                 stays (id, stop_id, name, booked_via, total_price_cents, paid_by_member_id,

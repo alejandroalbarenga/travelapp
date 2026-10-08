@@ -97,6 +97,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - Los sheets usan `src/components/bottom-sheet.tsx` (entra desde abajo, se cierra con el fondo, Escape o arrastrando el handle).
 - El panel del navegador de Claude a veces no redibuja hasta que hay una interacción: si una captura no muestra un sheet que el DOM dice que está abierto, redimensionar la ventana para forzar el redibujado.
 - La fecha de un tramo no se elige: es el día de salida de la parada de origen. Si llegada ≤ salida, se toma como llegada al día siguiente.
+- Permisos (migración 0004): `can_edit_trip()` y `is_trip_admin()` en las políticas; un solo `admin` por viaje (índice único) que no se puede degradar ni borrar. En la interfaz, `canEdit` oculta los controles y los sheets reciben `readOnly`. En `/demo`, `?como=jo` muestra la app como alguien de solo ver.
 - Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento.
 - Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.
 

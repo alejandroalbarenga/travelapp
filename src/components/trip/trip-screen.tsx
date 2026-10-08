@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import type { SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
 import type { ChipDisplay } from "@/lib/legs";
-import type { Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
+import type { Leg, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import { TripTabs } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
 import { LegSheet, type LegDraft } from "./leg-sheet";
+import { MembersSheet } from "./members-sheet";
 import { TripMap } from "./trip-map";
 import { useDragSheet } from "./use-drag-sheet";
 
@@ -37,6 +38,7 @@ export function TripScreen({
   saveLeg,
   saveStop,
   deleteStop,
+  setMemberRole,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -46,6 +48,7 @@ export function TripScreen({
   saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | null>;
   saveStop?: (input: SaveStopInput) => Promise<{ error: string } | null>;
   deleteStop?: (stopId: string) => Promise<{ error: string } | null>;
+  setMemberRole?: (memberId: string, role: "editor" | "viewer") => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
@@ -57,6 +60,10 @@ export function TripScreen({
   }
   const [openLeg, setOpenLeg] = useState<string | null>(null);
   const [openCity, setOpenCity] = useState<string | null>(null);
+  const [openMembers, setOpenMembers] = useState(false);
+  // Permisos (decisión 034): "solo ver" no ve los controles de edición y los sheets se abren en modo lectura.
+  const myRole = current.members.find((m) => m.id === myMemberId)?.role ?? "viewer";
+  const canEdit = myRole === "admin" || myRole === "editor";
   const sheetRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // Abajo del todo se ven la rayita y "Empieza el viaje" por encima del control Viaje / Gastos y del +.
@@ -79,6 +86,17 @@ export function TripScreen({
       stops: t.stops.map((s) => (s.id === input.stopId ? { ...s, member_ids: input.memberIds, notes: input.notes || null } : s)),
       stays: [...t.stays.filter((s) => s.stop_id !== input.stopId), ...(stay ? [stay] : [])],
     }));
+    return null;
+  }
+
+  async function changeRole(memberId: string, role: MemberRole): Promise<string | null> {
+    if (role === "admin") return "Solo hay un organizador.";
+    if (setMemberRole) {
+      const result = await setMemberRole(memberId, role);
+      if (result) return result.error;
+      router.refresh();
+    }
+    setCurrent((t) => ({ ...t, members: t.members.map((m) => (m.id === memberId ? { ...m, role } : m)) }));
     return null;
   }
 
@@ -203,8 +221,8 @@ export function TripScreen({
 
           {view.stops.map((stop, i) => (
             <div key={stop.id}>
-              <StopCard stop={stop} onChange={(d) => changeNights(stop.id, d)} onOpen={() => setOpenCity(stop.id)} />
-              <LegRow stop={stop} onOpen={() => setOpenLeg(stop.id)} />
+              <StopCard stop={stop} canEdit={canEdit} onChange={(d) => changeNights(stop.id, d)} onOpen={() => setOpenCity(stop.id)} />
+              <LegRow stop={stop} canEdit={canEdit} onOpen={() => setOpenLeg(stop.id)} />
               {i === view.stops.length - 1 && (
                 <div className="flex items-center gap-2.5 pl-7">
                   <span className="flex size-8 items-center justify-center rounded-full border border-navy/[.07] bg-white text-ink-2 shadow-card">
@@ -239,6 +257,7 @@ export function TripScreen({
           <button
             type="button"
             aria-label="Integrantes"
+            onClick={() => setOpenMembers(true)}
             className={`glass relative flex size-11 items-center justify-center rounded-full ${headerOpacity > 0.5 ? "pointer-events-none" : "pointer-events-auto"}`}
             style={{ opacity: 1 - headerOpacity }}
           >
@@ -259,6 +278,7 @@ export function TripScreen({
       </div>
 
       <TripTabs />
+      {canEdit && (
       <button
         type="button"
         aria-label="Agregar"
@@ -267,6 +287,7 @@ export function TripScreen({
       >
         <Plus size={28} />
       </button>
+      )}
 
       {openCity && current.stops.some((s) => s.id === openCity) && (
         <CitySheet
@@ -278,11 +299,13 @@ export function TripScreen({
           onOpenLeg={(fromStopId) => setOpenLeg(fromStopId)}
           onSave={storeStop}
           onDelete={removeStop}
+          readOnly={!canEdit}
         />
       )}
       {openLeg && (
-        <LegSheet trip={current} fromStopId={openLeg} myMemberId={myMemberId} onClose={() => setOpenLeg(null)} onSave={storeLeg} />
+        <LegSheet trip={current} fromStopId={openLeg} myMemberId={myMemberId} onClose={() => setOpenLeg(null)} onSave={storeLeg} readOnly={!canEdit} />
       )}
+      {openMembers && <MembersSheet trip={current} myMemberId={myMemberId} onClose={() => setOpenMembers(false)} onRoleChange={changeRole} />}
     </div>
   );
 }
@@ -295,7 +318,7 @@ function Dots({ height }: { height: number }) {
   );
 }
 
-function StopCard({ stop, onChange, onOpen }: { stop: StopView; onChange: (delta: number) => void; onOpen: () => void }) {
+function StopCard({ stop, canEdit, onChange, onOpen }: { stop: StopView; canEdit: boolean; onChange: (delta: number) => void; onOpen: () => void }) {
   return (
     <div
       role="button"
@@ -326,6 +349,12 @@ function StopCard({ stop, onChange, onOpen }: { stop: StopView; onChange: (delta
           </span>
         )}
       </div>
+      {!canEdit ? (
+        <div className="w-14 shrink-0 text-center">
+          <div className="text-[17px] leading-none font-extrabold">{stop.nights}</div>
+          <div className="mt-[3px] text-[10px] font-bold text-ink-2">{stop.nightsLabel}</div>
+        </div>
+      ) : (
       <div className="flex shrink-0 items-center">
         <button type="button" aria-label="Menos noches" onClick={(e) => {
             e.stopPropagation();
@@ -348,21 +377,26 @@ function StopCard({ stop, onChange, onOpen }: { stop: StopView; onChange: (delta
           </span>
         </button>
       </div>
+      )}
     </div>
   );
 }
 
-function LegRow({ stop, onOpen }: { stop: StopView; onOpen: () => void }) {
+function LegRow({ stop, canEdit, onOpen }: { stop: StopView; canEdit: boolean; onOpen: () => void }) {
   const leg = stop.leg;
   const Icon = leg ? MODE_ICON[leg.mode] : null;
   return (
     <div className="relative flex h-[54px] items-center">
       <div className="absolute top-0 bottom-0 left-[43px] border-l-2 border-dotted border-dots" />
-      <button type="button" aria-label="Agregar ciudad acá" className="relative ml-[22px] flex size-11 shrink-0 items-center justify-center">
-        <span className="flex size-[30px] items-center justify-center rounded-full border border-line bg-white text-navy shadow-[0_2px_6px_rgb(0_41_61/0.08)]">
-          <Plus size={16} />
-        </span>
-      </button>
+      {canEdit ? (
+        <button type="button" aria-label="Agregar ciudad acá" className="relative ml-[22px] flex size-11 shrink-0 items-center justify-center">
+          <span className="flex size-[30px] items-center justify-center rounded-full border border-line bg-white text-navy shadow-[0_2px_6px_rgb(0_41_61/0.08)]">
+            <Plus size={16} />
+          </span>
+        </button>
+      ) : (
+        <span className="ml-[22px] size-11 shrink-0" />
+      )}
       {leg && Icon ? (
         <>
           <button type="button" onClick={onOpen} className="relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full border border-navy/[.07] bg-white pr-3 pl-1.5 shadow-card">
@@ -377,6 +411,7 @@ function LegRow({ stop, onOpen }: { stop: StopView; onOpen: () => void }) {
             )}
             <ChevronRight size={16} className="shrink-0 text-ink-2" />
           </button>
+          {(leg.hasTicket || canEdit) && (
           <button type="button" aria-label={leg.hasTicket ? "Ver pasaje" : "Adjuntar pasaje"} className="relative ml-1.5 flex size-11 shrink-0 items-center justify-center">
             {leg.hasTicket ? (
               <span className="bg-navy-gradient flex size-[34px] items-center justify-center rounded-full text-white shadow-button">
@@ -388,7 +423,10 @@ function LegRow({ stop, onOpen }: { stop: StopView; onOpen: () => void }) {
               </span>
             )}
           </button>
+          )}
         </>
+      ) : !canEdit ? (
+        <span className="relative ml-1.5 flex h-11 items-center rounded-full border-[1.5px] border-dashed border-dots bg-white px-3.5 text-[13px] font-bold text-ink-3">Sin cargar</span>
       ) : (
         <button type="button" onClick={onOpen} className="relative ml-1.5 flex h-11 items-center gap-2 rounded-full border-[1.5px] border-dashed border-dots bg-white pr-3.5 pl-1.5 text-ink-2">
           <span className="flex size-[30px] items-center justify-center rounded-full border-[1.5px] border-dashed border-dots">

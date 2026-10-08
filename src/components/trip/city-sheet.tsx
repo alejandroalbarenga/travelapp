@@ -42,6 +42,7 @@ export function CitySheet({
   onOpenLeg,
   onSave,
   onDelete,
+  readOnly = false,
 }: {
   trip: Trip;
   stopId: string;
@@ -51,6 +52,8 @@ export function CitySheet({
   onOpenLeg: (fromStopId: string) => void;
   onSave: (input: SaveStopInput, stay: Stay | null) => Promise<string | null>;
   onDelete: (stopId: string) => Promise<string | null>;
+  /** Solo ver (decisión 034): todo deshabilitado, sin guardar ni borrar. */
+  readOnly?: boolean;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
   const i = stops.findIndex((s) => s.id === stopId);
@@ -197,11 +200,14 @@ export function CitySheet({
               <button type="button" onClick={close} aria-label="Cerrar" className="absolute top-4 left-4 flex size-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-ink shadow-[0_6px_18px_rgb(0_0_0/0.18)] backdrop-blur-xl">
                 <X size={20} />
               </button>
+              {!readOnly && (
               <button type="button" onClick={() => setConfirmDelete(true)} aria-label="Borrar ciudad" className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-danger shadow-[0_6px_18px_rgb(0_0_0/0.18)] backdrop-blur-xl">
                 <Trash2 size={18} />
               </button>
+              )}
             </div>
 
+            <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
             {/* Fechas y noches */}
             <div className="glass relative mx-4 -mt-[62px] flex h-[68px] items-center rounded-full p-1.5">
               <div className="flex min-w-0 flex-1 items-center gap-2.5 pl-3.5 text-base font-bold text-navy">
@@ -221,7 +227,10 @@ export function CitySheet({
               </div>
             </div>
 
+            </fieldset>
+
             <div className="px-4 pb-8">
+              <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
               {/* Quién está */}
               <div className="mx-1 mt-[26px] mb-2.5 flex items-baseline justify-between gap-2">
                 <h3 className="text-2xl font-extrabold tracking-[-0.02em]">Quién está</h3>
@@ -355,6 +364,8 @@ export function CitySheet({
                 </div>
               )}
 
+              </fieldset>
+
               {/* Transporte */}
               <h3 className="mx-1 mt-[30px] mb-3 text-2xl font-extrabold tracking-[-0.02em]">Transporte</h3>
               <div className="bg-card-gradient overflow-hidden rounded-card border border-navy/[.07] shadow-card">
@@ -384,7 +395,11 @@ export function CitySheet({
 
           <div className="shrink-0 border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
             {error && <p className="mb-2 text-[13px] font-bold text-danger">{error}</p>}
-            {confirmDelete ? (
+            {readOnly ? (
+              <button type="button" onClick={close} className="h-14 w-full rounded-button border border-line bg-white text-base font-bold text-navy">
+                Cerrar
+              </button>
+            ) : confirmDelete ? (
               <div className="grid grid-cols-[1fr_2fr] gap-2">
                 <button type="button" onClick={() => setConfirmDelete(false)} className="h-14 rounded-button bg-surface text-[15px] font-bold">
                   Cancelar

@@ -3,12 +3,16 @@
 export type LegMode = "car" | "train" | "plane" | "bus" | "other";
 export type BookingSource = "booking" | "airbnb" | "direct" | "other";
 
+export type MemberRole = "admin" | "editor" | "viewer";
+
 export type Member = {
   id: string;
   display_name: string;
   initials: string;
   color: string;
   user_id: string | null;
+  /** Permisos (decisión 034): organizador, puede editar o solo ver. */
+  role: MemberRole;
 };
 
 export type Stop = {

@@ -29,6 +29,7 @@ export function LegSheet({
   myMemberId,
   onClose,
   onSave,
+  readOnly = false,
 }: {
   trip: Trip;
   fromStopId: string;
@@ -36,6 +37,8 @@ export function LegSheet({
   onClose: () => void;
   /** Guarda el tramo. Devuelve un mensaje si falló. */
   onSave: (draft: LegDraft, description: string) => Promise<string | null>;
+  /** Solo ver (decisión 034): todo deshabilitado y sin guardar. */
+  readOnly?: boolean;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
   const i = stops.findIndex((s) => s.id === fromStopId);
@@ -128,6 +131,7 @@ export function LegSheet({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pt-1 pb-6 [scrollbar-width:none]">
+          <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
           <div className={label}>Medio de transporte</div>
           <div className="grid grid-cols-5 gap-2">
             {MODES.map(({ mode: m, label: l, Icon, on }) => (
@@ -259,13 +263,20 @@ export function LegSheet({
               </button>
             ))}
           </div>
+          </fieldset>
         </div>
 
         <div className="border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
           {error && <p className="mb-2 text-[13px] font-bold text-danger">{error}</p>}
+          {readOnly ? (
+            <button type="button" onClick={close} className="h-14 w-full rounded-button border border-line bg-white text-base font-bold text-navy">
+              Cerrar
+            </button>
+          ) : (
           <button type="button" onClick={() => save(close)} disabled={pending} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
             {pending ? "Guardando…" : "Guardar tramo"}
           </button>
+          )}
         </div>
       </>
       )}
