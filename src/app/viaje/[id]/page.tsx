@@ -2,7 +2,20 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { TripScreen } from "@/components/trip/trip-screen";
 import { getTrip } from "@/lib/trip-data";
-import { addStop, changeStopPlace, deleteStop, findPlaces, saveLeg, saveNights, saveStop, setMemberRole } from "./actions";
+import {
+  addStop,
+  changeStopPlace,
+  deleteExpense,
+  deleteStop,
+  findPlaces,
+  saveExpense,
+  saveLeg,
+  saveNights,
+  saveStop,
+  setMemberRole,
+  settleDebt,
+  undoSettlement,
+} from "./actions";
 
 export default function TripPage({ params }: PageProps<"/viaje/[id]">) {
   return (
@@ -20,5 +33,9 @@ async function Trip({ params }: { params: PageProps<"/viaje/[id]">["params"] }) 
       findPlaces={findPlaces}
       addStop={addStop}
       changeStopPlace={changeStopPlace}
+      saveExpense={saveExpense}
+      deleteExpense={deleteExpense}
+      settleDebt={settleDebt}
+      undoSettlement={undoSettlement}
     />;
 }

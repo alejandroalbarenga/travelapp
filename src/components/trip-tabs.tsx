@@ -1,18 +1,14 @@
 "use client";
 
-import { useState } from "react";
+export type TripTab = "trip" | "expenses";
 
-type Tab = "trip" | "expenses";
-
-const TABS: { id: Tab; label: string }[] = [
+const TABS: { id: TripTab; label: string }[] = [
   { id: "trip", label: "Viaje" },
   { id: "expenses", label: "Gastos" },
 ];
 
 // Control flotante Viaje / Gastos, abajo a la izquierda (diseño: pantalla 01).
-export function TripTabs() {
-  const [tab, setTab] = useState<Tab>("trip");
-
+export function TripTabs({ tab, onChange }: { tab: TripTab; onChange: (tab: TripTab) => void }) {
   return (
     <nav
       aria-label="Secciones del viaje"
@@ -25,7 +21,7 @@ export function TripTabs() {
           <button
             key={t.id}
             type="button"
-            onClick={() => setTab(t.id)}
+            onClick={() => onChange(t.id)}
             aria-current={active ? "page" : undefined}
             className={
               active

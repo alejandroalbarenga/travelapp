@@ -2,6 +2,7 @@
 
 import { Link2, X } from "lucide-react";
 import { useState, useTransition } from "react";
+import { formatEuros } from "@/lib/money";
 import type { Member, MemberRole, Trip } from "@/lib/trip-types";
 import { BottomSheet } from "../bottom-sheet";
 
@@ -25,11 +26,14 @@ function partOfTrip(trip: Trip, member: Member): string {
 export function MembersSheet({
   trip,
   myMemberId,
+  balances,
   onClose,
   onRoleChange,
 }: {
   trip: Trip;
   myMemberId: string | null;
+  /** Neto de cada integrante en centavos (positivo: le deben). */
+  balances: Record<string, number>;
   onClose: () => void;
   /** Cambia el permiso de un integrante. Devuelve un mensaje si falló. */
   onRoleChange: (memberId: string, role: MemberRole) => Promise<string | null>;
@@ -100,7 +104,16 @@ export function MembersSheet({
                           {!m.user_id && " · todavía no entró"}
                         </div>
                       </div>
-                      {!editable && m.role !== "admin" && <span className="text-xs font-bold text-ink-2">{ROLE_LABEL[m.role]}</span>}
+                      <div className="shrink-0 text-right">
+                        <div className={`text-[13px] font-bold ${(balances[m.id] ?? 0) > 0 ? "text-success" : (balances[m.id] ?? 0) < 0 ? "text-danger" : "text-ink-2"}`}>
+                          {(balances[m.id] ?? 0) > 0
+                            ? `Le deben ${formatEuros(balances[m.id])}`
+                            : (balances[m.id] ?? 0) < 0
+                              ? `Debe ${formatEuros(-balances[m.id])}`
+                              : "A mano"}
+                        </div>
+                        {!editable && m.role !== "admin" && <div className="mt-0.5 text-xs font-bold text-ink-3">{ROLE_LABEL[m.role]}</div>}
+                      </div>
                     </div>
                     {editable && (
                       <div className="mt-2.5 grid grid-cols-2 gap-1 rounded-full bg-surface p-1">
