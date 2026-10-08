@@ -1,6 +1,6 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronRight, Ellipsis, FileText, House, Minus, Plane, Plus, StickyNote, TrainFront, Trash2, X, type LucideIcon } from "lucide-react";
+import { Bed, Bus, Calendar, Car, ChevronRight, Ellipsis, FileText, House, Minus, Plane, Plus, Pencil, StickyNote, TrainFront, Trash2, X, type LucideIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { SaveStopInput } from "@/app/viaje/[id]/actions";
 import { largePhoto } from "@/lib/photo-url";
@@ -43,6 +43,7 @@ export function CitySheet({
   onSave,
   onDelete,
   readOnly = false,
+  onChangePlace,
 }: {
   trip: Trip;
   stopId: string;
@@ -54,6 +55,8 @@ export function CitySheet({
   onDelete: (stopId: string) => Promise<string | null>;
   /** Solo ver (decisión 034): todo deshabilitado, sin guardar ni borrar. */
   readOnly?: boolean;
+  /** Abre el buscador para cambiar la ciudad (renombrar). */
+  onChangePlace?: () => void;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
   const i = stops.findIndex((s) => s.id === stopId);
@@ -200,6 +203,16 @@ export function CitySheet({
               <button type="button" onClick={close} aria-label="Cerrar" className="absolute top-4 left-4 flex size-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-ink shadow-[0_6px_18px_rgb(0_0_0/0.18)] backdrop-blur-xl">
                 <X size={20} />
               </button>
+              {!readOnly && onChangePlace && (
+                <button
+                  type="button"
+                  onClick={onChangePlace}
+                  aria-label="Cambiar ciudad"
+                  className="absolute top-4 right-[68px] flex size-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-ink shadow-[0_6px_18px_rgb(0_0_0/0.18)] backdrop-blur-xl"
+                >
+                  <Pencil size={18} />
+                </button>
+              )}
               {!readOnly && (
               <button type="button" onClick={() => setConfirmDelete(true)} aria-label="Borrar ciudad" className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full border border-white/80 bg-white/90 text-danger shadow-[0_6px_18px_rgb(0_0_0/0.18)] backdrop-blur-xl">
                 <Trash2 size={18} />

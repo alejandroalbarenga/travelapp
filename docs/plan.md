@@ -37,7 +37,7 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - [x] Lista de paradas con foto (de Wikipedia), fechas calculadas, stepper de noches y anillo de noches planeadas.
 - [x] Chips de tramo entre paradas (hora o duración según la preferencia) y "Agregar tramo" para los vacíos.
 - [ ] Botón "+" con menú: Agregar ciudad / Agregar tramo / Agregar gasto.
-- [ ] Agregar ciudad (con ubicación, país y huso automáticos) y borrar deslizando, con "Deshacer".
+- [x] Agregar ciudad (con ubicación, país y huso automáticos), cambiarla y borrarla. *(Borrar es desde la ciudad, con confirmación; sin deslizar.)*
 - [x] Pantalla de ciudad: quién está, notas, alojamiento (dónde se reservó, precio, comprobante) y transporte. *(Falta subir el comprobante: Etapa 4.)*
 - [ ] Calendario con días partidos y elección del día de llegada.
 - **Listo cuando:** se puede armar el viaje real desde el teléfono y las fechas cuadran.

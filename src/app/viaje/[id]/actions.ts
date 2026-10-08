@@ -1,5 +1,6 @@
 "use server";
 
+import { searchPlaces, type Place } from "@/lib/places";
 import { createClient } from "@/lib/supabase/server";
 
 // Cambiar las noches de una parada. También corre los horarios de los tramos siguientes.
@@ -40,6 +41,51 @@ export async function saveStop(input: SaveStopInput): Promise<{ error: string } 
   if (error.message.includes("no suma")) return { error: "La división del alojamiento no suma el total." };
   if (error.message.includes("al menos")) return { error: "Tiene que quedar al menos una persona." };
   return { error: "No pudimos guardar los cambios." };
+}
+
+// Buscar una ciudad (Nominatim). Corre en el servidor para mandar el User-Agent que pide OpenStreetMap.
+export async function findPlaces(query: string): Promise<Place[]> {
+  return searchPlaces(query);
+}
+
+// Agregar una ciudad después de otra (supabase/migrations/0005_add_stop.sql). Devuelve el id nuevo.
+export async function addStop(tripId: string, afterStopId: string | null, place: Place): Promise<{ id: string } | { error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("add_stop", {
+    p_trip_id: tripId,
+    p_after_stop_id: afterStopId,
+    p_city: place.name,
+    p_country: place.country,
+    p_country_code: place.countryCode,
+    p_code: place.code,
+    p_lat: place.lat,
+    p_lng: place.lng,
+    p_timezone: place.timezone,
+    p_nights: 2,
+  });
+  if (error || !data) return { error: error?.message.includes("permiso") ? "No tenés permiso para editar este viaje." : "No pudimos agregar la ciudad." };
+  return { id: data as string };
+}
+
+// Cambiar la ciudad de una parada (renombrar): actualiza el lugar y se vuelve a buscar la foto.
+export async function changeStopPlace(stopId: string, place: Place): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stops")
+    .update({
+      city: place.name,
+      country: place.country,
+      country_code: place.countryCode,
+      code: place.code,
+      lat: place.lat,
+      lng: place.lng,
+      timezone: place.timezone,
+      photo_url: null,
+    })
+    .eq("id", stopId)
+    .select("id");
+  if (error || !data?.length) return { error: "No pudimos cambiar la ciudad." };
+  return null;
 }
 
 // Cambia el permiso de un integrante (decisión 034). Solo lo puede hacer el organizador: lo controla RLS.

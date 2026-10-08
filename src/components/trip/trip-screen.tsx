@@ -1,15 +1,17 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Minus, Plane, Plus, Share, Ticket, TrainFront, Users, type LucideIcon } from "lucide-react";
+import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, MapPin, Minus, Plane, Plus, Receipt, Route, Share, Ticket, TrainFront, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import type { SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
 import type { ChipDisplay } from "@/lib/legs";
+import type { Place } from "@/lib/places";
 import type { Leg, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import { TripTabs } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
+import { CitySearchSheet, type CitySearchMode } from "./city-search-sheet";
 import { LegSheet, type LegDraft } from "./leg-sheet";
 import { MembersSheet } from "./members-sheet";
 import { TripMap } from "./trip-map";
@@ -39,6 +41,9 @@ export function TripScreen({
   saveStop,
   deleteStop,
   setMemberRole,
+  findPlaces,
+  addStop,
+  changeStopPlace,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -49,6 +54,9 @@ export function TripScreen({
   saveStop?: (input: SaveStopInput) => Promise<{ error: string } | null>;
   deleteStop?: (stopId: string) => Promise<{ error: string } | null>;
   setMemberRole?: (memberId: string, role: "editor" | "viewer") => Promise<{ error: string } | null>;
+  findPlaces?: (query: string) => Promise<Place[]>;
+  addStop?: (tripId: string, afterStopId: string | null, place: Place) => Promise<{ id: string } | { error: string }>;
+  changeStopPlace?: (stopId: string, place: Place) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
@@ -61,6 +69,8 @@ export function TripScreen({
   const [openLeg, setOpenLeg] = useState<string | null>(null);
   const [openCity, setOpenCity] = useState<string | null>(null);
   const [openMembers, setOpenMembers] = useState(false);
+  const [citySearch, setCitySearch] = useState<CitySearchMode | null>(null);
+  const [fabOpen, setFabOpen] = useState(false);
   // Permisos (decisión 034): "solo ver" no ve los controles de edición y los sheets se abren en modo lectura.
   const myRole = current.members.find((m) => m.id === myMemberId)?.role ?? "viewer";
   const canEdit = myRole === "admin" || myRole === "editor";
@@ -86,6 +96,63 @@ export function TripScreen({
       stops: t.stops.map((s) => (s.id === input.stopId ? { ...s, member_ids: input.memberIds, notes: input.notes || null } : s)),
       stays: [...t.stays.filter((s) => s.stop_id !== input.stopId), ...(stay ? [stay] : [])],
     }));
+    return null;
+  }
+
+  // Agregar una ciudad (o cambiar la de una parada) con lo que se eligió en el buscador.
+  async function pickPlace(place: Place, afterStopId: string | null): Promise<string | null> {
+    if (citySearch?.kind === "change") {
+      const stopId = citySearch.stopId;
+      if (changeStopPlace) {
+        const result = await changeStopPlace(stopId, place);
+        if (result) return result.error;
+        router.refresh();
+      }
+      setCurrent((t) => ({
+        ...t,
+        stops: t.stops.map((s) =>
+          s.id === stopId
+            ? { ...s, city: place.name, country: place.country, country_code: place.countryCode, code: place.code, lat: place.lat, lng: place.lng, timezone: place.timezone, photo_url: null }
+            : s,
+        ),
+      }));
+      return null;
+    }
+
+    let id = `nueva-${Date.now()}`;
+    if (addStop) {
+      const result = await addStop(trip.id, afterStopId, place);
+      if ("error" in result) return result.error;
+      id = result.id;
+      router.refresh();
+    }
+    // Como en la base: se corre el resto, copia las personas de la anterior y se borra el tramo que salía de ella.
+    setCurrent((t) => {
+      const after = t.stops.find((s) => s.id === afterStopId);
+      const position = after ? after.position + 1 : 0;
+      const stop = {
+        id,
+        position,
+        city: place.name,
+        country: place.country,
+        country_code: place.countryCode,
+        code: place.code,
+        tagline: null,
+        notes: null,
+        nights: 2,
+        timezone: place.timezone,
+        lat: place.lat,
+        lng: place.lng,
+        photo_url: null,
+        member_ids: after ? after.member_ids : t.members.map((m) => m.id),
+      };
+      return {
+        ...t,
+        stops: [...t.stops.map((s) => (s.position >= position ? { ...s, position: s.position + 1 } : s)), stop],
+        legs: after ? t.legs.filter((l) => l.from_stop_id !== after.id) : t.legs,
+      };
+    });
+    setOpenCity(id);
     return null;
   }
 
@@ -155,6 +222,11 @@ export function TripScreen({
     .sort((a, b) => a.position - b.position)
     .flatMap((s, i) => (s.lat != null && s.lng != null ? [{ lat: s.lat, lng: s.lng, label: String(i + 1), stopId: s.id }] : []));
 
+  const ordered = [...current.stops].sort((a, b) => a.position - b.position);
+  // "Agregar ciudad" desde el +: antes de la última (que suele ser la vuelta), como en el diseño.
+  const lastBeforeReturn = (ordered[ordered.length - 2] ?? ordered[ordered.length - 1])?.id ?? null;
+  const firstMissingLeg = ordered.slice(0, -1).find((s) => !current.legs.some((l) => l.from_stop_id === s.id))?.id ?? null;
+
   const ring = `conic-gradient(${RING_COLOR[view.nightsStatus]} ${Math.min(100, (view.plannedNights / Math.max(1, view.tripNights)) * 100)}%, #D3DBE4 0)`;
   const travellers = trip.members.length;
 
@@ -222,7 +294,7 @@ export function TripScreen({
           {view.stops.map((stop, i) => (
             <div key={stop.id}>
               <StopCard stop={stop} canEdit={canEdit} onChange={(d) => changeNights(stop.id, d)} onOpen={() => setOpenCity(stop.id)} />
-              <LegRow stop={stop} canEdit={canEdit} onOpen={() => setOpenLeg(stop.id)} />
+              <LegRow stop={stop} canEdit={canEdit} onOpen={() => setOpenLeg(stop.id)} onAddCity={() => setCitySearch({ kind: "add", afterStopId: stop.id })} />
               {i === view.stops.length - 1 && (
                 <div className="flex items-center gap-2.5 pl-7">
                   <span className="flex size-8 items-center justify-center rounded-full border border-navy/[.07] bg-white text-ink-2 shadow-card">
@@ -278,14 +350,43 @@ export function TripScreen({
       </div>
 
       <TripTabs />
+      {canEdit && fabOpen && (
+        <>
+          <button type="button" aria-label="Cerrar el menú" onClick={() => setFabOpen(false)} className="fixed inset-0 z-[3] bg-[rgb(15_16_18/0.38)]" />
+          <div className="fixed right-5 z-[4] flex flex-col items-end gap-2.5" style={{ bottom: "calc(var(--safe-bottom) + 90px)" }}>
+            {[
+              { label: "Agregar ciudad", Icon: MapPin, onClick: () => setCitySearch({ kind: "add", afterStopId: lastBeforeReturn }) },
+              { label: "Agregar tramo", Icon: Route, onClick: () => (firstMissingLeg ? setOpenLeg(firstMissingLeg) : undefined), disabled: !firstMissingLeg },
+              { label: "Agregar gasto", Icon: Receipt, onClick: () => undefined, disabled: true },
+            ].map(({ label, Icon, onClick, disabled }) => (
+              <button
+                key={label}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  setFabOpen(false);
+                  onClick();
+                }}
+                className="glass flex h-[52px] items-center gap-2.5 rounded-full pr-[18px] pl-2 text-[15px] font-bold disabled:opacity-50"
+              >
+                <span className="flex size-9 items-center justify-center rounded-full bg-navy/10 text-navy">
+                  <Icon size={16} />
+                </span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {canEdit && (
       <button
         type="button"
         aria-label="Agregar"
+        onClick={() => setFabOpen((o) => !o)}
         className="fixed right-5 z-[2] flex size-14 items-center justify-center rounded-full border border-white/[.18] bg-[linear-gradient(180deg,rgb(6_56_80/0.95)_0%,rgb(0_41_61/0.95)_100%)] text-white shadow-[0_10px_30px_rgb(0_41_61/0.3),inset_0_1px_0_rgb(255_255_255/0.18)] backdrop-blur-xl"
         style={{ bottom: "calc(var(--safe-bottom) + 20px)" }}
       >
-        <Plus size={28} />
+        <Plus size={28} className={`transition-transform duration-200 ${fabOpen ? "rotate-45" : ""}`} />
       </button>
       )}
 
@@ -300,10 +401,14 @@ export function TripScreen({
           onSave={storeStop}
           onDelete={removeStop}
           readOnly={!canEdit}
+          onChangePlace={() => setCitySearch({ kind: "change", stopId: openCity })}
         />
       )}
       {openLeg && (
         <LegSheet trip={current} fromStopId={openLeg} myMemberId={myMemberId} onClose={() => setOpenLeg(null)} onSave={storeLeg} readOnly={!canEdit} />
+      )}
+      {citySearch && findPlaces && (
+        <CitySearchSheet trip={current} mode={citySearch} onClose={() => setCitySearch(null)} search={findPlaces} onPick={pickPlace} />
       )}
       {openMembers && <MembersSheet trip={current} myMemberId={myMemberId} onClose={() => setOpenMembers(false)} onRoleChange={changeRole} />}
     </div>
@@ -382,14 +487,14 @@ function StopCard({ stop, canEdit, onChange, onOpen }: { stop: StopView; canEdit
   );
 }
 
-function LegRow({ stop, canEdit, onOpen }: { stop: StopView; canEdit: boolean; onOpen: () => void }) {
+function LegRow({ stop, canEdit, onOpen, onAddCity }: { stop: StopView; canEdit: boolean; onOpen: () => void; onAddCity: () => void }) {
   const leg = stop.leg;
   const Icon = leg ? MODE_ICON[leg.mode] : null;
   return (
     <div className="relative flex h-[54px] items-center">
       <div className="absolute top-0 bottom-0 left-[43px] border-l-2 border-dotted border-dots" />
       {canEdit ? (
-        <button type="button" aria-label="Agregar ciudad acá" className="relative ml-[22px] flex size-11 shrink-0 items-center justify-center">
+        <button type="button" aria-label="Agregar ciudad acá" onClick={onAddCity} className="relative ml-[22px] flex size-11 shrink-0 items-center justify-center">
           <span className="flex size-[30px] items-center justify-center rounded-full border border-line bg-white text-navy shadow-[0_2px_6px_rgb(0_41_61/0.08)]">
             <Plus size={16} />
           </span>

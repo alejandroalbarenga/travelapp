@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { TripScreen } from "@/components/trip/trip-screen";
 import { withCityPhotos } from "@/lib/city-photo";
+import { findPlaces } from "@/app/viaje/[id]/actions";
 import { DEMO_MY_MEMBER_ID, DEMO_TRIP } from "@/lib/demo-trip";
 
 // Pantalla del Viaje con el viaje de ejemplo, sin base ni login. Solo existe en desarrollo
@@ -20,5 +21,5 @@ async function DemoTrip({ searchParams }: { searchParams: PageProps<"/demo">["se
   const { como } = await searchParams;
   const me = typeof como === "string" && DEMO_TRIP.members.some((m) => m.id === `m-${como}`) ? `m-${como}` : DEMO_MY_MEMBER_ID;
   const trip = { ...DEMO_TRIP, stops: await withCityPhotos(DEMO_TRIP.stops) };
-  return <TripScreen trip={trip} chipDisplay="time" myMemberId={me} />;
+  return <TripScreen trip={trip} chipDisplay="time" myMemberId={me} findPlaces={findPlaces} />;
 }

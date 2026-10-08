@@ -30,9 +30,15 @@ export function BottomSheet({
   const [dragging, setDragging] = useState(false);
   const start = useRef<number | null>(null);
 
+  // Entra en el próximo cuadro; si el navegador no da cuadros (pestaña en segundo plano), igual entra.
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setShown(true));
-    return () => cancelAnimationFrame(frame);
+    const show = () => setShown(true);
+    const frame = requestAnimationFrame(show);
+    const timer = setTimeout(show, 50);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
   }, []);
 
   const close = useCallback(() => {
