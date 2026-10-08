@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+/* Tokens del sistema visual. Valores de docs/decisiones.md (026) y docs/diseño.md. */
+@theme {
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --font-hand: var(--font-caveat), cursive;
+
+  /* Primario y acento */
+  --color-navy: #00293d;
+  --color-navy-light: #06384f;
+  --color-navy-dark: #001b29;
+  --color-navy-soft: rgb(0 41 61 / 0.1);
+  --color-navy-tint: #eaf2f8;
+  --color-orange: #f5891f;
+  --color-orange-light: #ffa445;
+
+  /* Texto */
+  --color-ink: #1a1c1e;
+  --color-ink-2: #5f6368;
+  --color-ink-3: #8a929b;
+  --color-ink-4: #9aa0a6;
+  --color-ink-5: #b4b9bf;
+
+  /* Superficies y bordes */
+  --color-surface: #eef3f8;
+  --color-surface-2: #f6f9fc;
+  --color-line: #e2e8ef;
+  --color-divider: #edf1f6;
+  --color-divider-2: #e6ecf2;
+  --color-dots: #c3ceda;
+  --color-dots-web: #9fb2c4;
+  --color-dashed: #cfd8e2;
+  --color-handle: #d3dbe4;
+
+  /* Estados */
+  --color-success: #1f9d55;
+  --color-complete: #1fa971;
+  --color-settled: #24613a;
+  --color-settled-bg: #e7f1ea;
+  --color-danger: #a8382b;
+  --color-delete: #b23a2e;
+
+  /* Aviso de huso horario */
+  --color-tz-icon-bg: #fff1e0;
+  --color-tz-bg: #fff4e8;
+  --color-tz-border: #ffd9b0;
+  --color-tz-text: #7a4a12;
+
+  /* Medios de transporte */
+  --color-plane: #1e6fd9;
+  --color-plane-bg: rgb(30 111 217 / 0.13);
+  --color-train: #e8770e;
+  --color-train-bg: rgb(232 119 14 / 0.14);
+  --color-bus: #1f9d55;
+  --color-bus-bg: rgb(31 157 85 / 0.14);
+  --color-car: #d93a3a;
+  --color-car-bg: rgb(217 58 58 / 0.12);
+  --color-other: #7a4fd6;
+  --color-other-bg: rgb(122 79 214 / 0.13);
+
+  /* Visor de pasaje y toast */
+  --color-viewer: #0f1012;
+  --color-viewer-card: #1c1d20;
+  --color-viewer-chip: #2a2c30;
+  --color-viewer-ink: #a8adb3;
+  --color-viewer-dot: #45484d;
+  --color-toast-action: #8ec5de;
+
+  /* Radios */
+  --radius-field: 16px;
+  --radius-button: 22px;
+  --radius-card: 24px;
+  --radius-card-lg: 26px;
+  --radius-card-xl: 30px;
+  --radius-sheet: 28px;
+
+  /* Sombras */
+  --shadow-card: 0 1px 2px rgb(0 41 61 / 0.06), 0 8px 22px rgb(0 41 61 / 0.07), inset 0 1px 0 #fff;
+  --shadow-button: 0 6px 16px rgb(0 41 61 / 0.22);
+  --shadow-glass: 0 10px 30px rgb(0 41 61 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+@utility bg-navy-gradient {
+  background-image: linear-gradient(180deg, var(--color-navy-light) 0%, var(--color-navy) 100%);
+}
+
+@utility bg-card-gradient {
+  background-image: linear-gradient(180deg, #fff 0%, var(--color-surface-2) 100%);
+}
+
+/* Vidrio claro: botones flotantes sobre el mapa, menú del +. */
+@utility glass {
+  background-color: rgb(255 255 255 / 0.62);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.75);
+  box-shadow: var(--shadow-glass);
+}
+
+/* Vidrio oscuro: control Viaje / Gastos. */
+@utility glass-dark {
+  background-color: rgb(0 41 61 / 0.84);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  box-shadow: 0 12px 32px rgb(0 41 61 / 0.3), inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+
+/* Safe areas del iPhone (notch y barra de inicio). */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body {
+  background: #fff;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+button {
+  cursor: pointer;
+}

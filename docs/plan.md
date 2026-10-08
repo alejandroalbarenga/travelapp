@@ -16,8 +16,8 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 
 ## Etapa 1 · Cuentas y esqueleto (jue 8 oct)
 - [ ] Ale crea las cuentas y servicios de `docs/setup.md`.
-- [ ] Proyecto Next.js + TypeScript + Tailwind con los tokens del diseño y la fuente.
-- [ ] Manifest PWA, ícono, safe areas, control flotante Viaje / Gastos vacío.
+- [x] Proyecto Next.js + TypeScript + Tailwind con los tokens del diseño y la fuente.
+- [x] Manifest PWA, ícono, safe areas, control flotante Viaje / Gastos vacío.
 - [ ] Deploy en Vercel conectado al repo.
 - **Listo cuando:** la app vacía se instala desde Safari en la pantalla de inicio y abre sin barra del navegador.
 
