@@ -35,12 +35,12 @@ Proyecto personal de Ale. **MVP usable el 16 de octubre de 2026** (el viaje arra
 | Archivo | Qué tiene |
 |---|---|
 | `docs/handoff.md` | Producto, stack propuesto, modelo de datos borrador, alcance (documento original) |
-| `docs/diseño.md` | Pantallas, sistema visual y datos de ejemplo (brief de Claude Design) |
+| `docs/diseño.md` | Pantallas, sistema visual y datos de ejemplo (diseño final de Claude Design) |
 | `docs/decisiones.md` | Decisiones tomadas. **Si contradice a handoff o diseño, manda decisiones.** |
 | `docs/plan.md` | Etapas hasta el MVP y lo que queda para después |
 | `docs/setup.md` | Cuentas, servicios y variables de entorno |
 
-Los diseños finales los arma Ale en Claude Design y los va a pasar más adelante; hasta entonces, `docs/diseño.md` es la referencia.
+`docs/diseño.md` describe el diseño final que Ale armó en Claude Design (proyecto "Viajes en grupo", archivo `Viajes en grupo.dc.html`).
 
 ## Stack
 
@@ -49,7 +49,8 @@ Los diseños finales los arma Ale en Claude Design y los va a pasar más adelant
 - **Supabase** (free tier): Postgres, Auth con **código de 6 dígitos por email** (no magic link), Storage privado para los pasajes, Row Level Security.
 - **Vercel** (free tier) para el deploy, conectado a GitHub.
 - **npm** como gestor de paquetes.
-- Fuente: Plus Jakarta Sans.
+- Fuentes: Plus Jakarta Sans, y Caveat solo para la frase de cada ciudad.
+- **Mapa**: OpenStreetMap con Leaflet; ubicación de las ciudades con Nominatim (decisión 030).
 
 ## Convenciones de datos
 
@@ -67,11 +68,11 @@ Los diseños finales los arma Ale en Claude Design y los va a pasar más adelant
 Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 
 - `profiles`: user_id (= `auth.users.id`), chip_display (qué muestra el chip del tramo, ver decisión 021)
-- `trips`: id, name, start_date, currency, invite_code, created_by, created_at
+- `trips`: id, name, start_date, end_date, currency, invite_code, created_by, created_at
 - `trip_members`: id, trip_id, user_id (nullable), display_name, initials, color
-- `stops`: id, trip_id, position, city, country, code, tagline (frase), notes, nights (≥ 0), timezone, photo_url
+- `stops`: id, trip_id, position, city, country, country_code, code, tagline (frase), notes, nights (≥ 0), timezone, lat, lng, photo_url
 - `stop_members`: stop_id, member_id (quién está en cada parada)
-- `stays`: id, stop_id, name, address, total_price_cents, paid_by_member_id, expense_id, notes
+- `stays`: id, stop_id, name, address, booked_via (booking/airbnb/direct/other, nullable), total_price_cents, paid_by_member_id, expense_id, notes
 - `stay_attachments`: id, stay_id, kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at
 - `legs`: id, trip_id, from_stop_id, to_stop_id, mode (car/train/plane/bus/other), departs_at, arrives_at, total_price_cents, paid_by_member_id, expense_id
 - `leg_attachments`: id, leg_id, member_id (de quién es el pasaje, nullable), kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at
@@ -79,10 +80,10 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - `expense_splits`: expense_id, member_id, amount_cents
 - `settlements`: id, trip_id, from_member_id, to_member_id, amount_cents, settled_at
 
-Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en esa parada (`stop_members`).
+Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en la parada (`stop_members`): la del alojamiento, o la de destino del tramo. Se puede pasar a montos distintos (decisión 032).
 
 ## Lógica clave
 
 - **Balance**: neto por miembro = lo que pagó − lo que le toca ± settlements. Las deudas se simplifican de forma greedy (el que más debe le paga al que más le deben). "Marcar como saldado" crea un settlement; "Deshacer" lo borra.
-- **Fechas**: cambiar las noches recalcula todas las fechas posteriores y el fin del viaje.
+- **Fechas**: cambiar las noches recalcula todas las fechas posteriores, pero no el fin del viaje (`trips.end_date` es fijo). Las noches cargadas se comparan con la duración del viaje (decisión 029).
 - **Wallet**: la web no puede leer la Wallet del iPhone. Solo se muestra el recordatorio y el link de la aerolínea.

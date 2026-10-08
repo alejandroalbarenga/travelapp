@@ -86,8 +86,8 @@ Cada decisión con qué se decidió, por qué y cuándo. Si algo de acá contrad
 
 ### 017 · Quién está en cada ciudad
 **Fecha:** 2026-10-07
-**Decisión:** cada parada guarda qué miembros están ahí (`stop_members`). Al crear una parada se marcan todos; se puede sacar a alguien. Los gastos de esa parada (y su alojamiento) se dividen por defecto entre los que están.
-**Por qué:** no todos hacen el viaje completo; alguien puede sumarse o irse a mitad de camino.
+**Decisión:** cada parada guarda qué miembros están ahí (`stop_members`), en la sección "Quién está" de la pantalla de la ciudad. La primera parada arranca con todos; una parada nueva copia los de la parada anterior. Se puede sacar o sumar a cualquiera, pero tiene que quedar al menos una persona. Por defecto se dividen entre los que están: el alojamiento y los gastos de esa parada entre los de la parada, y un tramo entre los de la parada **de destino**. La pantalla de la ciudad muestra quién se suma o se va respecto a la anterior ("Se suma Agustín · Se fue Josué respecto a Oslo").
+**Por qué:** no todos hacen el viaje completo; alguien puede sumarse o irse a mitad de camino. Los que hacen un tramo son los que llegan a la ciudad de destino.
 
 ### 018 · Alojamiento por parada
 **Fecha:** 2026-10-07
@@ -101,22 +101,26 @@ Cada decisión con qué se decidió, por qué y cuándo. Si algo de acá contrad
 
 ### 020 · Calendario con días partidos
 **Fecha:** 2026-10-07
-**Decisión:** en la vista de calendario, el día en que se viaja de una ciudad a otra se muestra partido entre las dos.
-**Por qué:** ese día pertenece a las dos ciudades; mostrarlo en una sola confunde.
+**Decisión:** en la vista de calendario, cada ciudad es una barra que empieza a mitad del día de llegada y termina a mitad del día de salida, así que el día en que se viaja queda partido entre las dos. Una escala de 0 noches ocupa medio día. Tocar un día abre la ciudad de ese día. El mismo calendario sirve para elegir el día de llegada a una ciudad: al guardar, cambian las noches de la ciudad anterior (no deja elegir un día antes de llegar a esa ciudad anterior).
+**Por qué:** ese día pertenece a las dos ciudades; mostrarlo en una sola confunde. Elegir la llegada en el calendario es más natural que contar noches cuando ya tenés las fechas.
 
 ### 021 · Qué muestra el chip del tramo
 **Fecha:** 2026-10-07
-**Decisión:** cada usuario elige qué muestra el chip del tramo entre paradas, y la preferencia se guarda en `profiles.chip_display`.
+**Decisión:** cada usuario elige qué muestra el chip del tramo entre paradas, en Configuración ("En los tramos, mostrar"). Hay dos opciones:
+- **Hora de salida** (`time`, la opción por defecto): salida y llegada, ej. "13:40 → 15:49". Si falta la llegada, solo la salida.
+- **Duración** (`duration`): ej. "2h 9m", ya descontando la diferencia de huso.
+
+Si falta el dato elegido se muestra el otro, y si no hay ninguno, "Completar datos". El chip ya no muestra el precio. La preferencia se guarda en `profiles.chip_display` (`'time' | 'duration'`).
 **Por qué:** salió en el diseño; es una preferencia personal, no del viaje.
 
 ### 022 · Zona horaria
 **Fecha:** 2026-10-07
-**Decisión:** la zona horaria de cada parada se completa sola a partir de la ciudad; los horarios de los tramos se muestran en la hora local de salida y de llegada. Complementa la 009.
-**Por qué:** que nadie tenga que saber ni elegir un identificador como `Europe/Riga`.
+**Decisión:** la zona horaria de cada parada se completa sola a partir de la ciudad (al agregarla se busca su ubicación); los horarios de los tramos se cargan y se muestran en la hora local de salida y de llegada. La duración descuenta la diferencia de huso. Cuando las dos ciudades tienen distinto huso, el chip del tramo muestra un relojito naranja y el detalle del tramo explica la diferencia: "Bruselas está 1 h adelante de Madrid. Los horarios van en hora local de cada ciudad: llegás 15:49 en Bruselas, que son las 14:49 en Madrid." La fecha del tramo no se elige: es el día en que se sale de la ciudad de origen, calculado por las noches. Complementa la 009.
+**Por qué:** que nadie tenga que saber ni elegir un identificador como `Europe/Riga`, y que el cambio de hora no sorprenda a nadie.
 
 ### 023 · Un pasaje por viajero
 **Fecha:** 2026-10-07
-**Decisión:** cada adjunto de un tramo puede indicar de quién es (`leg_attachments.member_id`). Al abrir "Ver pasaje" se muestra primero el tuyo. Un adjunto sin dueño es del grupo. Amplía la 010.
+**Decisión:** cada adjunto de un tramo puede indicar de quién es (`leg_attachments.member_id`). En el detalle del tramo, la sección "Pasajes" lista primero el tuyo ("Tu pasaje") y después los de los demás ("Pasaje de Rodrigo"), cada uno con el avatar de su dueño, y cuenta cuántos viajeros del tramo tienen pasaje ("3 de 3 viajeros"). El botón principal es "Ver mi pasaje" y en la lista del viaje el botón de ticket abre directamente el tuyo. Un adjunto sin dueño es del grupo. Amplía la 010.
 **Por qué:** cada persona tiene su propio pasaje con su nombre y código.
 
 ### 024 · Sin selector de moneda
@@ -131,10 +135,58 @@ Cada decisión con qué se decidió, por qué y cuándo. Si algo de acá contrad
 
 ### 026 · Colores nuevos
 **Fecha:** 2026-10-07
-**Decisión:** el sistema visual cambia de colores; los valores nuevos salen de los diseños finales de Claude Design y reemplazan a los de `diseño.md`.
+**Decisión:** el acento coral (`#E04A3A`) y el fondo crema (`#F5F4F0`) se reemplazan por un navy como color principal y un naranja como acento secundario, sobre fondo blanco. Valores exactos del diseño final:
+
+- **Primario:** `#00293D`. Botones y badges con degradé `#06384F → #00293D` (180°). Hover de links: `#001B29`.
+- **Primario suave:** `rgba(0,41,61,.08)` a `rgba(0,41,61,.10)` para fondos seleccionados; `#EAF2F8` para chips de persona activa.
+- **Acento naranja:** `#F5891F`, degradé `#FFA445 → #F5891F`. Se usa en el badge de integrantes, el marco de las notas, el anillo de noches incompletas y los avisos de huso.
+- **Fondos:** pantallas `#FFFFFF`; superficie gris `#EEF3F8` (segmentados, botón cerrar, teclado numérico); `#F6F9FC` más clara; tarjetas con degradé `#FFFFFF → #F6F9FC` y borde `rgba(0,41,61,.07)`.
+- **Texto:** `#1A1C1E` · secundario `#5F6368` · terciario `#8A929B` · apagado `#9AA0A6` y `#B4B9BF`.
+- **Bordes:** campos y botones `#E2E8EF`; divisores `#EDF1F6` y `#E6ECF2`; línea punteada del recorrido `#C3CEDA` (móvil) y `#9FB2C4` (web); bordes punteados `#CFD8E2`; handle de sheets `#D3DBE4`.
+- **Éxito:** `#1F9D55`; "Saldado" fondo `#E7F1EA` y texto `#24613A`; anillo de noches completo `#1FA971`.
+- **Error y deuda:** `#A8382B`; fondo de "Borrar" al deslizar `#B23A2E`.
+- **Aviso de huso:** ícono `#F5891F` sobre `#FFF1E0`; caja `#FFF4E8`, borde `#FFD9B0`, texto `#7A4A12`.
+- **Medios de transporte** (color / fondo): avión `#1E6FD9` / `rgba(30,111,217,.13)`, tren `#E8770E` / `rgba(232,119,14,.14)`, bus `#1F9D55` / `rgba(31,157,85,.14)`, auto `#D93A3A` / `rgba(217,58,58,.12)`, otro `#7A4FD6` / `rgba(122,79,214,.13)`.
+- **Avatares:** `#2F5D8A`, `#A4502B`, `#3A6E4F`, `#634A83` (sin cambios).
+- **Visor de pasaje:** fondo `#0F1012`, tarjeta `#1C1D20`, círculo `#2A2C30`, texto secundario `#9AA0A6` y `#A8ADB3`, punto inactivo `#45484D`.
+- **Toast:** `#1A1C1E`, "Deshacer" `#8EC5DE`.
+- **Calendario:** barras `#DCE3EA` y `#C9D3DD` alternadas con texto `#33414D`; ciudad elegida `#00293D`.
+- **Sombras:** tarjeta `0 1px 2px rgba(0,41,61,.06), 0 8px 22px rgba(0,41,61,.07), inset 0 1px 0 #fff`; vidrio `rgba(255,255,255,.62)` con `blur(24px) saturate(180%)`, borde `rgba(255,255,255,.75)` y sombra `0 10px 30px rgba(0,41,61,.18)`.
+
+El detalle de uso está en `diseño.md`.
 **Por qué:** ajuste de Ale mientras diseñaba.
 
 ### 027 · Versión web
 **Fecha:** 2026-10-07
-**Decisión:** además del iPhone, la app tiene que poder usarse desde el navegador de una computadora.
+**Decisión:** además del iPhone, la app tiene que poder usarse desde el navegador de una computadora. Desde 1100 px de ancho cambia el layout: la lista va en un panel a la izquierda (58%) con un header fijo (segmentado Viaje / Gastos y botón "Agregar ciudad" o "Agregar gasto"), las ciudades se muestran en una grilla de 2 a 4 columnas recorrida en zigzag, el mapa queda fijo a la derecha (42%) y "Nuevo viaje" y "Configuración" se abren como modales centrados. Debajo de 1100 px se usa el diseño de móvil.
 **Por qué:** para cargar cosas más cómodo (pasajes, reservas) desde la compu.
+
+### 028 · Pantalla de inicio con varios viajes
+**Fecha:** 2026-10-07
+**Decisión:** la app abre en una pantalla de inicio con tu nombre, tus estadísticas (países visitados, viajes hechos y noches afuera, con las banderas), los próximos viajes con cuenta regresiva y los viajes pasados. Desde ahí se crea un viaje nuevo y se entra a cada viaje. Saca de "Para después del MVP" el punto de varios viajes por usuario.
+**Por qué:** decisión de Ale al ver el diseño.
+
+### 029 · Fecha de fin del viaje
+**Fecha:** 2026-10-07
+**Decisión:** el viaje guarda su fecha de fin (`trips.end_date`), que se pide al crearlo junto con la de inicio. Cambiar las noches ya no mueve el fin del viaje: la pantalla del viaje compara las noches cargadas con la duración del viaje en un anillo ("34/34 noches"), naranja si faltan, verde si coinciden y rojo si se pasan. La vuelta ("Vuelta a Uruguay · 20 nov") usa la fecha de fin. Si se cambia el día de llegada a la primera ciudad, se corren juntos el inicio y el fin. Las fechas de las paradas se siguen calculando como antes.
+**Por qué:** decisión de Ale al ver el diseño; el viaje tiene fechas fijas (los pasajes de ida y vuelta) y lo que se va armando son las noches de cada ciudad.
+
+### 030 · Mapa del recorrido
+**Fecha:** 2026-10-07
+**Decisión:** la pantalla del viaje tiene de fondo un mapa con el recorrido (línea punteada y pines numerados). El mapa es de OpenStreetMap con Leaflet. Al agregar una ciudad se busca su ubicación con Nominatim (el buscador de OpenStreetMap), que devuelve coordenadas y país; se guardan en `stops.lat`, `stops.lng`, `stops.country` y `stops.country_code` (para la bandera). La zona horaria de la 022 sale de esas coordenadas.
+**Por qué:** decisión de Ale al ver el diseño. OpenStreetMap y Nominatim son gratis y no piden cuenta ni clave. Nominatim admite una consulta por segundo, que sobra porque solo se consulta al agregar o renombrar una ciudad.
+
+### 031 · Dónde se reservó el alojamiento
+**Fecha:** 2026-10-07
+**Decisión:** el alojamiento guarda dónde se reservó (`stays.booked_via`: `booking`, `airbnb`, `direct`, `other`, o vacío). En la pantalla se muestra como "Reservado en: Booking / Airbnb / Directo / Otro". El precio y quién pagó aparecen recién cuando se eligió dónde se reservó, y la lista del viaje muestra "Booking · pagado" o "Airbnb · reservado". Amplía la 018.
+**Por qué:** decisión de Ale al ver el diseño.
+
+### 032 · Montos distintos también en tramos y alojamientos
+**Fecha:** 2026-10-07
+**Decisión:** se mantiene la 025 aunque el diseño final no lo muestre. El detalle del tramo y el alojamiento suman el mismo selector que "Nuevo gasto": entre quiénes se divide y "Partes iguales / Montos distintos". Por defecto, partes iguales entre los de la parada (ver 017).
+**Por qué:** decisión de Ale; puede pasar que no todos paguen lo mismo por un pasaje o una habitación.
+
+### 033 · Ciudad del gasto
+**Fecha:** 2026-10-07
+**Decisión:** "Nuevo gasto" suma un selector de ciudad (`expenses.stop_id`). Por defecto, la ciudad donde están hoy según las fechas del viaje; si el viaje no está en curso, la última ciudad usada. Al cambiar la ciudad, "Se divide entre" pasa a los que están en esa ciudad. Los gastos de tramos y alojamientos toman la ciudad solos (la de origen del tramo y la del alojamiento).
+**Por qué:** decisión de Ale; la pantalla Gastos agrupa por ciudad y en el diseño no había forma de elegirla.
