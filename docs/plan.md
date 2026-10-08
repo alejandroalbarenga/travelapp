@@ -51,10 +51,13 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 
 ## Etapa 5 · Gastos y balance (mié 14 – jue 15 oct)
 - [x] Pantalla Gastos: total, por persona, lista agrupada por ciudad.
-- [x] Nuevo gasto con teclado numérico propio, ciudad, categoría, quién pagó y entre quiénes.
+- [x] Nuevo gasto con el teclado numérico del teléfono (decisión 036), ciudad, categoría, quién pagó y entre quiénes.
 - [x] Montos distintos por persona además de partes iguales.
 - [x] Editar y borrar gastos.
 - [x] Balance simplificado, "Marcar como saldado" y "Deshacer".
+- [x] Burbujas del balance y fecha en cada gasto (decisión 037).
+- [x] Registrar una transferencia (decisión 038).
+- [x] Historial de movimientos (decisión 039, migración 0006).
 - **Listo cuando:** los números del ejemplo de `diseño.md` dan igual (total €1.588; Josué le debe €193,33 y Rodrigo €177,33 a Ale).
 
 ## Etapa 6 · Pulido y prueba real (jue 15 – vie 16 oct)
@@ -74,4 +77,4 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - Generar pases para Wallet (`.pkpass`).
 
 ## Preguntas abiertas
-- **Categorías de gasto:** el diseño muestra íconos por categoría pero no las lista. Propuesta: Transporte, Alojamiento, Comida, Actividades, Otros.
+- **Categorías de gasto:** el diseño muestra íconos por categoría pero no las lista. Se usan Comida, Actividades, Transporte, Alojamiento y Otros hasta que Ale diga otra cosa.

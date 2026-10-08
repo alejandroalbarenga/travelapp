@@ -1,17 +1,18 @@
 "use client";
 
-import { Delete, Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { SaveExpenseInput } from "@/app/viaje/[id]/actions";
-import { applyKey, defaultStopId, type Key } from "@/lib/expense-form";
+import { defaultStopId } from "@/lib/expense-form";
 import { formatAmountInput, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Expense, ExpenseCategory, Trip } from "@/lib/trip-types";
+import { AmountField } from "../amount-field";
 import { BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 
 // Pantalla 05 · Nuevo gasto (docs/diseño.md), también para editar un gasto suelto.
-// Monto con teclado propio, concepto, ciudad (decisión 033), categoría, quién pagó y entre quiénes.
+// Monto (con el teclado numérico del teléfono), concepto, ciudad (decisión 033), categoría, quién pagó y entre quiénes.
 
 const CATEGORIES: { id: ExpenseCategory; label: string }[] = [
   { id: "food", label: "Comida" },
@@ -20,7 +21,6 @@ const CATEGORIES: { id: ExpenseCategory; label: string }[] = [
   { id: "lodging", label: "Alojamiento" },
   { id: "other", label: "Otros" },
 ];
-const KEYS: Key[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "0", "del"];
 
 function today() {
   const d = new Date();
@@ -98,9 +98,6 @@ export function ExpenseSheet({
     });
   }
 
-  const [whole, decimals] = amount.split(",");
-  const shown = (whole || "0").replace(/\B(?=(\d{3})+(?!\d))/g, ".") + (decimals !== undefined ? `,${decimals}` : "");
-
   return (
     <BottomSheet onClose={onClose} label={expense ? "Editar gasto" : "Nuevo gasto"} top="calc(var(--safe-top) + 12px)">
       {(close) => (
@@ -115,13 +112,9 @@ export function ExpenseSheet({
             </button>
           </div>
 
-          <div className="flex h-[72px] shrink-0 items-center justify-center gap-1.5 px-5">
-            <span className="text-[28px] font-bold text-ink-2">€</span>
-            <span className="text-[56px] leading-none font-extrabold tracking-[-0.03em]">{shown}</span>
-            <span className="h-12 w-[3px] animate-pulse rounded-sm bg-navy" />
-          </div>
+          <AmountField value={amount} onChange={setAmount} label="Monto" />
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3.5 [scrollbar-width:none]">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: "calc(var(--safe-bottom) + 24px)" }}>
             <label className="mt-2 block">
               <span className="mb-2 block text-[13px] font-bold text-ink-2">Concepto</span>
               <input
@@ -206,20 +199,6 @@ export function ExpenseSheet({
             {error && <p className="mt-3 text-[13px] font-bold text-danger">{error}</p>}
           </div>
 
-          {/* Teclado numérico propio (diseño: fondo gris, teclas blancas de 52 px). */}
-          <div className="grid shrink-0 grid-cols-3 gap-[7px] bg-surface p-2" style={{ paddingBottom: "calc(var(--safe-bottom) + 12px)" }}>
-            {KEYS.map((k) => (
-              <button
-                key={k}
-                type="button"
-                aria-label={k === "del" ? "Borrar" : k}
-                onClick={() => setAmount((a) => applyKey(a, k))}
-                className="flex h-[52px] items-center justify-center rounded-xl bg-white text-2xl font-semibold shadow-[0_1px_0_rgb(0_41_61/0.12)] active:bg-surface-2"
-              >
-                {k === "del" ? <Delete size={28} /> : k}
-              </button>
-            ))}
-          </div>
         </>
       )}
     </BottomSheet>

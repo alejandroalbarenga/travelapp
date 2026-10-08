@@ -1,12 +1,16 @@
 "use client";
 
-import { ArrowRight, Bed, Bus, Car, Check, ChevronLeft, ChevronRight, Ellipsis, Landmark, Plane, Receipt, TrainFront, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Bed, Bus, Car, Check, ChevronLeft, ChevronRight, Ellipsis, Landmark, Plane, Receipt, TrainFront, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import type { ExpenseRowView, ExpensesView, TransferView } from "@/lib/expenses-view";
+import type { ActivityView, ExpenseRowView, ExpensesView, TransferView } from "@/lib/expenses-view";
 import type { ExpenseCategory, LegMode, Member } from "@/lib/trip-types";
+import { BalanceBubbles } from "./balance-bubbles";
 
-// Pantalla 04 · Gastos (docs/diseño.md).
+// Pantalla 04 · Gastos (docs/diseño.md), con las burbujas del balance arriba, las transferencias
+// y el historial de movimientos abajo del todo.
+
+const ACTIVITY_PREVIEW = 5;
 
 const MODE_ICON: Record<LegMode, LucideIcon> = { plane: Plane, train: TrainFront, bus: Bus, car: Car, other: Ellipsis };
 const MODE_CLASS: Record<LegMode, string> = {
@@ -33,6 +37,7 @@ export function ExpensesScreen({
   onEdit,
   onSettle,
   onUndo,
+  onTransfer,
 }: {
   tripName: string;
   view: ExpensesView;
@@ -42,7 +47,9 @@ export function ExpensesScreen({
   onEdit: (row: ExpenseRowView) => void;
   onSettle: (t: TransferView) => Promise<string | null>;
   onUndo: (settlementId: string) => Promise<string | null>;
+  onTransfer: () => void;
 }) {
+  const [showAllActivity, setShowAllActivity] = useState(false);
   const balanceRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -71,7 +78,26 @@ export function ExpensesScreen({
         </div>
       </div>
 
-      <section className="mt-1.5 rounded-card-lg border border-navy/[.07] bg-white p-[18px] shadow-card">
+      {view.groups.length > 0 && (
+        <section className="bg-navy-gradient mt-1.5 rounded-card-lg px-3 pt-4 pb-3 shadow-card">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-[13px] font-bold text-white/75">Cómo está cada uno</span>
+            <span className="flex items-center gap-2.5 text-[11px] font-bold text-white/75">
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-full bg-complete" /> le deben
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-full bg-orange" /> debe
+              </span>
+            </span>
+          </div>
+          <div className="mt-2">
+            <BalanceBubbles bubbles={view.bubbles} />
+          </div>
+        </section>
+      )}
+
+      <section className="mt-3 rounded-card-lg border border-navy/[.07] bg-white p-[18px] shadow-card">
         <div className="text-[13px] font-bold text-ink-2">Total del viaje</div>
         <div className="mt-1 text-[40px] leading-[1.1] font-extrabold tracking-[-0.02em]">{view.total}</div>
         <div className="mt-1 text-[13px] text-ink-2">{view.summary}</div>
@@ -145,6 +171,15 @@ export function ExpensesScreen({
                 : "Por ahora están todos a mano."}
           </div>
         </div>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onTransfer}
+            className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-line bg-white text-sm font-bold"
+          >
+            <ArrowLeftRight size={16} /> Registrar una transferencia
+          </button>
+        )}
         {(view.pending.length > 0 || view.settled.length > 0) && (
           <div className="mt-3 overflow-hidden rounded-card border border-navy/[.07] bg-white shadow-card">
             {view.pending.map((t, i) => (
@@ -164,12 +199,16 @@ export function ExpensesScreen({
             ))}
             {view.settled.map((t, i) => (
               <div key={t.id} className={`flex flex-col gap-3 p-3.5 ${i || view.pending.length ? "border-t border-divider" : ""}`}>
-                <div className="opacity-50">
+                <div className="opacity-60">
                   <TransferLine t={t} member={member} verb="le pagó" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex h-[30px] items-center gap-1.5 rounded-full bg-settled-bg px-3 text-[13px] font-bold text-settled">
-                    <Check size={16} /> Saldado
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex h-[30px] min-w-0 items-center gap-1.5 rounded-full bg-settled-bg px-3 text-[13px] font-bold text-settled">
+                    <Check size={16} className="shrink-0" />
+                    <span className="truncate">
+                      Pagado el {t.when}
+                      {t.note ? ` · ${t.note}` : ""}
+                    </span>
                   </span>
                   {canEdit && (
                     <button type="button" disabled={pending} onClick={() => run(() => onUndo(t.id))} className="h-11 px-1 text-[13px] font-bold text-ink-2">
@@ -182,6 +221,49 @@ export function ExpensesScreen({
           </div>
         )}
         {error && <p className="mx-1 mt-2 text-[13px] font-bold text-danger">{error}</p>}
+      </div>
+
+      {view.activity.length > 0 && (
+        <div className="mt-8">
+          <div className="px-1">
+            <div className="text-xl font-extrabold tracking-[-0.01em]">Movimientos</div>
+            <div className="mt-1 text-[13px] text-ink-2">Todo lo que se cargó, cambió o borró. No se puede editar.</div>
+          </div>
+          <div className="mt-3 overflow-hidden rounded-card border border-navy/[.07] bg-white shadow-card">
+            {(showAllActivity ? view.activity : view.activity.slice(0, ACTIVITY_PREVIEW)).map((a, i) => (
+              <ActivityRow key={a.id} a={a} first={i === 0} />
+            ))}
+            {view.activity.length > ACTIVITY_PREVIEW && (
+              <button
+                type="button"
+                onClick={() => setShowAllActivity((s) => !s)}
+                className="flex h-12 w-full items-center justify-center border-t border-divider text-sm font-bold text-navy"
+              >
+                {showAllActivity ? "Ver menos" : `Ver todos (${view.activity.length})`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActivityRow({ a, first }: { a: ActivityView; first: boolean }) {
+  return (
+    <div className={`flex gap-3 px-3.5 py-3 ${first ? "" : "border-t border-divider"}`}>
+      <span
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${a.actorColor ? "text-white" : "bg-surface text-ink-2"}`}
+        style={a.actorColor ? { background: a.actorColor } : undefined}
+      >
+        {a.actorInitials}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs text-ink-3">{a.when}</div>
+        <div className="mt-0.5 text-sm leading-[1.4]">
+          <strong>{a.actorName}</strong> <span className={a.removal ? "font-semibold text-danger" : ""}>{a.verb}</span> <strong>{a.subject}</strong>
+        </div>
+        {a.detail && <div className="mt-0.5 text-[13px] text-ink-2">{a.detail}</div>}
       </div>
     </div>
   );

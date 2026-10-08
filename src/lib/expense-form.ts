@@ -16,6 +16,19 @@ export function applyKey(amount: string, key: Key): string {
 }
 
 /**
+ * Limpia lo que se escribe en el campo del monto (teclado numérico del teléfono): solo dígitos y una
+ * coma, con las mismas reglas que applyKey. El punto se toma como coma (teclados en inglés).
+ */
+export function cleanAmount(text: string): string {
+  let amount = "";
+  for (const ch of text) {
+    if (/\d/.test(ch)) amount = applyKey(amount, ch as Key);
+    else if (ch === "," || ch === ".") amount = applyKey(amount, ",");
+  }
+  return amount;
+}
+
+/**
  * Ciudad por defecto de un gasto nuevo (decisión 033): la ciudad donde están hoy según las fechas del
  * viaje; si el viaje no está en curso, la del último gasto cargado; si no hay ninguno, la primera.
  */

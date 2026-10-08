@@ -1,7 +1,7 @@
 import { withCityPhotos } from "./city-photo";
 import type { ChipDisplay } from "./legs";
 import { createClient } from "./supabase/server";
-import type { Expense, Leg, Member, Settlement, Stay, Stop, Trip } from "./trip-types";
+import type { Activity, Expense, Leg, Member, Settlement, Stay, Stop, Trip } from "./trip-types";
 
 // Lectura de un viaje completo desde Supabase. RLS ya filtra: si no sos miembro, no vuelve nada.
 
@@ -22,6 +22,7 @@ type TripRow = {
   })[];
   expenses: (Omit<Expense, "splits"> & { expense_splits: Expense["splits"] })[];
   settlements: Settlement[];
+  activity: Activity[];
 };
 
 export type TripPageData = { trip: Trip; chipDisplay: ChipDisplay; myMemberId: string | null };
@@ -47,9 +48,12 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
                expense:expenses!legs_expense_id_fkey (expense_splits (member_id, amount_cents))),
          expenses!expenses_trip_id_fkey (id, stop_id, leg_id, stay_id, description, category, amount_cents, paid_by_member_id, created_at,
                    expense_splits (member_id, amount_cents)),
-         settlements (id, from_member_id, to_member_id, amount_cents, settled_at)`,
+         settlements (id, from_member_id, to_member_id, amount_cents, settled_at, note),
+         activity (id, actor_member_id, actor_name, action, description, from_name, to_name, amount_cents, previous_amount_cents, changes, created_at)`,
       )
       .eq("id", tripId)
+      .order("created_at", { referencedTable: "activity", ascending: false })
+      .limit(300, { referencedTable: "activity" })
       .maybeSingle(),
     supabase.from("profiles").select("chip_display").eq("user_id", userId).maybeSingle(),
   ]);
@@ -86,6 +90,7 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
     })),
     expenses: row.expenses.map(({ expense_splits, ...e }) => ({ ...e, splits: expense_splits })),
     settlements: row.settlements,
+    activity: row.activity,
     stays: row.stops.flatMap((s) => s.stays.map(({ expense, ...st }) => ({ ...st, split: expense?.expense_splits ?? [] }))),
   };
 

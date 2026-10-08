@@ -51,6 +51,18 @@ export function formatDay(date: string): string {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
 }
 
+/** Día de un instante en la hora del teléfono: "22 oct". */
+export function formatInstantDay(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
+/** Día y hora de un instante en la hora del teléfono: "22 oct · 21:40". */
+export function formatInstant(iso: string): string {
+  const d = new Date(iso);
+  return `${formatInstantDay(iso)} · ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 /** "sáb 17 oct" */
 export function formatWeekday(date: string): string {
   return `${WEEKDAYS[toUtc(date).getUTCDay()]} ${formatDay(date)}`;

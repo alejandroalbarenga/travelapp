@@ -176,15 +176,23 @@ export async function deleteExpense(expenseId: string): Promise<{ error: string 
   return error || !data?.length ? { error: "No pudimos borrar el gasto." } : null;
 }
 
-// "Marcar como saldado" crea un settlement; "Deshacer" lo borra.
-export async function settleDebt(tripId: string, fromMemberId: string, toMemberId: string, amountCents: number): Promise<{ id: string } | { error: string }> {
+// Un pago entre integrantes: "Marcar como saldado" o una transferencia cargada a mano. "Deshacer" lo borra.
+export async function settleDebt(
+  tripId: string,
+  fromMemberId: string,
+  toMemberId: string,
+  amountCents: number,
+  note: string | null = null,
+): Promise<{ id: string } | { error: string }> {
+  if (amountCents <= 0) return { error: "Ingresá un monto." };
+  if (fromMemberId === toMemberId) return { error: "Elegí a otra persona." };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("settlements")
-    .insert({ trip_id: tripId, from_member_id: fromMemberId, to_member_id: toMemberId, amount_cents: amountCents })
+    .insert({ trip_id: tripId, from_member_id: fromMemberId, to_member_id: toMemberId, amount_cents: amountCents, note: note?.trim() || null })
     .select("id")
     .single();
-  if (error || !data) return { error: "No pudimos marcarlo como saldado." };
+  if (error || !data) return { error: "No pudimos guardar el pago." };
   return { id: data.id as string };
 }
 

@@ -205,3 +205,23 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 **Fecha:** 2026-10-08
 **Decisión:** la app se llama **Vamo y vamo**. Es el nombre que aparece en el ícono de la pantalla de inicio, en la pestaña del navegador, en el login y en el remitente de los mails. El repo, el proyecto de Vercel y la URL siguen como `travelapp` por ahora.
 **Por qué:** decisión de Ale.
+
+### 036 · Monto con el teclado del teléfono
+**Fecha:** 2026-10-08
+**Decisión:** el monto de "Nuevo gasto" y de "Registrar transferencia" es un campo que abre el teclado numérico del teléfono (`inputMode="decimal"`, con coma), en lugar del teclado propio del diseño. Acepta coma o punto, hasta 6 dígitos enteros y 2 decimales.
+**Por qué:** decisión de Ale; el teclado del celular es el que la gente ya conoce.
+
+### 037 · Burbujas del balance y fecha de cada gasto
+**Fecha:** 2026-10-08
+**Decisión:** arriba de Gastos hay una tarjeta "Cómo está cada uno" con una burbuja por integrante: el tamaño es proporcional a lo que le deben (verde) o debe (naranja); el que está a mano queda chica y gris, y la tuya tiene borde blanco. Cada gasto de la lista muestra su fecha: la de salida para un pasaje, la de llegada para un alojamiento y, para el resto, el día en que se cargó.
+**Por qué:** decisión de Ale (referencia: la app de gastos que usan hoy).
+
+### 038 · Transferencias entre integrantes
+**Fecha:** 2026-10-08
+**Decisión:** en el balance, "Registrar una transferencia" carga un pago a mano ("le transferí €50 a Josué"): monto, quién pagó, a quién y una nota opcional (Bizum, efectivo). Se guarda como un `settlement` con `note` (migración 0006), igual que "Marcar como saldado": baja la deuda y se lista como "Pagado el 8 oct · Bizum", con "Deshacer". Solo los que pueden editar lo cargan.
+**Por qué:** decisión de Ale; a veces se paga una parte o se transfiere antes de hacer las cuentas.
+
+### 039 · Historial de movimientos
+**Fecha:** 2026-10-08
+**Decisión:** abajo del todo de Gastos, "Movimientos" lista todo lo que se cargó, editó o borró (gastos, tramos y alojamientos con precio, pagos y "Deshacer"), con quién lo hizo, cuándo y qué cambió ("cambió el monto de €142 a €156"). Se ven los últimos 5 y "Ver todos". Lo escribe la base (tabla `activity`, migración 0006) con triggers y `save_expense()`; nadie lo puede editar ni borrar. Los borrados se marcan en rojo.
+**Por qué:** decisión de Ale; que no se pierda nada si alguien borra algo o hace cosas raras.

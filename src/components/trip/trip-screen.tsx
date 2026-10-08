@@ -8,7 +8,7 @@ import type { SaveExpenseInput, SaveLegInput, SaveStopInput } from "@/app/viaje/
 import { buildExpensesView, type ExpenseRowView, type TransferView } from "@/lib/expenses-view";
 import type { ChipDisplay } from "@/lib/legs";
 import type { Place } from "@/lib/places";
-import type { Expense, Leg, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
+import type { Activity, Expense, Leg, LegMode, MemberRole, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import { TripTabs, type TripTab } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
@@ -17,6 +17,7 @@ import { LegSheet, type LegDraft } from "./leg-sheet";
 import { ExpenseSheet } from "./expense-sheet";
 import { ExpensesScreen } from "./expenses-screen";
 import { MembersSheet } from "./members-sheet";
+import { TransferSheet, type TransferInput } from "./transfer-sheet";
 import { TripMap } from "./trip-map";
 import { useDragSheet } from "./use-drag-sheet";
 
@@ -66,7 +67,7 @@ export function TripScreen({
   changeStopPlace?: (stopId: string, place: Place) => Promise<{ error: string } | null>;
   saveExpense?: (input: SaveExpenseInput) => Promise<{ id: string } | { error: string }>;
   deleteExpense?: (expenseId: string) => Promise<{ error: string } | null>;
-  settleDebt?: (tripId: string, from: string, to: string, amountCents: number) => Promise<{ id: string } | { error: string }>;
+  settleDebt?: (tripId: string, from: string, to: string, amountCents: number, note?: string | null) => Promise<{ id: string } | { error: string }>;
   undoSettlement?: (settlementId: string) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
@@ -85,6 +86,7 @@ export function TripScreen({
   const [tab, setTab] = useState<TripTab>("trip");
   // Gasto abierto: "new" para uno nuevo, o el id del que se edita.
   const [openExpense, setOpenExpense] = useState<string | null>(null);
+  const [openTransfer, setOpenTransfer] = useState(false);
   // Permisos (decisión 034): "solo ver" no ve los controles de edición y los sheets se abren en modo lectura.
   const myRole = current.members.find((m) => m.id === myMemberId)?.role ?? "viewer";
   const canEdit = myRole === "admin" || myRole === "editor";
@@ -170,6 +172,24 @@ export function TripScreen({
     return null;
   }
 
+  // En /demo no hay base que anote el historial (migración 0006): se anota acá.
+  function logDemo(entry: Pick<Activity, "action" | "description" | "amount_cents"> & Partial<Activity>) {
+    if (saveExpense) return;
+    const me = current.members.find((m) => m.id === myMemberId);
+    const activity: Activity = {
+      id: `local-${Date.now()}`,
+      actor_member_id: myMemberId,
+      actor_name: me?.display_name ?? null,
+      from_name: null,
+      to_name: null,
+      previous_amount_cents: null,
+      changes: null,
+      created_at: new Date().toISOString(),
+      ...entry,
+    };
+    setCurrent((t) => ({ ...t, activity: [activity, ...t.activity] }));
+  }
+
   async function storeExpense(input: SaveExpenseInput): Promise<string | null> {
     let id = input.id ?? `nuevo-${Date.now()}`;
     if (saveExpense) {
@@ -177,6 +197,24 @@ export function TripScreen({
       if ("error" in result) return result.error;
       id = result.id;
       router.refresh();
+    }
+    const before = current.expenses.find((e) => e.id === input.id);
+    const description = input.description.trim() || "Gasto";
+    if (!before) logDemo({ action: "expense_added", description, amount_cents: input.amountCents });
+    else {
+      const sameSplit = JSON.stringify([...before.splits].sort((a, b) => a.member_id.localeCompare(b.member_id))) ===
+        JSON.stringify([...input.splits].sort((a, b) => a.member_id.localeCompare(b.member_id)));
+      const changes = [
+        before.amount_cents !== input.amountCents && "amount",
+        before.description !== description && "description",
+        before.paid_by_member_id !== input.paidByMemberId && "payer",
+        !sameSplit && before.amount_cents === input.amountCents && "split",
+        before.stop_id !== input.stopId && "city",
+        before.category !== input.category && "category",
+      ].filter((c): c is string => !!c);
+      if (changes.length) {
+        logDemo({ action: "expense_edited", description, amount_cents: input.amountCents, previous_amount_cents: before.amount_cents, changes });
+      }
     }
     setCurrent((t) => {
       const previous = t.expenses.find((e) => e.id === input.id);
@@ -203,19 +241,31 @@ export function TripScreen({
       if (result) return result.error;
       router.refresh();
     }
+    const gone = current.expenses.find((e) => e.id === expenseId);
+    if (gone) logDemo({ action: "expense_deleted", description: gone.description, amount_cents: gone.amount_cents });
     setCurrent((t) => ({ ...t, expenses: t.expenses.filter((e) => e.id !== expenseId) }));
     return null;
   }
 
-  async function settle(transfer: TransferView): Promise<string | null> {
+  // "Marcar como saldado" y "Registrar una transferencia" guardan lo mismo: un pago entre dos.
+  async function settle(transfer: Pick<TransferView, "from" | "to" | "amountCents">, note: string | null = null): Promise<string | null> {
     let id = `saldo-${Date.now()}`;
     if (settleDebt) {
-      const result = await settleDebt(trip.id, transfer.from, transfer.to, transfer.amountCents);
+      const result = await settleDebt(trip.id, transfer.from, transfer.to, transfer.amountCents, note);
       if ("error" in result) return result.error;
       id = result.id;
       router.refresh();
     }
-    const settlement = { id, from_member_id: transfer.from, to_member_id: transfer.to, amount_cents: transfer.amountCents, settled_at: new Date().toISOString() };
+    const name = (memberId: string) => current.members.find((m) => m.id === memberId)?.display_name ?? null;
+    logDemo({ action: "settled", description: note?.trim() || null, amount_cents: transfer.amountCents, from_name: name(transfer.from), to_name: name(transfer.to) });
+    const settlement = {
+      id,
+      from_member_id: transfer.from,
+      to_member_id: transfer.to,
+      amount_cents: transfer.amountCents,
+      settled_at: new Date().toISOString(),
+      note: note?.trim() || null,
+    };
     setCurrent((t) => ({ ...t, settlements: [...t.settlements, settlement] }));
     return null;
   }
@@ -225,6 +275,11 @@ export function TripScreen({
       const result = await undoSettlement(settlementId);
       if (result) return result.error;
       router.refresh();
+    }
+    const undone = current.settlements.find((s) => s.id === settlementId);
+    if (undone) {
+      const name = (memberId: string) => current.members.find((m) => m.id === memberId)?.display_name ?? null;
+      logDemo({ action: "settle_undone", description: undone.note, amount_cents: undone.amount_cents, from_name: name(undone.from_member_id), to_name: name(undone.to_member_id) });
     }
     setCurrent((t) => ({ ...t, settlements: t.settlements.filter((s) => s.id !== settlementId) }));
     return null;
@@ -400,6 +455,7 @@ export function TripScreen({
           onEdit={editExpenseRow}
           onSettle={settle}
           onUndo={undoSettle}
+          onTransfer={() => setOpenTransfer(true)}
         />
       )}
 
@@ -522,6 +578,14 @@ export function TripScreen({
           onClose={() => setOpenExpense(null)}
           onSave={storeExpense}
           onDelete={removeExpense}
+        />
+      )}
+      {openTransfer && (
+        <TransferSheet
+          members={current.members}
+          myMemberId={myMemberId}
+          onClose={() => setOpenTransfer(false)}
+          onSave={(input: TransferInput) => settle(input, input.note)}
         />
       )}
     </div>
