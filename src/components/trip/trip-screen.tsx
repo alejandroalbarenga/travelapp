@@ -25,6 +25,8 @@ import { TransferSheet, type TransferInput } from "./transfer-sheet";
 import type { AttachmentInput } from "./attachment-controls";
 import { TicketViewer, type ViewerItem } from "./ticket-viewer";
 import { SwipeRow, type SwipeSide } from "./swipe-row";
+import { CalendarSheet, type CalendarMode } from "./calendar-sheet";
+import { arrivalChange } from "@/lib/calendar";
 import { TripMap } from "./trip-map";
 import { useDragSheet } from "./use-drag-sheet";
 
@@ -100,6 +102,7 @@ export function TripScreen({
   // Gasto abierto: "new" para uno nuevo, o el id del que se edita.
   const [openExpense, setOpenExpense] = useState<string | null>(null);
   const [openTransfer, setOpenTransfer] = useState(false);
+  const [calendar, setCalendar] = useState<CalendarMode | null>(null);
   // Deslizar ciudades (decisión 042): cuál está abierta, las borradas que todavía se pueden
   // deshacer, y el aviso de abajo.
   const [swiped, setSwiped] = useState<{ stopId: string; side: SwipeSide } | null>(null);
@@ -507,10 +510,16 @@ export function TripScreen({
   function changeNights(stopId: string, delta: number) {
     const stop = current.stops.find((s) => s.id === stopId);
     if (!stop) return;
-    const value = Math.max(0, Math.min(60, stop.nights + delta));
-    if (value === stop.nights) return;
+    const message = setNights(stopId, Math.max(0, Math.min(60, stop.nights + delta)));
+    if (message) showToast(message);
+  }
+
+  /** Cambia las noches de una ciudad. Devuelve un mensaje si no se puede (bloqueada, ya pasó…). */
+  function setNights(stopId: string, value: number): string | null {
+    const stop = current.stops.find((s) => s.id === stopId);
+    if (!stop || value === stop.nights) return null;
     const lock = nightsLock(current, stopId, today);
-    if (lock) return showToast(lockMessage(lock, stop.city));
+    if (lock) return lockMessage(lock, stop.city);
     setCurrent((t) => ({ ...t, stops: t.stops.map((s) => (s.id === stopId ? { ...s, nights: value } : s)) }));
     if (saveNights)
       startTransition(async () => {
@@ -520,6 +529,14 @@ export function TripScreen({
           router.refresh();
         }
       });
+    return null;
+  }
+
+  // Elegir el día de llegada en el calendario: cambian las noches de la ciudad anterior (decisión 020).
+  async function pickArrival(stopId: string, date: string): Promise<string | null> {
+    const change = arrivalChange(current, stopId, date);
+    if ("error" in change) return change.error;
+    return setNights(change.prevStopId, change.nights);
   }
 
   const points = [...current.stops]
@@ -691,7 +708,7 @@ export function TripScreen({
           </div>
         </div>
         <div className="absolute top-0 right-0 flex flex-col gap-2.5">
-          <button type="button" aria-label="Calendario del viaje" className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
+          <button type="button" aria-label="Calendario del viaje" onClick={() => setCalendar({ kind: "view" })} className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
             <Calendar size={20} />
           </button>
           {/* Con la lista arriba, estos dos se esconden para no taparla (como en el diseño). */}
@@ -777,6 +794,13 @@ export function TripScreen({
           onDelete={removeStop}
           readOnly={!canEdit || !!current.stops.find((s) => s.id === openCity)?.locked}
           nightsEditable={canEdit && !nightsLock(current, openCity, today)}
+          canPickArrival={(() => {
+            // Se elige la llegada si se pueden cambiar las noches de la ciudad anterior.
+            const ordered = [...current.stops].sort((a, b) => a.position - b.position);
+            const i = ordered.findIndex((s) => s.id === openCity);
+            return canEdit && i > 0 && !nightsLock(current, ordered[i - 1].id, today);
+          })()}
+          onOpenCalendar={(pick) => setCalendar(pick ? { kind: "pick", stopId: openCity } : { kind: "view", stopId: openCity })}
           onUnlock={canEdit ? () => toggleLock(openCity) : undefined}
           onChangePlace={() => setCitySearch({ kind: "change", stopId: openCity })}
           onAddReceipt={(stayId, input) => addAttachment({ kind: "stay", tripId: trip.id, stayId }, input)}
@@ -851,6 +875,19 @@ export function TripScreen({
           onClose={() => setOpenExpense(null)}
           onSave={storeExpense}
           onDelete={removeExpense}
+        />
+      )}
+      {calendar && (
+        <CalendarSheet
+          trip={hidden.length ? { ...current, stops: current.stops.filter((s) => !hidden.includes(s.id)) } : current}
+          mode={calendar}
+          today={today}
+          onClose={() => setCalendar(null)}
+          onOpenCity={(stopId) => {
+            setCalendar(null);
+            setOpenCity(stopId);
+          }}
+          onPickArrival={pickArrival}
         />
       )}
       {toast && (

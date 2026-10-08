@@ -274,3 +274,11 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 **Fecha:** 2026-10-08
 **Decisión:** las opciones de "Reservado en" son Booking, Airbnb, Hostelworld y Otro. En la base se suma `hostelworld` a `booking_source` (migración 0008); `direct` queda para lo que ya estaba cargado y solo se muestra si estaba elegido.
 **Por qué:** decisión de Ale; Hostelworld es más común que reservar directo en este viaje.
+
+### 046 · Cómo quedó el calendario
+**Fecha:** 2026-10-08
+**Decisión:** implementa la 020.
+- Se abre con el botón de calendario del viaje. Cada ciudad es una barra, en dos grises alternados. El día de viaje se reparte en partes iguales entre las ciudades que lo tocan: la que se deja, las escalas y la que se llega. El primer y el último día arrancan y terminan con medio día "de casa". Tocar una barra abre esa ciudad.
+- Desde la ficha de cualquier ciudad, tocar las fechas abre el calendario con esa ciudad en azul. Si se puede cambiar su llegada (las fechas aparecen subrayadas), abre para elegirla. La ciudad se marca en navy, no deja elegir un día antes de llegar a la anterior y, al guardar, cambian las noches de la anterior. Respeta los bloqueos (042).
+- La llegada a la primera ciudad no se elige por ahora: es el inicio del viaje, y cambiarla correría el viaje entero con sus horarios.
+**Por qué:** completa la Etapa 3.

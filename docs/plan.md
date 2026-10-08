@@ -40,7 +40,7 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - [x] Botón "+" con menú: Agregar ciudad / Agregar tramo / Agregar gasto.
 - [x] Agregar ciudad (con ubicación, país y huso automáticos), cambiarla y borrarla. *(Borrar es desde la ciudad, con confirmación; sin deslizar.)*
 - [x] Pantalla de ciudad: quién está, notas, alojamiento (dónde se reservó, precio, comprobante) y transporte.
-- [ ] Calendario con días partidos y elección del día de llegada.
+- [x] Calendario con días partidos y elección del día de llegada (decisión 046). *(La llegada a la primera ciudad no se elige: es el inicio del viaje.)*
 - [x] Deslizar una ciudad: a la izquierda "Borrar" con "Deshacer"; a la derecha "Bloquear" (decisión 042, migración 0008).
 - **Listo cuando:** se puede armar el viaje real desde el teléfono y las fechas cuadran.
 
