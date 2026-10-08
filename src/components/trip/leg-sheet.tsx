@@ -7,6 +7,7 @@ import { durationMinutes, formatDuration, localTime, timeZoneDiffHours, zonedToI
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Leg, LegMode, Trip } from "@/lib/trip-types";
+import { BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 
 // Pantalla 02 · Detalle del tramo (docs/diseño.md). Bottom sheet sobre el Viaje.
@@ -71,7 +72,7 @@ export function LegSheet({
   const tickets = [...(leg?.attachments ?? [])].sort((a, b) => Number(b.member_id === myMemberId) - Number(a.member_id === myMemberId));
   const withTicket = new Set(tickets.map((t) => t.member_id).filter(Boolean)).size;
 
-  function save() {
+  function save(close: () => void) {
     if (!mode) {
       setError("Elegí el medio de transporte.");
       return;
@@ -100,7 +101,7 @@ export function LegSheet({
         description,
       );
       if (message) setError(message);
-      else onClose();
+      else close();
     });
   }
 
@@ -108,13 +109,10 @@ export function LegSheet({
   const box = "min-w-0 rounded-field border border-line px-3 py-[9px]";
 
   return (
-    <div className="fixed inset-0 z-[5]">
-      <button type="button" aria-label="Cerrar" onClick={onClose} className="absolute inset-0 bg-[rgb(15_16_18/0.45)]" />
-      <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[560px] flex-col overflow-hidden rounded-t-[28px] bg-white" style={{ top: "calc(var(--safe-top) + 52px)" }}>
-        <div className="flex justify-center pt-2">
-          <div className="h-[5px] w-10 rounded-full bg-handle" />
-        </div>
-        <div className="flex items-start gap-3 px-5 pt-3 pb-1">
+    <BottomSheet onClose={onClose} label={`Tramo de ${from.city} a ${to?.city ?? "casa"}`}>
+      {(close) => (
+      <>
+        <div className="flex items-start gap-3 px-5 pt-2 pb-1">
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-bold text-ink-2">
               {to ? `Tramo ${i + 1} de ${stops.length - 1}` : "Vuelta a casa"}
@@ -124,7 +122,7 @@ export function LegSheet({
               De {from.city} a {to?.city ?? "casa"}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface">
+          <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface">
             <X size={20} />
           </button>
         </div>
@@ -265,11 +263,12 @@ export function LegSheet({
 
         <div className="border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
           {error && <p className="mb-2 text-[13px] font-bold text-danger">{error}</p>}
-          <button type="button" onClick={save} disabled={pending} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
+          <button type="button" onClick={() => save(close)} disabled={pending} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
             {pending ? "Guardando…" : "Guardar tramo"}
           </button>
         </div>
-      </div>
-    </div>
+      </>
+      )}
+    </BottomSheet>
   );
 }

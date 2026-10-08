@@ -105,7 +105,23 @@ export const DEMO_TRIP: Trip = {
   stops,
   legs,
   stays: [
-    { id: "st1", stop_id: "s1", name: "Hotel cerca de Grand-Place", booked_via: "booking", total_price_cents: 26400, paid_by_member_id: RO },
-    { id: "st2", stop_id: "s2", name: "Departamento en De Pijp", booked_via: "airbnb", total_price_cents: 42000, paid_by_member_id: AL },
+    {
+      id: "st1",
+      stop_id: "s1",
+      name: "Hotel cerca de Grand-Place",
+      booked_via: "booking",
+      total_price_cents: 26400,
+      paid_by_member_id: RO,
+      split: [AL, RO, JO].map((member_id) => ({ member_id, amount_cents: 8800 })),
+    },
+    {
+      id: "st2",
+      stop_id: "s2",
+      name: "Departamento en De Pijp",
+      booked_via: "airbnb",
+      total_price_cents: 42000,
+      paid_by_member_id: AL,
+      split: [AL, RO, JO].map((member_id) => ({ member_id, amount_cents: 14000 })),
+    },
   ],
 };

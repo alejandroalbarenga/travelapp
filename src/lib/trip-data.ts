@@ -12,7 +12,10 @@ type TripRow = {
   end_date: string;
   invite_code: string;
   trip_members: Member[];
-  stops: (Omit<Stop, "member_ids"> & { stop_members: { member_id: string }[]; stays: Stay[] })[];
+  stops: (Omit<Stop, "member_ids"> & {
+    stop_members: { member_id: string }[];
+    stays: (Omit<Stay, "split"> & { expense: { expense_splits: Stay["split"] } | null })[];
+  })[];
   legs: (Omit<Leg, "attachments" | "split"> & {
     leg_attachments: Leg["attachments"];
     expense: { expense_splits: Leg["split"] } | null;
@@ -35,7 +38,8 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
          trip_members (id, display_name, initials, color, user_id),
          stops (id, position, city, country, country_code, code, tagline, notes, nights, timezone, lat, lng, photo_url,
                 stop_members (member_id),
-                stays (id, stop_id, name, booked_via, total_price_cents, paid_by_member_id)),
+                stays (id, stop_id, name, booked_via, total_price_cents, paid_by_member_id,
+                       expense:expenses!stays_expense_id_fkey (expense_splits (member_id, amount_cents)))),
          legs (id, from_stop_id, to_stop_id, mode, departs_at, arrives_at, total_price_cents, paid_by_member_id,
                leg_attachments (id, member_id, kind, file_name),
                expense:expenses!legs_expense_id_fkey (expense_splits (member_id, amount_cents)))`,
@@ -75,7 +79,7 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
       attachments: leg_attachments,
       split: expense?.expense_splits ?? [],
     })),
-    stays: row.stops.flatMap((s) => s.stays),
+    stays: row.stops.flatMap((s) => s.stays.map(({ expense, ...st }) => ({ ...st, split: expense?.expense_splits ?? [] }))),
   };
 
   trip.stops = await withCityPhotos(trip.stops);

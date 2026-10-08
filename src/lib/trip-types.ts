@@ -56,6 +56,8 @@ export type Stay = {
   booked_via: BookingSource | null;
   total_price_cents: number | null;
   paid_by_member_id: string | null;
+  /** División del gasto del alojamiento; vacía si no tiene precio. */
+  split: { member_id: string; amount_cents: number }[];
 };
 
 export type Trip = {

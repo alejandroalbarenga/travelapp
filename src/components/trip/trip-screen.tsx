@@ -4,11 +4,12 @@ import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, Ho
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { SaveLegInput } from "@/app/viaje/[id]/actions";
+import type { SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
 import type { ChipDisplay } from "@/lib/legs";
-import type { Leg, LegMode, Trip } from "@/lib/trip-types";
+import type { Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import { TripTabs } from "../trip-tabs";
+import { CitySheet } from "./city-sheet";
 import { LegSheet, type LegDraft } from "./leg-sheet";
 import { TripMap } from "./trip-map";
 
@@ -32,6 +33,8 @@ export function TripScreen({
   myMemberId,
   saveNights,
   saveLeg,
+  saveStop,
+  deleteStop,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -39,18 +42,50 @@ export function TripScreen({
   /** Guardan en la base. Sin esto (en /demo) los cambios quedan solo en pantalla. */
   saveNights?: (stopId: string, nights: number) => Promise<void>;
   saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | null>;
+  saveStop?: (input: SaveStopInput) => Promise<{ error: string } | null>;
+  deleteStop?: (stopId: string) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
-  const [nights, setNights] = useState<Record<string, number>>({});
-  const [legEdits, setLegEdits] = useState<Record<string, Leg>>({});
+  // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
+  const [base, setBase] = useState(trip);
+  const [current, setCurrent] = useState(trip);
+  if (trip !== base) {
+    setBase(trip);
+    setCurrent(trip);
+  }
   const [openLeg, setOpenLeg] = useState<string | null>(null);
+  const [openCity, setOpenCity] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  const current: Trip = {
-    ...trip,
-    stops: trip.stops.map((s) => (s.id in nights ? { ...s, nights: nights[s.id] } : s)),
-    legs: [...trip.legs.filter((l) => !(l.from_stop_id in legEdits)), ...Object.values(legEdits)],
-  };
+  async function storeStop(input: SaveStopInput, stay: Stay | null): Promise<string | null> {
+    if (saveStop) {
+      const result = await saveStop(input);
+      if (result) return result.error;
+      router.refresh();
+    }
+    setCurrent((t) => ({
+      ...t,
+      stops: t.stops.map((s) => (s.id === input.stopId ? { ...s, member_ids: input.memberIds, notes: input.notes || null } : s)),
+      stays: [...t.stays.filter((s) => s.stop_id !== input.stopId), ...(stay ? [stay] : [])],
+    }));
+    return null;
+  }
+
+  async function removeStop(stopId: string): Promise<string | null> {
+    if (deleteStop) {
+      const result = await deleteStop(stopId);
+      if (result) return result.error;
+      router.refresh();
+    }
+    // Como en la base: se borra la parada, su tramo y el tramo que llegaba a ella.
+    setCurrent((t) => ({
+      ...t,
+      stops: t.stops.filter((s) => s.id !== stopId),
+      legs: t.legs.filter((l) => l.from_stop_id !== stopId && l.to_stop_id !== stopId),
+      stays: t.stays.filter((s) => s.stop_id !== stopId),
+    }));
+    return null;
+  }
 
   async function storeLeg(draft: LegDraft, description: string): Promise<string | null> {
     if (saveLeg) {
@@ -69,8 +104,11 @@ export function TripScreen({
       if (result) return result.error;
       router.refresh();
     }
-    const previous = current.legs.find((l) => l.from_stop_id === draft.from_stop_id);
-    setLegEdits((e) => ({ ...e, [draft.from_stop_id]: { ...draft, id: draft.id ?? `nuevo-${draft.from_stop_id}`, attachments: previous?.attachments ?? [] } }));
+    setCurrent((t) => {
+      const previous = t.legs.find((l) => l.from_stop_id === draft.from_stop_id);
+      const leg: Leg = { ...draft, id: draft.id ?? `nuevo-${draft.from_stop_id}`, attachments: previous?.attachments ?? [] };
+      return { ...t, legs: [...t.legs.filter((l) => l.from_stop_id !== draft.from_stop_id), leg] };
+    });
     return null;
   }
   const view = buildTripView(current, { chipDisplay, myMemberId });
@@ -80,7 +118,7 @@ export function TripScreen({
     if (!stop) return;
     const value = Math.max(0, Math.min(60, stop.nights + delta));
     if (value === stop.nights) return;
-    setNights((n) => ({ ...n, [stopId]: value }));
+    setCurrent((t) => ({ ...t, stops: t.stops.map((s) => (s.id === stopId ? { ...s, nights: value } : s)) }));
     if (saveNights) startTransition(() => saveNights(stopId, value));
   }
 
@@ -93,7 +131,7 @@ export function TripScreen({
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-white">
-      <TripMap points={points} visibleTop={56} visibleBottom={LIST_TOP} />
+      <TripMap points={points} visibleTop={56} visibleBottom={LIST_TOP} onPinClick={setOpenCity} />
 
       {/* Lista: arranca a LIST_TOP y al scrollear tapa el mapa. */}
       <div className="pointer-events-none absolute inset-0 z-[1] overflow-x-hidden overflow-y-auto [scrollbar-width:none]">
@@ -130,7 +168,7 @@ export function TripScreen({
 
           {view.stops.map((stop, i) => (
             <div key={stop.id}>
-              <StopCard stop={stop} onChange={(d) => changeNights(stop.id, d)} />
+              <StopCard stop={stop} onChange={(d) => changeNights(stop.id, d)} onOpen={() => setOpenCity(stop.id)} />
               <LegRow stop={stop} onOpen={() => setOpenLeg(stop.id)} />
               {i === view.stops.length - 1 && (
                 <div className="flex items-center gap-2.5 pl-7">
@@ -184,6 +222,18 @@ export function TripScreen({
         <Plus size={28} />
       </button>
 
+      {openCity && current.stops.some((s) => s.id === openCity) && (
+        <CitySheet
+          trip={current}
+          stopId={openCity}
+          myMemberId={myMemberId}
+          onClose={() => setOpenCity(null)}
+          onNights={(d) => changeNights(openCity, d)}
+          onOpenLeg={(fromStopId) => setOpenLeg(fromStopId)}
+          onSave={storeStop}
+          onDelete={removeStop}
+        />
+      )}
       {openLeg && (
         <LegSheet trip={current} fromStopId={openLeg} myMemberId={myMemberId} onClose={() => setOpenLeg(null)} onSave={storeLeg} />
       )}
@@ -199,9 +249,16 @@ function Dots({ height }: { height: number }) {
   );
 }
 
-function StopCard({ stop, onChange }: { stop: StopView; onChange: (delta: number) => void }) {
+function StopCard({ stop, onChange, onOpen }: { stop: StopView; onChange: (delta: number) => void; onOpen: () => void }) {
   return (
-    <div className="bg-card-gradient relative flex items-center gap-3 rounded-card border border-navy/[.07] py-[9px] pr-1 pl-3 shadow-card">
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Abrir ${stop.name}`}
+      onClick={onOpen}
+      onKeyDown={(e) => e.key === "Enter" && onOpen()}
+      className="bg-card-gradient relative flex cursor-pointer items-center gap-3 rounded-card border border-navy/[.07] py-[9px] pr-1 pl-3 shadow-card"
+    >
       <div className="relative size-16 shrink-0">
         <div
           className="flex size-16 items-center justify-center overflow-hidden rounded-2xl bg-cover bg-center text-[13px] font-extrabold tracking-[0.04em] text-white"
@@ -224,7 +281,10 @@ function StopCard({ stop, onChange }: { stop: StopView; onChange: (delta: number
         )}
       </div>
       <div className="flex shrink-0 items-center">
-        <button type="button" aria-label="Menos noches" onClick={() => onChange(-1)} className="flex size-11 items-center justify-center" style={{ opacity: stop.nights === 0 ? 0.35 : 1 }}>
+        <button type="button" aria-label="Menos noches" onClick={(e) => {
+            e.stopPropagation();
+            onChange(-1);
+          }} className="flex size-11 items-center justify-center" style={{ opacity: stop.nights === 0 ? 0.35 : 1 }}>
           <span className="flex size-[30px] items-center justify-center rounded-full border-[1.5px] border-line">
             <Minus size={16} />
           </span>
@@ -233,7 +293,10 @@ function StopCard({ stop, onChange }: { stop: StopView; onChange: (delta: number
           <div className="text-[17px] leading-none font-extrabold">{stop.nights}</div>
           <div className="mt-[3px] text-[10px] font-bold text-ink-2">{stop.nightsLabel}</div>
         </div>
-        <button type="button" aria-label="Más noches" onClick={() => onChange(1)} className="flex size-11 items-center justify-center">
+        <button type="button" aria-label="Más noches" onClick={(e) => {
+            e.stopPropagation();
+            onChange(1);
+          }} className="flex size-11 items-center justify-center">
           <span className="flex size-[30px] items-center justify-center rounded-full border-[1.5px] border-line">
             <Plus size={16} />
           </span>

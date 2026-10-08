@@ -10,6 +10,45 @@ export async function saveNights(stopId: string, nights: number) {
   await supabase.rpc("set_stop_nights", { p_stop_id: stopId, p_nights: nights });
 }
 
+export type SaveStopInput = {
+  stopId: string;
+  memberIds: string[];
+  notes: string;
+  stayName: string;
+  bookedVia: "booking" | "airbnb" | "direct" | "other" | null;
+  stayPriceCents: number | null;
+  stayPaidByMemberId: string | null;
+  stayDescription: string;
+  staySplits: { member_id: string; amount_cents: number }[];
+};
+
+// Guarda quién está, las notas y el alojamiento con su gasto (supabase/migrations/0003_stops.sql).
+export async function saveStop(input: SaveStopInput): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_stop", {
+    p_stop_id: input.stopId,
+    p_member_ids: input.memberIds,
+    p_notes: input.notes,
+    p_stay_name: input.stayName,
+    p_booked_via: input.bookedVia,
+    p_stay_price_cents: input.stayPriceCents,
+    p_stay_paid_by_member_id: input.stayPaidByMemberId,
+    p_stay_description: input.stayDescription,
+    p_stay_splits: input.staySplits,
+  });
+  if (!error) return null;
+  if (error.message.includes("no suma")) return { error: "La división del alojamiento no suma el total." };
+  if (error.message.includes("al menos")) return { error: "Tiene que quedar al menos una persona." };
+  return { error: "No pudimos guardar los cambios." };
+}
+
+// Borra una ciudad. La base borra también su tramo, el tramo que llegaba a ella y sus gastos asociados.
+export async function deleteStop(stopId: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("stops").delete().eq("id", stopId);
+  return error ? { error: "No pudimos borrar la ciudad." } : null;
+}
+
 export type SaveLegInput = {
   tripId: string;
   fromStopId: string;

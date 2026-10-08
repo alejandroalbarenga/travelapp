@@ -93,6 +93,9 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - Los viajes se crean con `create_trip()` (deja al creador como miembro). La invitación usa `get_invite()`, `claim_member()` y `join_trip_as_new()`.
 - Los gastos se guardan **siempre** con `save_expense()`: escribe el gasto y su división en una transacción. Un trigger diferido rechaza cualquier división que no sume el total.
 - Los tramos se guardan con `save_leg()` (crea, actualiza o borra su gasto) y las noches se cambian con `set_stop_nights()`, que corre los horarios de los tramos siguientes en hora local.
+- La pantalla de ciudad guarda con `save_stop()`: quién está, notas y alojamiento con su gasto, todo junto.
+- Los sheets usan `src/components/bottom-sheet.tsx` (entra desde abajo, se cierra con el fondo, Escape o arrastrando el handle).
+- El panel del navegador de Claude a veces no redibuja hasta que hay una interacción: si una captura no muestra un sheet que el DOM dice que está abierto, redimensionar la ventana para forzar el redibujado.
 - La fecha de un tramo no se elige: es el día de salida de la parada de origen. Si llegada ≤ salida, se toma como llegada al día siguiente.
 - Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento.
 - Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.

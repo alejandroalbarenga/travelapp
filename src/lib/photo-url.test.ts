@@ -1,7 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("next/cache", () => ({ cacheLife: () => {} }));
-const { largePhoto, pickPhoto } = await import("./city-photo");
+import { describe, expect, it } from "vitest";
+import { largePhoto, pickPhoto } from "./photo-url";
 
 const T = "https://thumb.wikimedia.org/wikipedia/commons/thumb";
 
