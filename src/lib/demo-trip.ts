@@ -55,6 +55,7 @@ const stops: Stop[] = STOPS.map(([city, country, cc, code, nights, timezone, lat
   lat,
   lng,
   photo_url: null,
+  locked: false,
   member_ids: i < 6 ? [AL, RO, JO] : i === 6 ? [AL, RO] : [AL, RO, AG],
 }));
 

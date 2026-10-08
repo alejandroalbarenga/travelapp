@@ -1,7 +1,7 @@
 // Forma de los datos de un viaje tal como salen de la base (ver supabase/migrations).
 
 export type LegMode = "car" | "train" | "plane" | "bus" | "other";
-export type BookingSource = "booking" | "airbnb" | "direct" | "other";
+export type BookingSource = "booking" | "airbnb" | "hostelworld" | "direct" | "other";
 
 export type MemberRole = "admin" | "editor" | "viewer";
 
@@ -29,6 +29,8 @@ export type Stop = {
   lat: number | null;
   lng: number | null;
   photo_url: string | null;
+  /** Bloqueada (decisión 042): ya está todo listo, no se toca más. */
+  locked: boolean;
   member_ids: string[];
 };
 

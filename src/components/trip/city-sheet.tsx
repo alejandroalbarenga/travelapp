@@ -1,6 +1,6 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronRight, Ellipsis, FileText, House, Minus, Plane, Plus, Pencil, StickyNote, TrainFront, Trash2, X, type LucideIcon } from "lucide-react";
+import { Bed, Bus, Calendar, Car, ChevronRight, Ellipsis, FileText, House, Lock, Minus, Plane, Plus, Pencil, StickyNote, TrainFront, Trash2, X, type LucideIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { SaveStopInput } from "@/app/viaje/[id]/actions";
 import { largePhoto } from "@/lib/photo-url";
@@ -9,6 +9,7 @@ import { durationMinutes, formatDuration, localTime } from "@/lib/legs";
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Attachment, BookingSource, Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
+import { BOOKING_LABEL } from "@/lib/trip-view";
 import { BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./attachment-controls";
@@ -18,7 +19,7 @@ import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./att
 const VIAS: { via: BookingSource; label: string }[] = [
   { via: "booking", label: "Booking" },
   { via: "airbnb", label: "Airbnb" },
-  { via: "direct", label: "Directo" },
+  { via: "hostelworld", label: "Hostelworld" },
   { via: "other", label: "Otro" },
 ];
 const MODE_ICON: Record<LegMode, LucideIcon> = { plane: Plane, train: TrainFront, bus: Bus, car: Car, other: Ellipsis };
@@ -48,6 +49,7 @@ export function CitySheet({
   onAddReceipt,
   onRemoveReceipt,
   onViewReceipt,
+  onUnlock,
 }: {
   trip: Trip;
   stopId: string;
@@ -65,6 +67,8 @@ export function CitySheet({
   onAddReceipt: (stayId: string, input: AttachmentInput) => Promise<string | null>;
   onRemoveReceipt: (stayId: string, attachment: Attachment) => Promise<string | null>;
   onViewReceipt: (stayId: string, attachmentId: string) => void;
+  /** Desbloquear la ciudad (decisión 042); solo si está bloqueada y podés editar. */
+  onUnlock?: () => Promise<string | null>;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
   const i = stops.findIndex((s) => s.id === stopId);
@@ -86,6 +90,8 @@ export function CitySheet({
   const [paidBy, setPaidBy] = useState(stay?.paid_by_member_id ?? myMemberId ?? order[0]);
   const [split, setSplit] = useState<SplitState | null>(null); // null = todavía no se tocó: sigue a "quién está"
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // De paso (0 noches) y sin alojamiento: la tarjeta va plegada; se abre si hace falta.
+  const [stayOpen, setStayOpen] = useState(stop.nights > 0 || !!stay);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -124,7 +130,7 @@ export function CitySheet({
       ? `${formatEuros(stay.total_price_cents)} · pagó ${name(stay.paid_by_member_id ?? "")}`
       : stayName || via
         ? via
-          ? `Reservado en ${VIAS.find((v) => v.via === via)!.label}`
+          ? `Reservado en ${BOOKING_LABEL[via]}`
           : "Sin confirmar"
         : "Sin reservar";
 
@@ -253,6 +259,31 @@ export function CitySheet({
 
             </fieldset>
 
+            {stop.locked && (
+              <div className="mx-4 mt-4 flex items-center gap-3 rounded-field border border-navy/[.08] bg-navy-tint px-3.5 py-3">
+                <Lock size={18} className="shrink-0 text-navy" />
+                <div className="min-w-0 flex-1 text-[13px] leading-[1.4]">
+                  <div className="font-bold text-navy">Bloqueada</div>
+                  <div className="text-ink-2">Ya está todo listo: no se cambia nada, salvo cargar gastos.</div>
+                </div>
+                {onUnlock && (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      startTransition(async () => {
+                        const message = await onUnlock();
+                        if (message) setError(message);
+                      })
+                    }
+                    className="h-10 shrink-0 rounded-full border border-line bg-white px-3.5 text-[13px] font-bold text-navy disabled:opacity-50"
+                  >
+                    Desbloquear
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="px-4 pb-8">
               <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
               {/* Quién está */}
@@ -302,8 +333,20 @@ export function CitySheet({
               {/* Alojamiento */}
               <div className="mx-1 mt-[30px] mb-3 flex items-baseline justify-between gap-2">
                 <h3 className="text-2xl font-extrabold tracking-[-0.02em]">Alojamiento</h3>
-                <span className="text-[13px] font-bold text-ink-2">{stayStatus}</span>
+                {(stayOpen || stop.nights > 0) && <span className="text-[13px] font-bold text-ink-2">{stayStatus}</span>}
               </div>
+              {!stayOpen && stop.nights === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setStayOpen(true)}
+                  className="flex h-14 w-full items-center gap-3 rounded-card border-[1.5px] border-dashed border-dash px-4 text-left text-sm"
+                >
+                  <Bed size={18} className="shrink-0 text-ink-3" />
+                  <span className="min-w-0 flex-1 text-ink-2">De paso, sin noche acá</span>
+                  {!readOnly && <span className="font-bold text-navy">Agregar</span>}
+                </button>
+              ) : (
+              <>
               <div className="rounded-card-xl bg-[linear-gradient(180deg,#053650_0%,#00293D_100%)] p-[18px] text-white shadow-[0_12px_30px_rgb(0_41_61/0.25),inset_0_1px_0_rgb(255_255_255/0.12)]">
                 <div className="flex items-center gap-3">
                   <input
@@ -317,7 +360,8 @@ export function CitySheet({
                 </div>
                 <div className="mt-3 mb-2 text-xs font-bold text-white/70">Reservado en</div>
                 <div className="flex flex-wrap gap-2">
-                  {VIAS.map((v) => (
+                  {/* "Directo" ya no se ofrece (decisión 045), pero se sigue viendo si estaba elegido. */}
+                  {[...VIAS, ...(via === "direct" ? [{ via: "direct" as const, label: BOOKING_LABEL.direct }] : [])].map((v) => (
                     <button
                       key={v.via}
                       type="button"
@@ -407,6 +451,8 @@ export function CitySheet({
                   <SplitEditor members={trip.members} totalCents={priceCents} value={splitValue} onChange={setSplit} />
                 </div>
               )}
+              </>
+              )}
 
               </fieldset>
 
@@ -457,7 +503,7 @@ export function CitySheet({
                 type="button"
                 onClick={() => save(close)}
                 disabled={pending}
-                className={`h-14 w-full rounded-button text-base font-bold disabled:opacity-50 ${dirty ? "bg-navy-gradient text-white" : "border border-line bg-white text-navy"}`}
+                className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-70"
               >
                 {pending ? "Guardando…" : dirty ? "Guardar cambios" : "Listo"}
               </button>

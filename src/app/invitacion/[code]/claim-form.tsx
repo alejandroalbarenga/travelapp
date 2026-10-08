@@ -75,7 +75,7 @@ export function ClaimForm({ code, members }: { code: string; members: InviteMemb
         type="button"
         onClick={confirm}
         disabled={!selected || pending}
-        className="bg-navy-gradient mt-5 h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-45"
+        className="bg-navy-gradient mt-5 h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-70"
       >
         {pending ? "Entrando…" : "Entrar al viaje"}
       </button>

@@ -10,14 +10,6 @@ export function validateNewTrip(name: string, start: string, end: string): strin
   return null;
 }
 
-/** Iniciales para el avatar: "Ale" → "Al", "Juan Pérez" → "JP". */
-export function initialsFor(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (!words.length) return "?";
-  if (words.length === 1) return words[0].slice(0, 2).replace(/^./, (c) => c.toUpperCase());
-  return (words[0][0] + words[1][0]).toUpperCase();
-}
-
 /** Cuenta regresiva de la tarjeta de un viaje: "10 días", "Mañana", "Hoy · empieza", "Ya · en curso". */
 export function countdown(start: string, end: string, today: string): string {
   if (today > end) return "Terminó";

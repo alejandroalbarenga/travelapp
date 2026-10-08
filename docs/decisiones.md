@@ -178,7 +178,7 @@ El detalle de uso está en `diseño.md`.
 
 ### 031 · Dónde se reservó el alojamiento
 **Fecha:** 2026-10-07
-**Decisión:** el alojamiento guarda dónde se reservó (`stays.booked_via`: `booking`, `airbnb`, `direct`, `other`, o vacío). En la pantalla se muestra como "Reservado en: Booking / Airbnb / Directo / Otro". El precio y quién pagó aparecen recién cuando se eligió dónde se reservó, y la lista del viaje muestra "Booking · pagado" o "Airbnb · reservado". Amplía la 018.
+**Decisión:** el alojamiento guarda dónde se reservó (`stays.booked_via`: `booking`, `airbnb`, `direct`, `other`, o vacío). En la pantalla se muestra como "Reservado en: Booking / Airbnb / Directo / Otro" (Directo cambió por Hostelworld, ver 045). El precio y quién pagó aparecen recién cuando se eligió dónde se reservó, y la lista del viaje muestra "Booking · pagado" o "Airbnb · reservado". Amplía la 018.
 **Por qué:** decisión de Ale al ver el diseño.
 
 ### 032 · Montos distintos también en tramos y alojamientos
@@ -245,3 +245,32 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 - El organizador puede borrar el viaje entero desde Integrantes ("Borrar este viaje", con confirmación). Lo hace `delete_trip()` (migración 0007), que borra primero gastos y saldos; la app borra antes los archivos del bucket.
 - Quien se suma con la invitación como integrante nuevo queda en todas las ciudades del viaje (antes no quedaba en ninguna); si no hace todo el viaje, se ajusta en "Quién está".
 **Por qué:** Ale quiere armar viajes de prueba desde cero, además del real.
+
+### 042 · Deslizar una ciudad: borrar o bloquear
+**Fecha:** 2026-10-08
+**Decisión:**
+- Deslizar la tarjeta de una ciudad a la izquierda muestra **Borrar**: desaparece al toque, con un aviso "Borraste Roma · Deshacer", y se borra de verdad a los 5 segundos.
+- Deslizar a la derecha muestra **Bloquear** (o **Desbloquear**). Una ciudad bloqueada es una ciudad cerrada: ya está todo reservado y pago. No se cambian sus noches, quién está, notas, alojamiento ni comprobante, y no se puede borrar. La tarjeta muestra un candado y "Bloqueada", y su ficha se abre en modo lectura con el aviso y el botón "Desbloquear".
+- Tampoco se pueden correr sus fechas: no se cambian las noches de las ciudades anteriores, ni se agrega o borra una ciudad con noches antes de ella.
+- Los tramos siguen editables (decisión de Ale) y los gastos sueltos se cargan igual.
+- Bloquean y desbloquean los que pueden editar. La base lo hace cumplir con triggers (migración 0008).
+- Una ciudad de la que ya se fueron (su fecha de salida pasó) no deja cambiar sus noches. El resto se puede tocar, salvo que esté bloqueada.
+**Por qué:** pedido de Ale, para marcar lo que ya está listo y que nadie lo cambie sin querer.
+
+### 043 · Ajustes de los editores
+**Fecha:** 2026-10-08
+**Decisión:**
+- El botón que confirma un editor es siempre el azul primario, aunque no haya cambios (ej. "Listo" en la ciudad).
+- "Agregar ciudad" se abre con alto fijo: el título y el buscador quedan arriba y los resultados no lo hacen crecer.
+- En una ciudad de paso (0 noches) sin alojamiento, la tarjeta de alojamiento va plegada ("De paso, sin noche acá · Agregar").
+**Por qué:** pedidos de Ale al probar en el celular.
+
+### 044 · El organizador suma integrantes sin invitarlos
+**Fecha:** 2026-10-08
+**Decisión:** en Integrantes, el organizador tiene "Agregar integrante": con el nombre alcanza. Queda en el viaje como "todavía no entró", arranca como Solo ver, en todas las ciudades no bloqueadas, y se le pueden cargar gastos. Cuando esa persona entra con el link de invitación, elige su nombre de la lista y lo reclama (`claim_member()`, que ya existía). No hay dos integrantes con el mismo nombre.
+**Por qué:** pedido de Ale: armar el viaje con todos antes de que cada uno entre.
+
+### 045 · Hostelworld en lugar de Directo
+**Fecha:** 2026-10-08
+**Decisión:** las opciones de "Reservado en" son Booking, Airbnb, Hostelworld y Otro. En la base se suma `hostelworld` a `booking_source` (migración 0008); `direct` queda para lo que ya estaba cargado y solo se muestra si estaba elegido.
+**Por qué:** decisión de Ale; Hostelworld es más común que reservar directo en este viaje.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdown, initialsFor, splitTrips, todayInUruguay, tripSubtitle, validateNewTrip } from "./home";
+import { countdown, splitTrips, todayInUruguay, tripSubtitle, validateNewTrip } from "./home";
 
 describe("validateNewTrip", () => {
   it("los mensajes del diseño", () => {
@@ -7,14 +7,6 @@ describe("validateNewTrip", () => {
     expect(validateNewTrip("Europa", "", "2026-11-20")).toBe("Elegí las fechas");
     expect(validateNewTrip("Europa", "2026-11-20", "2026-11-20")).toBe("La vuelta tiene que ser después de la ida");
     expect(validateNewTrip("Europa", "2026-10-17", "2026-11-20")).toBeNull();
-  });
-});
-
-describe("initialsFor", () => {
-  it("una o dos palabras", () => {
-    expect(initialsFor("Ale")).toBe("Al");
-    expect(initialsFor("juan pérez")).toBe("JP");
-    expect(initialsFor("")).toBe("?");
   });
 });
 

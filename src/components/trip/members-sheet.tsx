@@ -1,6 +1,6 @@
 "use client";
 
-import { Link2, Trash2, X } from "lucide-react";
+import { Link2, Trash2, UserPlus, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { formatEuros } from "@/lib/money";
 import type { Member, MemberRole, Trip } from "@/lib/trip-types";
@@ -30,6 +30,7 @@ export function MembersSheet({
   onClose,
   onRoleChange,
   onDeleteTrip,
+  onAddMember,
 }: {
   trip: Trip;
   myMemberId: string | null;
@@ -40,7 +41,24 @@ export function MembersSheet({
   onRoleChange: (memberId: string, role: MemberRole) => Promise<string | null>;
   /** Borra el viaje entero (solo el organizador). Sin esto no se ofrece. */
   onDeleteTrip?: () => Promise<string | null>;
+  /** Suma un integrante sin cuenta (solo el organizador, decisión 044). */
+  onAddMember?: (name: string) => Promise<string | null>;
 }) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  function addMember() {
+    if (!onAddMember) return;
+    setError("");
+    startTransition(async () => {
+      const message = await onAddMember(newName);
+      if (message) setError(message);
+      else {
+        setNewName("");
+        setAdding(false);
+      }
+    });
+  }
   const [confirmDelete, setConfirmDelete] = useState(false);
   const me = trip.members.find((m) => m.id === myMemberId);
   const isAdmin = me?.role === "admin";
@@ -79,7 +97,7 @@ export function MembersSheet({
             <div>
               <div className="text-2xl font-extrabold tracking-[-0.02em]">Integrantes</div>
               <div className="mt-0.5 text-[13px] text-ink-2">
-                {trip.members.length} viajeros · {trip.name}
+                {trip.members.length} {trip.members.length === 1 ? "viajero" : "viajeros"} · {trip.name}
               </div>
             </div>
             <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 items-center justify-center rounded-full bg-surface">
@@ -146,6 +164,37 @@ export function MembersSheet({
                   ? "Tenés permiso de Solo ver: podés ver todo, pero no cargar ni cambiar nada. Pedíselo al organizador si lo necesitás."
                   : "Solo el organizador puede cambiar los permisos."}
             </p>
+            {isAdmin && onAddMember && (
+              <div className="mt-3">
+                {adding ? (
+                  <div className="flex gap-2">
+                    <input
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addMember()}
+                      autoFocus
+                      placeholder="Nombre, ej. Tomás"
+                      aria-label="Nombre del integrante"
+                      className="h-12 min-w-0 flex-1 rounded-field border border-line bg-white px-3.5 text-[15px] outline-none focus:border-navy"
+                    />
+                    <button type="button" disabled={pending} onClick={addMember} className="bg-navy-gradient h-12 shrink-0 rounded-field px-4 text-sm font-bold text-white disabled:opacity-70">
+                      Agregar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAdding(true)}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold text-navy"
+                  >
+                    <UserPlus size={18} /> Agregar integrante
+                  </button>
+                )}
+                <p className="mx-1 mt-2 text-xs leading-[1.4] text-ink-3">
+                  Queda en el viaje aunque todavía no haya entrado: le podés cargar gastos. Cuando entre con el link, elige su nombre.
+                </p>
+              </div>
+            )}
             {error && <p className="mx-1 mt-2 text-[13px] font-bold text-danger">{error}</p>}
           </div>
 

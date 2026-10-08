@@ -4,9 +4,10 @@ import type { BookingSource, LegMode, Trip } from "./trip-types";
 
 // Arma lo que muestra la pantalla del Viaje (diseño: pantalla 01) a partir de los datos del viaje.
 
-const BOOKING_LABEL: Record<BookingSource, string> = {
+export const BOOKING_LABEL: Record<BookingSource, string> = {
   booking: "Booking",
   airbnb: "Airbnb",
+  hostelworld: "Hostelworld",
   direct: "Directo",
   other: "Otro",
 };
@@ -32,6 +33,8 @@ export type StopView = {
   nights: number;
   nightsLabel: string;
   stay: { text: string; paid: boolean } | null;
+  /** Bloqueada (decisión 042). */
+  locked: boolean;
   leg: LegView | null;
   legEmptyLabel: string;
 };
@@ -94,6 +97,7 @@ export function buildTripView(trip: Trip, options: { chipDisplay: ChipDisplay; m
         name: stop.city,
         code: stop.code ?? stop.city.slice(0, 3).toUpperCase(),
         photoUrl: stop.photo_url,
+        locked: stop.locked,
         tint: TINTS[i % TINTS.length],
         dates: formatStopDates(dates[i], i === 0),
         nights: stop.nights,

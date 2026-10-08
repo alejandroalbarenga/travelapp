@@ -4,6 +4,7 @@ import { TripScreen } from "@/components/trip/trip-screen";
 import { deleteTrip } from "@/app/actions";
 import { getTrip } from "@/lib/trip-data";
 import {
+  addMember,
   addStop,
   changeStopPlace,
   deleteExpense,
@@ -14,6 +15,7 @@ import {
   saveNights,
   saveStop,
   setMemberRole,
+  setStopLocked,
   settleDebt,
   undoSettlement,
 } from "./actions";
@@ -39,5 +41,7 @@ async function Trip({ params }: { params: PageProps<"/viaje/[id]">["params"] }) 
       settleDebt={settleDebt}
       undoSettlement={undoSettlement}
       deleteTrip={deleteTrip}
+      setStopLocked={setStopLocked}
+      addMember={addMember}
     />;
 }

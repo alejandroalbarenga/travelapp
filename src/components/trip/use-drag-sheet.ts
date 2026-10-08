@@ -57,6 +57,9 @@ export function useDragSheet(
     if (!sheet || !scroller) return;
 
     let startY = 0;
+    let startX = 0;
+    // Un gesto de costado es para deslizar una tarjeta (borrar o bloquear), no para mover la lista.
+    let axis: "x" | "y" | null = null;
     let startTop = 0;
     let lastY = 0;
     let lastTime = 0;
@@ -70,6 +73,8 @@ export function useDragSheet(
 
     const onStart = (e: TouchEvent) => {
       startY = lastY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      axis = null;
       lastTime = e.timeStamp;
       startTop = topRef.current;
       velocity = 0;
@@ -79,6 +84,12 @@ export function useDragSheet(
     const onMove = (e: TouchEvent) => {
       const y = e.touches[0].clientY;
       const dy = y - startY;
+      if (!axis) {
+        const dx = e.touches[0].clientX - startX;
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
+      if (axis === "x") return;
       velocity = (y - lastY) / Math.max(1, e.timeStamp - lastTime);
       lastY = y;
       lastTime = e.timeStamp;
