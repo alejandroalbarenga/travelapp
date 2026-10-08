@@ -11,14 +11,14 @@ Todo es gratis. Ninguno pide tarjeta.
 
 ## 2. Supabase (base de datos, login y archivos)
 
-1. [ ] Entrá a <https://supabase.com> → **Start your project** → registrate con tu cuenta de GitHub.
-2. [ ] **New project**:
+1. [x] Entrá a <https://supabase.com> → **Start your project** → registrate con tu cuenta de GitHub.
+2. [x] **New project**:
    - Organización: la personal que te crea por defecto (plan Free).
    - Nombre: `travelapp`.
    - Database password: generá una y **guardala en tu gestor de contraseñas** (no la vas a necesitar seguido, pero no se puede volver a ver).
    - Región: **Central EU (Frankfurt)** o **West EU (Ireland)**, cerca de donde vas a usar la app.
-3. [ ] Esperá a que termine de crearse (un par de minutos).
-4. [ ] En **Project Settings → API** (o **API Keys**), anotá:
+3. [x] Esperá a que termine de crearse (un par de minutos).
+4. [x] En **Project Settings → API** (o **API Keys**), anotá:
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **Publishable key** (o *anon public* en la vista vieja) → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - La **secret key** (o *service_role*) **no** la copies a ningún lado por ahora. Da acceso total a la base.
@@ -54,10 +54,10 @@ El mail que trae Supabase solo manda a los miembros del equipo del proyecto y ti
 
 ## 4. Vercel (hosting)
 
-1. [ ] Entrá a <https://vercel.com> → **Sign Up** → plan **Hobby** → con tu cuenta de GitHub.
-2. [ ] **No importes el repo todavía**: hace falta que exista el proyecto de Next.js (Etapa 1). Cuando esté, en **Add New → Project** elegí `travelapp` y dale permiso a Vercel sobre ese repo.
-3. [ ] Antes del primer deploy, en **Environment Variables** cargá las dos variables de abajo para Production, Preview y Development.
-4. [ ] Anotá la URL que te da (algo como `travelapp-xxxx.vercel.app`) y ponela en Supabase (paso 2.8).
+1. [x] Entrá a <https://vercel.com> → **Sign Up** → plan **Hobby** → con tu cuenta de GitHub.
+2. [x] **No importes el repo todavía**: hace falta que exista el proyecto de Next.js (Etapa 1). Cuando esté, en **Add New → Project** elegí `travelapp` y dale permiso a Vercel sobre ese repo.
+3. [x] Antes del primer deploy, en **Environment Variables** cargá las dos variables de abajo para Production, Preview y Development.
+4. [x] Anotá la URL que te da (`travelapp-two-cyan.vercel.app`) y ponela en Supabase (paso 2.8).
 
 ## 5. En tu compu (solo si vas a correr la app localmente)
 - [ ] Node.js LTS desde <https://nodejs.org> (trae npm).

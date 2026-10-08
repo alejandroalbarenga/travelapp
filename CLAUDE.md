@@ -52,6 +52,13 @@ Proyecto personal de Ale. **MVP usable el 16 de octubre de 2026** (el viaje arra
 - Fuentes: Plus Jakarta Sans, y Caveat solo para la frase de cada ciudad.
 - **Mapa**: OpenStreetMap con Leaflet; ubicación de las ciudades con Nominatim (decisión 030).
 
+## Comandos
+
+- `npm run dev`: servidor local en http://localhost:3000.
+- `npm test`: pruebas de la lógica (`src/lib/*.test.ts`, con Vitest).
+- `npm run lint` y `npm run build` antes de commitear.
+- Next.js 16 cambió APIs respecto de versiones anteriores: ante la duda, leer `node_modules/next/dist/docs/` (ver `AGENTS.md`).
+
 ## Convenciones de datos
 
 - **Montos en centavos enteros** (`*_cents`), nunca floats.
@@ -79,6 +86,14 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - `expenses`: id, trip_id, stop_id (opcional), leg_id (opcional), stay_id (opcional), description, category, amount_cents, paid_by_member_id, created_by, created_at
 - `expense_splits`: expense_id, member_id, amount_cents
 - `settlements`: id, trip_id, from_member_id, to_member_id, amount_cents, settled_at
+
+### Base de datos en la práctica
+
+- Migraciones en `supabase/migrations/` (SQL), datos de ejemplo en `supabase/seed.sql`. Se aplican pegándolas en el SQL Editor de Supabase.
+- Los viajes se crean con `create_trip()` (deja al creador como miembro). La invitación usa `get_invite()`, `claim_member()` y `join_trip_as_new()`.
+- Los gastos se guardan **siempre** con `save_expense()`: escribe el gasto y su división en una transacción. Un trigger diferido rechaza cualquier división que no sume el total.
+- Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento.
+- Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.
 
 Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en la parada (`stop_members`): la del alojamiento, o la de destino del tramo. Se puede pasar a montos distintos (decisión 032).
 
