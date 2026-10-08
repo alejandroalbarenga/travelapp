@@ -16,7 +16,7 @@ export function TripTabs() {
   return (
     <nav
       aria-label="Secciones del viaje"
-      className="glass-dark fixed left-5 flex h-14 gap-0.5 rounded-full p-1"
+      className="glass-dark fixed left-5 z-[2] flex h-14 gap-0.5 rounded-full p-1"
       style={{ bottom: "calc(var(--safe-bottom) + 20px)" }}
     >
       {TABS.map((t) => {

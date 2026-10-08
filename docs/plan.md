@@ -22,8 +22,9 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - **Listo cuando:** la app vacía se instala desde Safari en la pantalla de inicio y abre sin barra del navegador.
 
 ## Etapa 2 · Datos, login y viaje compartido (vie 9 – sáb 10 oct)
-- [ ] Esquema de base de datos como migraciones, con Row Level Security.
-- [ ] Datos semilla del viaje (paradas, tramos y gastos de ejemplo).
+- [x] Esquema de base de datos como migraciones, con Row Level Security.
+- [x] Datos semilla del viaje (paradas, tramos y gastos de ejemplo).
+- [x] Lógica de fechas, división de gastos, balance y horarios, con pruebas.
 - [ ] Login con código de 6 dígitos por email.
 - [ ] Link de invitación al viaje; al entrar, elegir qué miembro sos (reclamar).
 - [ ] Sheet de integrantes: qué parte del viaje hace cada uno, su balance e "Invitar con un link".
@@ -31,9 +32,9 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 
 ## Etapa 3 · Inicio, Viaje y ciudades (dom 11 oct)
 - [ ] Pantalla de inicio: estadísticas, próximos viajes, viajes pasados y "Nuevo viaje" con fecha de inicio y de fin.
-- [ ] Mapa del recorrido de fondo, con la lista encima como sheet.
-- [ ] Lista de paradas con foto (de Wikipedia), fechas calculadas, stepper de noches y anillo de noches planeadas.
-- [ ] Chips de tramo entre paradas (hora o duración según la preferencia) y "Agregar tramo" para los vacíos.
+- [x] Mapa del recorrido de fondo, con la lista encima como sheet.
+- [ ] Lista de paradas con foto (de Wikipedia), fechas calculadas, stepper de noches y anillo de noches planeadas. *(Hecho todo menos las fotos.)*
+- [x] Chips de tramo entre paradas (hora o duración según la preferencia) y "Agregar tramo" para los vacíos.
 - [ ] Botón "+" con menú: Agregar ciudad / Agregar tramo / Agregar gasto.
 - [ ] Agregar ciudad (con ubicación, país y huso automáticos) y borrar deslizando, con "Deshacer".
 - [ ] Pantalla de ciudad: quién está, notas, alojamiento (dónde se reservó, precio, comprobante) y transporte.

@@ -124,3 +124,14 @@ body {
 button {
   cursor: pointer;
 }
+
+/* Crédito del mapa: debajo del botón de volver, para que no lo tape. */
+.leaflet-top.leaflet-left {
+  top: calc(var(--safe-top) + 60px);
+  left: 12px;
+}
+.leaflet-control-attribution {
+  font: 10px/1.4 system-ui, sans-serif;
+  background: rgb(255 255 255 / 0.75) !important;
+  border-radius: 6px;
+}
