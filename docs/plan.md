@@ -64,10 +64,10 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - **Listo cuando:** los números del ejemplo de `diseño.md` dan igual (total €1.588; Josué le debe €193,33 y Rodrigo €177,33 a Ale).
 
 ## Etapa 6 · Pulido y prueba real (jue 15 – vie 16 oct)
-- [ ] Service worker para que la app cargue rápido con mala conexión.
+- [x] Service worker para que la app cargue rápido con mala conexión (decisión 047).
 - [ ] Prueba en los teléfonos de los viajeros: instalar, entrar, cargar un gasto cada uno.
 - [ ] Borrar los datos de ejemplo y cargar el viaje real: viajeros, tramos y pasajes.
-- [ ] Versión web (layout de dos paneles desde 1100 px), si da el tiempo.
+- [ ] Versión web (layout de dos paneles desde 1100 px). Ale la pidió: ya no es opcional.
 - **16 de octubre:** congelar. El 17 no se deploya nada salvo un arreglo urgente.
 
 ---

@@ -1,12 +1,12 @@
-import { ChevronRight, LogOut } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { findCityPhoto } from "@/lib/city-photo";
 import { formatRange } from "@/lib/dates";
 import { countdown, splitTrips, todayInUruguay, tripSubtitle } from "@/lib/home";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "./actions";
 import { NewTripButton } from "./new-trip";
+import { SignOutButton } from "./sign-out-button";
 
 // Pantalla 00 · Inicio (docs/diseño.md): tus viajes próximos con foto y cuenta regresiva, el botón
 // "Nuevo viaje" y los viajes pasados. Las estadísticas (países, noches afuera) quedan para después.
@@ -77,11 +77,7 @@ async function Trips() {
           <div className="text-[15px] font-bold text-navy">Hola,</div>
           <h1 className="truncate text-[30px] leading-[1.1] font-extrabold tracking-[-0.02em]">{name}</h1>
         </div>
-        <form action={signOut}>
-          <button type="submit" aria-label="Salir" className="flex size-11 items-center justify-center rounded-full border border-line bg-white text-ink-2">
-            <LogOut size={18} />
-          </button>
-        </form>
+        <SignOutButton />
       </div>
 
       <div className="mt-8 mb-3 flex items-center justify-between gap-3">

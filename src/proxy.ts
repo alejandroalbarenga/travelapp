@@ -45,6 +45,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Todo menos archivos estáticos, íconos y el manifest (los tiene que poder leer el iPhone sin sesión).
-  matcher: ["/((?!_next/static|_next/image|manifest.webmanifest|icon|apple-icon|.*\\.(?:png|svg|ico|jpg|jpeg|webp)$).*)"],
+  // Todo menos archivos estáticos, íconos, el manifest y el service worker (los tiene que poder leer
+  // el iPhone sin sesión; el service worker no se puede registrar detrás de una redirección).
+  matcher: ["/((?!_next/static|_next/image|manifest.webmanifest|sw\\.js|icon|apple-icon|.*\\.(?:png|svg|ico|jpg|jpeg|webp)$).*)"],
 };
