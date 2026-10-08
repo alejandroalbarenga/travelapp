@@ -19,7 +19,7 @@ export function BalanceBubbles({ bubbles }: { bubbles: BubbleView[] }) {
     H,
   );
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label="Balance de cada integrante">
+    <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block h-auto max-h-[280px] w-full" role="img" aria-label="Balance de cada integrante">
       {/* Primero todos los círculos y después los textos, para que ninguna burbuja tape un texto. */}
       {bubbles.map((b, i) => (
         <circle
