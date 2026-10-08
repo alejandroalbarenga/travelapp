@@ -67,7 +67,7 @@ Proyecto personal de Ale. **MVP usable el 16 de octubre de 2026** (el viaje arra
 - **Horarios de tramos** como `timestamptz`; cada parada tiene su zona horaria (IANA) para mostrar la hora local.
 - **Miembros sin cuenta**: `trip_members.user_id` puede ser null; al entrar con el link de invitación, el usuario reclama su miembro.
 - **División de gastos**: por defecto en partes iguales entre los elegidos, con opción de montos distintos por persona. Se guarda el monto de cada uno en `expense_splits.amount_cents` (la suma da el total).
-- **Permisos**: todos los miembros de un viaje pueden ver y editar todo lo de ese viaje. Nadie ve viajes de los que no es miembro.
+- **Permisos** (decisión 034): cada integrante es organizador (`admin`, uno por viaje), puede editar (`editor`) o solo ver (`viewer`). Todos ven todo su viaje; solo admin y editor escriben, y solo el admin cambia permisos e integrantes. Quien entra con invitación arranca como solo ver. Nadie ve viajes de los que no es miembro.
 - **Pasajes y comprobantes de alojamiento** en un bucket privado, servidos con URLs firmadas.
 
 ## Modelo de datos acordado
@@ -76,7 +76,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 
 - `profiles`: user_id (= `auth.users.id`), chip_display (qué muestra el chip del tramo, ver decisión 021)
 - `trips`: id, name, start_date, end_date, currency, invite_code, created_by, created_at
-- `trip_members`: id, trip_id, user_id (nullable), display_name, initials, color
+- `trip_members`: id, trip_id, user_id (nullable), display_name, initials, color, role (admin/editor/viewer)
 - `stops`: id, trip_id, position, city, country, country_code, code, tagline (frase), notes, nights (≥ 0), timezone, lat, lng, photo_url
 - `stop_members`: stop_id, member_id (quién está en cada parada)
 - `stays`: id, stop_id, name, address, booked_via (booking/airbnb/direct/other, nullable), total_price_cents, paid_by_member_id, expense_id, notes

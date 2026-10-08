@@ -39,7 +39,7 @@ Cada decisión con qué se decidió, por qué y cuándo. Si algo de acá contrad
 **Decisión:** por defecto se divide en partes iguales entre los elegidos; se puede pasar a montos distintos por persona (ej. 100 / 100 / 50). En `expense_splits` se guarda el monto de cada uno, no una proporción, y la suma tiene que dar el total. En partes iguales, los centavos que sobran se reparten de a uno.
 **Por qué:** Ale lo necesita para casos donde no todos consumen lo mismo. Guardar montos (y no porcentajes) hace exacto el cálculo del balance.
 
-### 008 · Todos los miembros editan todo
+### 008 · Todos los miembros editan todo (reemplazada por la 034)
 **Fecha:** 2026-10-07
 **Decisión:** cualquier miembro de un viaje puede crear, editar y borrar paradas, tramos, gastos y settlements de ese viaje. Row Level Security solo controla que no veas viajes de los que no sos miembro.
 **Por qué:** decisión de Ale; es un grupo de amigos y simplifica los permisos.
@@ -190,3 +190,13 @@ El detalle de uso está en `diseño.md`.
 **Fecha:** 2026-10-07
 **Decisión:** "Nuevo gasto" suma un selector de ciudad (`expenses.stop_id`). Por defecto, la ciudad donde están hoy según las fechas del viaje; si el viaje no está en curso, la última ciudad usada. Al cambiar la ciudad, "Se divide entre" pasa a los que están en esa ciudad. Los gastos de tramos y alojamientos toman la ciudad solos (la de origen del tramo y la del alojamiento).
 **Por qué:** decisión de Ale; la pantalla Gastos agrupa por ciudad y en el diseño no había forma de elegirla.
+
+### 034 · Permisos por integrante: editar o solo ver
+**Fecha:** 2026-10-08
+**Decisión:** reemplaza a la 008. Cada integrante de un viaje tiene un rol (`trip_members.role`):
+- **Organizador** (`admin`): el que creó el viaje. Hay uno solo por viaje. Edita todo y es el único que cambia los permisos de los demás, agrega o saca integrantes y borra el viaje.
+- **Puede editar** (`editor`): edita todo lo del viaje (ciudades, noches, tramos, alojamientos, pasajes, gastos y saldos), salvo los permisos y los integrantes.
+- **Solo ver** (`viewer`): ve todo el viaje, incluido el balance y los pasajes, pero no carga ni cambia nada. Si pagó algo, lo carga otro por él.
+
+Quien entra con el link de invitación (reclamando un integrante o sumándose como nuevo) arranca como **Solo ver**; el organizador le da permiso de editar a quien quiera. Los integrantes sin cuenta que crea el organizador también arrancan como Solo ver. Los permisos se cambian en el sheet de Integrantes. La base lo controla con Row Level Security (no alcanza con esconder botones): un Solo ver no puede escribir aunque lo intente. En la interfaz, a un Solo ver no se le muestran los controles de edición (steppers, "+", botones de guardar) y los sheets se abren en modo lectura.
+**Por qué:** decisión de Ale; puede haber alguien en el grupo que no quiera que toque cosas.

@@ -12,6 +12,7 @@ import { TripTabs } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
 import { LegSheet, type LegDraft } from "./leg-sheet";
 import { TripMap } from "./trip-map";
+import { useDragSheet } from "./use-drag-sheet";
 
 // Pantalla 01 · Viaje (docs/diseño.md): mapa de fondo y la lista de ciudades encima como sheet.
 
@@ -55,8 +56,14 @@ export function TripScreen({
   }
   const [openLeg, setOpenLeg] = useState<string | null>(null);
   const [openCity, setOpenCity] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false); // la lista subida tapando el mapa
+  const sheetRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const { top: sheetTop, animating: sheetAnimating, toggle: toggleSheet } = useDragSheet(sheetRef, listRef, LIST_TOP);
+
+  // De la posición de la lista salen el header blanco, las esquinas y el margen de arriba (como en el diseño).
+  const headerOpacity = Math.min(1, Math.max(0, 1 - sheetTop / 112));
+  const sheetRadius = Math.min(28, sheetTop);
+  const openness = 1 - sheetTop / LIST_TOP; // 0 abajo, 1 arriba del todo
   const [, startTransition] = useTransition();
 
   async function storeStop(input: SaveStopInput, stay: Stay | null): Promise<string | null> {
@@ -135,37 +142,36 @@ export function TripScreen({
     <div className="fixed inset-0 overflow-hidden bg-white">
       <TripMap points={points} visibleTop={56} visibleBottom={LIST_TOP} onPinClick={setOpenCity} />
 
-      {/* Lista: arranca en LIST_TOP con el mapa arriba. Al scrollear sube hasta debajo de los botones
-          y al volver arriba de todo baja de nuevo (como Google Maps). El mapa de arriba sigue tocable. */}
-      {/* Con la lista arriba de todo, la parte de arriba es un header blanco y el mapa no se ve. */}
+
+      {/* Header blanco: aparece de a poco cuando la lista llega arriba (el mapa deja de verse). */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 z-[2] border-b border-navy/[.07] bg-white/[.88] backdrop-blur-[20px] backdrop-saturate-[1.8] transition-opacity duration-300"
-        style={{ height: "calc(var(--safe-top) + 64px)", opacity: expanded ? 1 : 0 }}
+        className="pointer-events-none absolute inset-x-0 top-0 z-[2] border-b border-navy/[.07] bg-white/[.88] backdrop-blur-[20px] backdrop-saturate-[1.8]"
+        style={{ height: "calc(var(--safe-top) + 64px)", opacity: headerOpacity }}
       />
+
+      {/* Lista: se arrastra como en Google Maps (use-drag-sheet). Arriba queda el mapa libre para moverlo
+          y hacer zoom. El contenido se scrollea recién con la lista arriba del todo, y pasa por debajo
+          del header translúcido. */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-[1] overflow-hidden bg-white transition-[top,border-radius,box-shadow] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] ${
-          expanded ? "rounded-none shadow-none" : "rounded-t-[28px] shadow-[0_-6px_24px_rgb(0_41_61/0.14)]"
+        ref={sheetRef}
+        className={`absolute inset-x-0 bottom-0 z-[1] overflow-hidden bg-white shadow-[0_-6px_24px_rgb(0_41_61/0.14)] ${
+          sheetAnimating ? "transition-[top,border-radius] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]" : ""
         }`}
-        style={{ top: expanded ? 0 : LIST_TOP }}
+        style={{ top: sheetTop, borderRadius: `${sheetRadius}px ${sheetRadius}px 0 0` }}
       >
         <div
           ref={listRef}
-          onScroll={(e) => setExpanded(e.currentTarget.scrollTop > 4)}
-          className="h-full overflow-x-hidden overflow-y-auto overscroll-contain px-4 transition-[padding] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] [scrollbar-width:none]"
+          className={`h-full overflow-x-hidden overscroll-contain px-4 select-none [scrollbar-width:none] ${sheetTop <= 0 ? "overflow-y-auto" : "overflow-y-hidden"}`}
           style={{
-            // Subida, la lista llega hasta arriba y pasa por debajo del header translúcido.
-            paddingTop: expanded ? "calc(var(--safe-top) + 64px)" : 0,
+            paddingTop: `calc((var(--safe-top) + 64px) * ${openness})`,
             paddingBottom: "calc(var(--safe-bottom) + 120px)",
           }}
         >
           <button
             type="button"
-            aria-label={expanded ? "Bajar la lista" : "Subir la lista"}
-            onClick={() => {
-              if (expanded) listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-              setExpanded(!expanded);
-            }}
+            aria-label={sheetTop > 0 ? "Subir la lista" : "Bajar la lista"}
+            onClick={toggleSheet}
             className="flex w-full justify-center pt-2 pb-2"
           >
             <div className="h-[5px] w-10 rounded-full bg-handle" />
@@ -231,7 +237,8 @@ export function TripScreen({
           <button
             type="button"
             aria-label="Integrantes"
-            className={`glass relative flex size-11 items-center justify-center rounded-full transition-opacity duration-200 ${expanded ? "pointer-events-none opacity-0" : "pointer-events-auto"}`}
+            className={`glass relative flex size-11 items-center justify-center rounded-full ${headerOpacity > 0.5 ? "pointer-events-none" : "pointer-events-auto"}`}
+            style={{ opacity: 1 - headerOpacity }}
           >
             <Users size={20} />
             <span className="absolute -top-[3px] -right-[3px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-orange px-[5px] text-[10px] font-extrabold text-white">
@@ -241,7 +248,8 @@ export function TripScreen({
           <button
             type="button"
             aria-label="Compartir viaje"
-            className={`glass flex size-11 items-center justify-center rounded-full transition-opacity duration-200 ${expanded ? "pointer-events-none opacity-0" : "pointer-events-auto"}`}
+            className={`glass flex size-11 items-center justify-center rounded-full ${headerOpacity > 0.5 ? "pointer-events-none" : "pointer-events-auto"}`}
+            style={{ opacity: 1 - headerOpacity }}
           >
             <Share size={20} />
           </button>
