@@ -1,7 +1,7 @@
 import { withCityPhotos } from "./city-photo";
 import type { ChipDisplay } from "./legs";
 import { createClient } from "./supabase/server";
-import type { Activity, Expense, Leg, Member, Settlement, Stay, Stop, Trip } from "./trip-types";
+import type { Activity, Attachment, Expense, Leg, Member, Settlement, Stay, Stop, Trip } from "./trip-types";
 
 // Lectura de un viaje completo desde Supabase. RLS ya filtra: si no sos miembro, no vuelve nada.
 
@@ -14,7 +14,10 @@ type TripRow = {
   trip_members: Member[];
   stops: (Omit<Stop, "member_ids"> & {
     stop_members: { member_id: string }[];
-    stays: (Omit<Stay, "split"> & { expense: { expense_splits: Stay["split"] } | null })[];
+    stays: (Omit<Stay, "split" | "attachments"> & {
+      expense: { expense_splits: Stay["split"] } | null;
+      stay_attachments: Attachment[];
+    })[];
   })[];
   legs: (Omit<Leg, "attachments" | "split"> & {
     leg_attachments: Leg["attachments"];
@@ -42,9 +45,10 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
          stops (id, position, city, country, country_code, code, tagline, notes, nights, timezone, lat, lng, photo_url,
                 stop_members (member_id),
                 stays (id, stop_id, name, booked_via, total_price_cents, paid_by_member_id,
-                       expense:expenses!stays_expense_id_fkey (expense_splits (member_id, amount_cents)))),
+                       expense:expenses!stays_expense_id_fkey (expense_splits (member_id, amount_cents)),
+                       stay_attachments (id, kind, storage_path, url, file_name, size_bytes))),
          legs (id, from_stop_id, to_stop_id, mode, departs_at, arrives_at, total_price_cents, paid_by_member_id,
-               leg_attachments (id, member_id, kind, file_name),
+               leg_attachments (id, member_id, kind, storage_path, url, file_name, size_bytes),
                expense:expenses!legs_expense_id_fkey (expense_splits (member_id, amount_cents))),
          expenses!expenses_trip_id_fkey (id, stop_id, leg_id, stay_id, description, category, amount_cents, paid_by_member_id, created_at,
                    expense_splits (member_id, amount_cents)),
@@ -91,7 +95,9 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
     expenses: row.expenses.map(({ expense_splits, ...e }) => ({ ...e, splits: expense_splits })),
     settlements: row.settlements,
     activity: row.activity,
-    stays: row.stops.flatMap((s) => s.stays.map(({ expense, ...st }) => ({ ...st, split: expense?.expense_splits ?? [] }))),
+    stays: row.stops.flatMap((s) =>
+      s.stays.map(({ expense, stay_attachments, ...st }) => ({ ...st, split: expense?.expense_splits ?? [], attachments: stay_attachments })),
+    ),
   };
 
   trip.stops = await withCityPhotos(trip.stops);

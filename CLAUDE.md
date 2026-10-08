@@ -101,7 +101,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - La fecha de un tramo no se elige: es el día de salida de la parada de origen. Si llegada ≤ salida, se toma como llegada al día siguiente.
 - Permisos (migración 0004): `can_edit_trip()` y `is_trip_admin()` en las políticas; un solo `admin` por viaje (índice único) que no se puede degradar ni borrar. En la interfaz, `canEdit` oculta los controles y los sheets reciben `readOnly`. En `/demo`, `?como=jo` muestra la app como alguien de solo ver.
 - Agregar ciudad: `add_stop()` (migración 0005) inserta después de otra, copia quién está y borra el tramo que salía de la anterior. La búsqueda es con Nominatim desde el servidor (`src/lib/places.ts`) y la zona horaria sale de las coordenadas con `@photostructure/tz-lookup`.
-- Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento.
+- Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento. Se suben desde el navegador (`src/lib/supabase/attachments.ts`) y se abren con URL firmada en `TicketViewer`, que dibuja los PDF con pdf.js (decisión 040).
 - Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.
 
 Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en la parada (`stop_members`): la del alojamiento, o la de destino del tramo. Se puede pasar a montos distintos (decisión 032).

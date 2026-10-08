@@ -38,15 +38,17 @@ El diseño final de Claude Design ya está en `docs/diseño.md`. Sumó alcance (
 - [x] Chips de tramo entre paradas (hora o duración según la preferencia) y "Agregar tramo" para los vacíos.
 - [ ] Botón "+" con menú: Agregar ciudad / Agregar tramo / Agregar gasto.
 - [x] Agregar ciudad (con ubicación, país y huso automáticos), cambiarla y borrarla. *(Borrar es desde la ciudad, con confirmación; sin deslizar.)*
-- [x] Pantalla de ciudad: quién está, notas, alojamiento (dónde se reservó, precio, comprobante) y transporte. *(Falta subir el comprobante: Etapa 4.)*
+- [x] Pantalla de ciudad: quién está, notas, alojamiento (dónde se reservó, precio, comprobante) y transporte.
 - [ ] Calendario con días partidos y elección del día de llegada.
+- [ ] Deslizar una ciudad: a la izquierda "Borrar"; a la derecha "Bloquear" (ya está todo reservado y pago: no se cambian noches, quién está ni alojamiento; se pueden seguir cargando gastos). Pedido de Ale, falta definir el detalle.
 - **Listo cuando:** se puede armar el viaje real desde el teléfono y las fechas cuadran.
 
 ## Etapa 4 · Tramos y pasajes (lun 12 – mar 13 oct)
-- [ ] Bottom sheet de detalle del tramo: medio, horas en hora local (con aviso de cambio de huso), precio, quién pagó, entre quiénes (partes iguales o montos distintos).
-- [ ] El precio del tramo crea o actualiza su gasto.
-- [ ] Subir PDF o captura, o guardar link; un pasaje por viajero, el tuyo primero.
-- [ ] Pantalla Ver pasaje (PDF e imagen a pantalla completa) con el recordatorio de Wallet y el link.
+- [x] Bottom sheet de detalle del tramo: medio, horas en hora local (con aviso de cambio de huso), precio, quién pagó, entre quiénes (partes iguales o montos distintos).
+- [x] El precio del tramo crea o actualiza su gasto.
+- [x] Subir PDF o captura, o guardar link; un pasaje por viajero, el tuyo primero (decisión 040).
+- [x] Pantalla Ver pasaje (PDF e imagen a pantalla completa) con el recordatorio de Wallet y el link.
+- [x] Comprobante del alojamiento.
 - **Listo cuando:** se abre un pasaje real en menos de 3 toques desde la pantalla Viaje.
 
 ## Etapa 5 · Gastos y balance (mié 14 – jue 15 oct)

@@ -225,3 +225,14 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 **Fecha:** 2026-10-08
 **Decisión:** abajo del todo de Gastos, "Movimientos" lista todo lo que se cargó, editó o borró (gastos, tramos y alojamientos con precio, pagos y "Deshacer"), con quién lo hizo, cuándo y qué cambió ("cambió el monto de €142 a €156"). Se ven los últimos 5 y "Ver todos". Lo escribe la base (tabla `activity`, migración 0006) con triggers y `save_expense()`; nadie lo puede editar ni borrar. Los borrados se marcan en rojo.
 **Por qué:** decisión de Ale; que no se pierda nada si alguien borra algo o hace cosas raras.
+
+### 040 · Cómo se suben y se ven los pasajes
+**Fecha:** 2026-10-08
+**Decisión:**
+- El archivo va directo del teléfono al bucket privado `attachments` (ruta `{trip_id}/legs/{leg_id}/{id}.pdf`), sin pasar por el servidor; después se anota la fila. Tope de 20 MB por archivo. Se abren con URLs firmadas de una hora (011).
+- En el detalle del tramo, "Agregar el pasaje de" elige de quién es (vos por defecto, otro viajero o "Todo el grupo") y después PDF, Captura o Link. Solo se puede adjuntar a un tramo ya guardado.
+- Un link no es un pasaje: va en el botón "Abrir en la web de la aerolínea" del visor y en la lista del tramo como "Link de la reserva".
+- El visor dibuja el PDF con pdf.js (en el iPhone un PDF embebido a veces muestra solo la primera página), con "página 1 de 2" y los puntos. Compartir manda el archivo (Archivos, WhatsApp).
+- El botón de ticket de la lista abre tu pasaje, o el del grupo si no tenés uno propio.
+- El alojamiento tiene un comprobante (PDF o captura), con el mismo visor sin la tarjeta de Wallet.
+**Por qué:** completa la Etapa 4.

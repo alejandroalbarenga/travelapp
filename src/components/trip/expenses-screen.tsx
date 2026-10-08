@@ -65,8 +65,9 @@ export function ExpensesScreen({
   }
 
   return (
-    <div className="absolute inset-0 z-[1] overflow-y-auto bg-white px-5 [scrollbar-width:none]" style={{ paddingBottom: "calc(var(--safe-bottom) + 120px)" }}>
-      <div className="sticky top-0 z-[2] -mx-5 bg-white px-5 pb-3.5" style={{ paddingTop: "calc(var(--safe-top) + 12px)" }}>
+    // El header queda fijo afuera del scroll (no sticky): en el iPhone un header sticky quedaba tapado.
+    <div className="absolute inset-0 z-[1] flex flex-col bg-white">
+      <div className="relative z-[2] shrink-0 bg-white px-5 pb-3.5" style={{ paddingTop: "calc(var(--safe-top) + 12px)" }}>
         <div className="flex items-center gap-3">
           <Link href="/" aria-label="Volver al inicio" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_2px_rgb(0_41_61/0.08),0_4px_12px_rgb(0_41_61/0.06)]">
             <ChevronLeft size={20} />
@@ -78,19 +79,11 @@ export function ExpensesScreen({
         </div>
       </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: "calc(var(--safe-bottom) + 120px)" }}>
+
       {view.groups.length > 0 && (
         <section className="bg-navy-gradient mt-1.5 rounded-card-lg px-3 pt-4 pb-3 shadow-card">
-          <div className="flex items-center justify-between px-2">
-            <span className="text-[13px] font-bold text-white/75">Cómo está cada uno</span>
-            <span className="flex items-center gap-2.5 text-[11px] font-bold text-white/75">
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-full bg-complete" /> le deben
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-full bg-orange" /> debe
-              </span>
-            </span>
-          </div>
+          <div className="px-2 text-[13px] font-bold text-white/75">Cómo está cada uno</div>
           <div className="mt-2">
             <BalanceBubbles bubbles={view.bubbles} />
           </div>
@@ -160,7 +153,7 @@ export function ExpensesScreen({
         </div>
       ))}
 
-      <div ref={balanceRef} className="mt-8 scroll-mt-28">
+      <div ref={balanceRef} className="mt-8 scroll-mt-4">
         <div className="px-1">
           <div className="text-xl font-extrabold tracking-[-0.01em]">Balance</div>
           <div className="mt-1 text-[13px] text-ink-2">
@@ -245,6 +238,7 @@ export function ExpensesScreen({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

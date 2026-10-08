@@ -79,9 +79,10 @@ const legs: Leg[] = LEGS.flatMap((l, i) => {
       attachments:
         i === 0
           ? [
-              { id: "a1", member_id: AL, kind: "pdf", file_name: "Pasaje_MAD-BRU_Ale.pdf" },
-              { id: "a2", member_id: RO, kind: "pdf", file_name: "Pasaje_MAD-BRU_Rodrigo.pdf" },
-              { id: "a3", member_id: JO, kind: "pdf", file_name: "Pasaje_MAD-BRU_Josué.pdf" },
+              { id: "a1", member_id: AL, kind: "pdf", storage_path: "demo/a1.pdf", url: null, file_name: "Pasaje_MAD-BRU_Ale.pdf", size_bytes: 185344 },
+              { id: "a2", member_id: RO, kind: "pdf", storage_path: "demo/a2.pdf", url: null, file_name: "Pasaje_MAD-BRU_Rodrigo.pdf", size_bytes: 181248 },
+              { id: "a3", member_id: JO, kind: "pdf", storage_path: "demo/a3.pdf", url: null, file_name: "Pasaje_MAD-BRU_Josué.pdf", size_bytes: 179200 },
+              { id: "a4", member_id: null, kind: "link", storage_path: null, url: "https://www.iberia.com/", file_name: null, size_bytes: null },
             ]
           : [],
     },
@@ -149,6 +150,7 @@ export const DEMO_TRIP: Trip = {
       total_price_cents: 26400,
       paid_by_member_id: RO,
       split: [AL, RO, JO].map((member_id) => ({ member_id, amount_cents: 8800 })),
+      attachments: [{ id: "sa1", kind: "pdf", storage_path: "demo/sa1.pdf", url: null, file_name: "Reserva_Booking_Bruselas.pdf", size_bytes: 96256 }],
     },
     {
       id: "st2",
@@ -158,6 +160,7 @@ export const DEMO_TRIP: Trip = {
       total_price_cents: 42000,
       paid_by_member_id: AL,
       split: [AL, RO, JO].map((member_id) => ({ member_id, amount_cents: 14000 })),
+      attachments: [],
     },
   ],
   expenses,

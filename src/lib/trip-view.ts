@@ -83,7 +83,8 @@ export function buildTripView(trip: Trip, options: { chipDisplay: ChipDisplay; m
           timeZoneChange: diff
             ? `Cambio de huso: ${next.city} está ${Math.abs(diff)} h ${diff > 0 ? "adelante" : "atrás"}. La llegada va en hora de ${next.city}.`
             : null,
-          hasTicket: leg.attachments.some((a) => a.member_id === options.myMemberId),
+          // El botón de ticket abre tu pasaje, o el del grupo si no tenés uno propio.
+          hasTicket: leg.attachments.some((a) => a.kind !== "link" && (a.member_id === options.myMemberId || a.member_id === null)),
         };
       }
 

@@ -1,14 +1,16 @@
 "use client";
 
-import { Bus, Car, Clock, Ellipsis, FileText, Image as ImageIcon, Link2, Plane, TrainFront, X, type LucideIcon } from "lucide-react";
+import { Bus, Car, Clock, Ellipsis, Plane, Ticket, TrainFront, X, type LucideIcon } from "lucide-react";
 import { useState, useTransition } from "react";
+import { sortTickets, ticketTitle } from "@/lib/attachments";
 import { addDays, formatWeekday, stopDates } from "@/lib/dates";
 import { durationMinutes, formatDuration, localTime, timeZoneDiffHours, zonedToInstant } from "@/lib/legs";
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
-import type { Leg, LegMode, Trip } from "@/lib/trip-types";
+import type { Leg, LegAttachment, LegMode, Trip } from "@/lib/trip-types";
 import { BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
+import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
 // Pantalla 02 · Detalle del tramo (docs/diseño.md). Bottom sheet sobre el Viaje.
 
@@ -29,6 +31,9 @@ export function LegSheet({
   myMemberId,
   onClose,
   onSave,
+  onAddTicket,
+  onRemoveTicket,
+  onViewTicket,
   readOnly = false,
 }: {
   trip: Trip;
@@ -37,6 +42,11 @@ export function LegSheet({
   onClose: () => void;
   /** Guarda el tramo. Devuelve un mensaje si falló. */
   onSave: (draft: LegDraft, description: string) => Promise<string | null>;
+  /** Adjunta un pasaje al tramo ya guardado; memberId es de quién es (null: del grupo). */
+  onAddTicket: (legId: string, memberId: string | null, input: AttachmentInput) => Promise<string | null>;
+  onRemoveTicket: (legId: string, ticket: LegAttachment) => Promise<string | null>;
+  /** Abre el visor en ese pasaje. */
+  onViewTicket: (fromStopId: string, ticketId: string) => void;
   /** Solo ver (decisión 034): todo deshabilitado y sin guardar. */
   readOnly?: boolean;
 }) {
@@ -72,8 +82,14 @@ export function LegSheet({
   const tzDiff = to ? timeZoneDiffHours(fromTz, toTz, departsAt ?? `${date}T12:00:00Z`) : 0;
   const perPerson = totalCents > 0 && split.mode === "equal" ? ` · ${formatEuros(Math.round(totalCents / split.memberIds.length))} por persona` : "";
 
-  const tickets = [...(leg?.attachments ?? [])].sort((a, b) => Number(b.member_id === myMemberId) - Number(a.member_id === myMemberId));
+  const tickets = sortTickets(leg?.attachments ?? [], myMemberId, trip.members);
   const withTicket = new Set(tickets.map((t) => t.member_id).filter(Boolean)).size;
+  // "Ver mi pasaje": el tuyo, o el del grupo si no tenés uno propio.
+  const myTicket = tickets.find((t) => t.kind !== "link" && (t.member_id === myMemberId || t.member_id === null)) ?? null;
+  // Un tramo recién creado todavía no tiene id en la base: primero se guarda.
+  const savedLegId = leg && !leg.id.startsWith("nuevo-") ? leg.id : null;
+  const owners = trip.members.filter((m) => travellers.includes(m.id));
+  const [owner, setOwner] = useState<string | null>(myMemberId && travellers.includes(myMemberId) ? myMemberId : null);
 
   function save(close: () => void) {
     if (!mode) {
@@ -219,6 +235,8 @@ export function LegSheet({
             </>
           )}
 
+          </fieldset>
+
           <div className="mt-[22px] mb-2.5 flex items-baseline justify-between">
             <span className="text-[13px] font-bold text-ink-2">{tickets.length ? "Pasajes" : "Pasaje"}</span>
             {tickets.length > 0 && (
@@ -230,53 +248,71 @@ export function LegSheet({
           {tickets.length ? (
             <div className="overflow-hidden rounded-[18px] border border-line">
               {tickets.map((t, k) => {
-                const owner = trip.members.find((m) => m.id === t.member_id);
+                const ticketOwner = trip.members.find((m) => m.id === t.member_id);
                 return (
-                  <div key={t.id} className={`flex items-center gap-3 py-2.5 pr-2 pl-2.5 ${k ? "border-t border-divider" : ""}`}>
-                    <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-navy/[.08] text-[10px] font-extrabold tracking-[0.04em] text-navy">
-                      {t.kind === "link" ? "LINK" : t.kind === "image" ? "IMG" : "PDF"}
-                      {owner && (
-                        <span className="absolute -right-[5px] -bottom-[5px] flex size-[22px] items-center justify-center rounded-full border-2 border-white text-[9px] font-extrabold text-white" style={{ background: owner.color }}>
-                          {owner.initials}
-                        </span>
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-bold">{t.member_id === myMemberId ? "Tu pasaje" : owner ? `Pasaje de ${owner.display_name}` : "Pasaje del grupo"}</div>
-                      <div className="mt-0.5 truncate text-xs text-ink-2">{t.file_name}</div>
-                    </div>
-                  </div>
+                  <AttachmentRow
+                    key={t.id}
+                    attachment={t}
+                    title={t.kind === "link" ? "Link de la reserva" : ticketTitle(t.member_id, myMemberId, trip.members)}
+                    owner={ticketOwner}
+                    first={k === 0}
+                    onOpen={() => (t.kind === "link" && t.url ? window.open(t.url, "_blank", "noopener") : onViewTicket(fromStopId, t.id))}
+                    onRemove={readOnly || !savedLegId ? undefined : () => onRemoveTicket(savedLegId, t)}
+                  />
                 );
               })}
             </div>
           ) : (
             <div className="text-sm text-ink-2">Todavía no hay un pasaje adjunto.</div>
           )}
-          <div className="mt-2.5 grid grid-cols-3 gap-2">
-            {[
-              { Icon: FileText, l: "PDF" },
-              { Icon: ImageIcon, l: "Captura" },
-              { Icon: Link2, l: "Link" },
-            ].map(({ Icon, l }) => (
-              <button key={l} type="button" disabled title="Próximamente" className="flex h-11 items-center justify-center gap-1.5 rounded-field border-[1.5px] border-dashed border-dash text-[13px] font-bold opacity-50">
-                <Icon size={16} /> {l}
-              </button>
+          {!readOnly &&
+            (savedLegId ? (
+              <>
+                <div className="mt-3.5 mb-2 text-xs font-bold text-ink-2">Agregar el pasaje de</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[...owners.map((m) => ({ id: m.id as string | null, label: m.id === myMemberId ? "Vos" : m.display_name })), { id: null, label: "Todo el grupo" }].map((o) => (
+                    <button
+                      key={o.id ?? "grupo"}
+                      type="button"
+                      onClick={() => setOwner(o.id)}
+                      aria-pressed={owner === o.id}
+                      className={`h-9 rounded-full px-3.5 text-[13px] font-bold ${owner === o.id ? "bg-navy text-white" : "bg-surface text-ink"}`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <AddAttachmentButtons onAdd={(input) => onAddTicket(savedLegId, owner, input)} />
+              </>
+            ) : (
+              <p className="mt-2.5 text-[13px] text-ink-2">Guardá el tramo para adjuntar los pasajes.</p>
             ))}
-          </div>
-          </fieldset>
         </div>
 
         <div className="border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
           {error && <p className="mb-2 text-[13px] font-bold text-danger">{error}</p>}
-          {readOnly ? (
-            <button type="button" onClick={close} className="h-14 w-full rounded-button border border-line bg-white text-base font-bold text-navy">
-              Cerrar
-            </button>
-          ) : (
-          <button type="button" onClick={() => save(close)} disabled={pending} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
-            {pending ? "Guardando…" : "Guardar tramo"}
-          </button>
-          )}
+          <div className={myTicket && !readOnly ? "grid grid-cols-2 gap-2" : ""}>
+            {myTicket && (
+              <button
+                type="button"
+                onClick={() => onViewTicket(fromStopId, myTicket.id)}
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-button border border-line bg-white text-base font-bold text-navy"
+              >
+                <Ticket size={18} /> {myTicket.member_id ? "Ver mi pasaje" : "Ver pasaje"}
+              </button>
+            )}
+            {readOnly ? (
+              !myTicket && (
+                <button type="button" onClick={close} className="h-14 w-full rounded-button border border-line bg-white text-base font-bold text-navy">
+                  Cerrar
+                </button>
+              )
+            ) : (
+              <button type="button" onClick={() => save(close)} disabled={pending} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
+                {pending ? "Guardando…" : myTicket ? "Guardar" : "Guardar tramo"}
+              </button>
+            )}
+          </div>
         </div>
       </>
       )}

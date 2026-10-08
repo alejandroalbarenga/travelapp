@@ -8,9 +8,10 @@ import { formatDay, formatRange, formatWeekday, stopDates } from "@/lib/dates";
 import { durationMinutes, formatDuration, localTime } from "@/lib/legs";
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
-import type { BookingSource, Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
+import type { Attachment, BookingSource, Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
 import { BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
+import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
 // Pantalla 06 · Ciudad (docs/diseño.md): foto grande, noches, quién está, notas, alojamiento y transporte.
 
@@ -44,6 +45,9 @@ export function CitySheet({
   onDelete,
   readOnly = false,
   onChangePlace,
+  onAddReceipt,
+  onRemoveReceipt,
+  onViewReceipt,
 }: {
   trip: Trip;
   stopId: string;
@@ -57,6 +61,10 @@ export function CitySheet({
   readOnly?: boolean;
   /** Abre el buscador para cambiar la ciudad (renombrar). */
   onChangePlace?: () => void;
+  /** Comprobante de la reserva del alojamiento ya guardado (PDF o imagen). */
+  onAddReceipt: (stayId: string, input: AttachmentInput) => Promise<string | null>;
+  onRemoveReceipt: (stayId: string, attachment: Attachment) => Promise<string | null>;
+  onViewReceipt: (stayId: string, attachmentId: string) => void;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
   const i = stops.findIndex((s) => s.id === stopId);
@@ -67,6 +75,8 @@ export function CitySheet({
   const { arrival, departure } = dates[i];
   const order = trip.members.map((m) => m.id);
   const stay = trip.stays.find((s) => s.stop_id === stopId) ?? null;
+  // El comprobante se cuelga de un alojamiento que ya está en la base.
+  const savedStayId = stay && !stay.id.startsWith("nuevo-") ? stay.id : null;
 
   const [people, setPeople] = useState<string[]>(stop.member_ids);
   const [notes, setNotes] = useState(stop.notes ?? "");
@@ -157,6 +167,7 @@ export function CitySheet({
             total_price_cents: input.stayPriceCents,
             paid_by_member_id: input.stayPaidByMemberId,
             split: input.staySplits,
+            attachments: stay?.attachments ?? [],
           }
         : null;
     setError("");
@@ -318,14 +329,34 @@ export function CitySheet({
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  disabled
-                  title="Próximamente"
-                  className="mt-3 flex h-[52px] w-full items-center justify-center gap-2 rounded-[18px] border-[1.5px] border-dashed border-white/35 text-sm font-bold opacity-60"
-                >
-                  <FileText size={16} /> Subir comprobante
-                </button>
+                {stay && stay.attachments.length > 0 && (
+                  <div className="mt-3 overflow-hidden rounded-[18px] bg-white/[.08]">
+                    {stay.attachments.map((a, k) => (
+                      <AttachmentRow
+                        key={a.id}
+                        attachment={a}
+                        title="Comprobante"
+                        first={k === 0}
+                        dark
+                        onOpen={() => onViewReceipt(stay.id, a.id)}
+                        onRemove={readOnly ? undefined : () => onRemoveReceipt(stay.id, a)}
+                      />
+                    ))}
+                  </div>
+                )}
+                {!readOnly &&
+                  (savedStayId ? (
+                    stay!.attachments.length === 0 && (
+                      <>
+                        <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-white/70">
+                          <FileText size={14} /> Subir comprobante
+                        </div>
+                        <AddAttachmentButtons dark withLink={false} onAdd={(input) => onAddReceipt(savedStayId, input)} />
+                      </>
+                    )
+                  ) : (
+                    (stayName.trim() || via) && <p className="mt-3 text-[13px] text-white/70">Guardá para poder subir el comprobante.</p>
+                  ))}
                 {via && (
                   <>
                     <div className="my-3.5 h-px bg-white/[.14]" />
