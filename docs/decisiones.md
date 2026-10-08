@@ -282,3 +282,16 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 - Desde la ficha de cualquier ciudad, tocar las fechas abre el calendario con esa ciudad en azul. Si se puede cambiar su llegada (las fechas aparecen subrayadas), abre para elegirla. La ciudad se marca en navy, no deja elegir un día antes de llegar a la anterior y, al guardar, cambian las noches de la anterior. Respeta los bloqueos (042).
 - La llegada a la primera ciudad no se elige por ahora: es el inicio del viaje, y cambiarla correría el viaje entero con sus horarios.
 **Por qué:** completa la Etapa 3.
+
+### 047 · Service worker y sin conexión
+**Fecha:** 2026-10-08
+**Decisión:** `public/sw.js`, escrito a mano, sin librerías. Solo se registra en producción.
+- **Archivos de la app:** se guardan para siempre.
+- **Páginas:** primero la red; si tarda más de 4 segundos o no hay señal, la última versión guardada. Así el viaje abre en el avión.
+- **Pasajes y comprobantes ya abiertos:** quedan guardados sin el token de la URL firmada, así se ven sin conexión.
+- **Mapa y fotos:** se muestran guardados y se actualizan por atrás.
+- **El resto** (base, login, acciones) va siempre a la red.
+- Con `experimental.useOffline`, las navegaciones y acciones que fallan por falta de señal esperan y se reintentan solas. Arriba aparece "Sin conexión · lo que cargues se manda al volver".
+- Al salir de la cuenta se borran las páginas y los pasajes guardados en el teléfono.
+- `proxy.ts` deja pasar `/sw.js` sin sesión: un service worker no se puede registrar detrás de una redirección.
+**Por qué:** en aeropuertos y trenes la señal es mala. No es un modo offline real (sigue en "Para después").

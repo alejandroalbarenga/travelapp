@@ -45,7 +45,7 @@ Proyecto personal de Ale. **MVP usable el 16 de octubre de 2026** (el viaje arra
 ## Stack
 
 - **Next.js** (App Router) + **TypeScript** + **Tailwind CSS** (tokens del sistema visual definidos en el tema).
-- **PWA**: `manifest.webmanifest` con `display: standalone`, `apple-touch-icon`, safe areas con `env(safe-area-inset-*)`, service worker mínimo para cachear la app (no hay modo offline real en el MVP).
+- **PWA**: `manifest.webmanifest` con `display: standalone`, `apple-touch-icon`, safe areas con `env(safe-area-inset-*)`, service worker `public/sw.js` (decisión 047; solo en producción: para probarlo, `npm run build` y la configuración "prod" del panel en el puerto 3001). No hay modo offline real en el MVP.
 - **Supabase** (free tier): Postgres, Auth con **código de 6 dígitos por email** (no magic link), Storage privado para los pasajes, Row Level Security.
 - **Vercel** (free tier) para el deploy, conectado a GitHub.
 - **npm** como gestor de paquetes.
