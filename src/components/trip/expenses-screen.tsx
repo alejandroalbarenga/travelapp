@@ -40,6 +40,7 @@ export function ExpensesScreen({
   onTransfer,
   embedded = false,
   onBack,
+  foldStopIds = [],
 }: {
   tripName: string;
   view: ExpensesView;
@@ -54,6 +55,8 @@ export function ExpensesScreen({
   embedded?: boolean;
   /** Volver al viaje (en el celular, Gastos se abre desde la bolita de arriba). */
   onBack?: () => void;
+  /** Ciudades fuera de tu parte del viaje: sus gastos van plegados al final (decisión 054). */
+  foldStopIds?: string[];
 }) {
   const [showAllActivity, setShowAllActivity] = useState(false);
   const balanceRef = useRef<HTMLDivElement>(null);
@@ -61,6 +64,47 @@ export function ExpensesScreen({
   const [pending, startTransition] = useTransition();
   const member = (id: string) => members.find((m) => m.id === id);
   const me = myMemberId ? member(myMemberId) : undefined;
+
+  const [showOthers, setShowOthers] = useState(false);
+  const mineGroups = view.groups.filter((g) => !foldStopIds.includes(g.key));
+  const otherGroups = view.groups.filter((g) => foldStopIds.includes(g.key));
+  const otherCount = otherGroups.reduce((n, g) => n + g.rows.length, 0);
+
+  function renderGroup(g: ExpensesView["groups"][number]) {
+    return (
+      <div key={g.key} className="mt-6">
+        <div className="flex items-baseline justify-between gap-2 px-1 pb-2">
+          <span className="text-[17px] font-bold">{g.name}</span>
+          <span className="text-[13px] text-ink-2">{g.dates}</span>
+        </div>
+        <div className="border-y border-divider">
+          {g.rows.map((r, i) => {
+            const Icon = r.legMode ? MODE_ICON[r.legMode] : CATEGORY_ICON[r.category];
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => onEdit(r)}
+                className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${i ? "border-t border-divider" : ""}`}
+              >
+                <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${r.legMode ? MODE_CLASS[r.legMode] : "bg-surface text-ink"}`}>
+                  <Icon size={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[15px] leading-[1.3] font-semibold">{r.description}</div>
+                  <div className="mt-0.5 text-[13px] text-ink-2">{r.sub}</div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-[15px] font-bold">{r.amount}</div>
+                  <div className="mt-0.5 text-xs text-ink-2">{r.myShare}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   function run(action: () => Promise<string | null>) {
     setError("");
@@ -134,39 +178,28 @@ export function ExpensesScreen({
         <p className="mt-8 text-center text-[15px] text-ink-2">Todavía no hay gastos. {canEdit ? "Cargá el primero con el +." : ""}</p>
       )}
 
-      {view.groups.map((g) => (
-        <div key={g.key} className="mt-6">
-          <div className="flex items-baseline justify-between gap-2 px-1 pb-2">
-            <span className="text-[17px] font-bold">{g.name}</span>
-            <span className="text-[13px] text-ink-2">{g.dates}</span>
-          </div>
-          <div className="border-y border-divider">
-            {g.rows.map((r, i) => {
-              const Icon = r.legMode ? MODE_ICON[r.legMode] : CATEGORY_ICON[r.category];
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => onEdit(r)}
-                  className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${i ? "border-t border-divider" : ""}`}
-                >
-                  <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${r.legMode ? MODE_CLASS[r.legMode] : "bg-surface text-ink"}`}>
-                    <Icon size={20} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[15px] leading-[1.3] font-semibold">{r.description}</div>
-                    <div className="mt-0.5 text-[13px] text-ink-2">{r.sub}</div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div className="text-[15px] font-bold">{r.amount}</div>
-                    <div className="mt-0.5 text-xs text-ink-2">{r.myShare}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+      {mineGroups.map(renderGroup)}
+
+      {/* Tu parte del viaje (decisión 054): los gastos de las ciudades donde no estuviste, plegados. */}
+      {otherGroups.length > 0 && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowOthers((o) => !o)}
+            aria-expanded={showOthers}
+            className="flex w-full items-center gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-4 py-3 text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold">Gastos del resto del viaje</span>
+              <span className="block text-[13px] text-ink-2">
+                {otherCount} {otherCount === 1 ? "gasto" : "gastos"} de ciudades donde no estuviste
+              </span>
+            </span>
+            <span className="text-[13px] font-bold">{showOthers ? "Ocultar" : "Ver"}</span>
+          </button>
+          {showOthers && otherGroups.map(renderGroup)}
         </div>
-      ))}
+      )}
 
       <div ref={balanceRef} className="mt-8 scroll-mt-4">
         <div className="px-1">

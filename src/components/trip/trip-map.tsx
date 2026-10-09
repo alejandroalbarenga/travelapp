@@ -15,6 +15,7 @@ export function TripMap({
   onPinClick,
   highlightStopId = null,
   focusStopId = null,
+  partStopIds = null,
 }: {
   points: MapPoint[];
   /** Píxeles tapados arriba (botones flotantes) y desde dónde tapa la lista, para centrar el recorrido en lo visible. */
@@ -25,7 +26,11 @@ export function TripMap({
   highlightStopId?: string | null;
   /** En la web, la ciudad abierta: el mapa se acerca a ella; al cerrarla vuelve al recorrido. */
   focusStopId?: string | null;
+  /** Tu parte del viaje (decisión 054): tu recorrido va fuerte y encuadrado, el resto tenue. null = todo. */
+  partStopIds?: string[] | null;
 }) {
+  const partRef = useRef(partStopIds);
+  partRef.current = partStopIds;
   const focusRef = useRef(focusStopId);
   const highlightRef = useRef(highlightStopId);
   const el = useRef<HTMLDivElement>(null);
@@ -88,7 +93,7 @@ export function TripMap({
     if (!map.current) return;
     import("leaflet").then((L) => draw(L));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(points)]);
+  }, [JSON.stringify(points), partStopIds?.join()]);
 
   function fit(L: typeof import("leaflet")) {
     const m = map.current;
@@ -104,7 +109,9 @@ export function TripMap({
       return;
     }
     const h = el.current.clientHeight;
-    m.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lng])), {
+    const part = partRef.current;
+    const framed = part ? points.filter((p) => part.includes(p.stopId)) : points;
+    m.fitBounds(L.latLngBounds((framed.length ? framed : points).map((p) => [p.lat, p.lng])), {
       paddingTopLeft: [30, visibleTop + 14],
       paddingBottomRight: [30, Math.max(20, h - visibleBottom + 14)],
       maxZoom: 7,
@@ -117,9 +124,18 @@ export function TripMap({
     if (!g) return;
     g.clearLayers();
     if (points.length === 0) return;
+    const part = partRef.current;
     const line = points.map((p) => [p.lat, p.lng] as [number, number]);
-    L.polyline(line, { color: "#fff", weight: 6, opacity: 0.9, interactive: false }).addTo(g);
-    L.polyline(line, { color: "#222222", weight: 3, dashArray: "1 7", lineCap: "round", interactive: false }).addTo(g);
+    L.polyline(line, { color: "#fff", weight: 6, opacity: part ? 0.5 : 0.9, interactive: false }).addTo(g);
+    L.polyline(line, { color: "#222222", weight: 3, dashArray: "1 7", lineCap: "round", opacity: part ? 0.3 : 1, interactive: false }).addTo(g);
+    if (part) {
+      // Tu recorrido, desde la ciudad de la que venís hasta la última tuya, encima y fuerte.
+      const firstMine = points.findIndex((p) => part.includes(p.stopId));
+      const lastMine = points.length - 1 - [...points].reverse().findIndex((p) => part.includes(p.stopId));
+      const mine = points.slice(Math.max(0, firstMine - 1), lastMine + 1).map((p) => [p.lat, p.lng] as [number, number]);
+      L.polyline(mine, { color: "#fff", weight: 6, opacity: 0.9, interactive: false }).addTo(g);
+      L.polyline(mine, { color: "#222222", weight: 3, dashArray: "1 7", lineCap: "round", interactive: false }).addTo(g);
+    }
 
     // Una ciudad que aparece dos veces (Madrid) comparte pin: "1 · 13".
     const groups = new Map<string, { lat: number; lng: number; labels: string[]; stopId: string; stopIds: string[] }>();
@@ -132,11 +148,12 @@ export function TripMap({
     }
     for (const pin of groups.values()) {
       const on = !!highlightRef.current && pin.stopIds.includes(highlightRef.current);
+      const faded = !!part && !pin.stopIds.some((id) => part.includes(id));
       L.marker([pin.lat, pin.lng], {
         zIndexOffset: on ? 1000 : 0,
         icon: L.divIcon({
           className: "",
-          html: `<div style="transform:translate(-50%,-50%) scale(${on ? 1.3 : 1});transition:transform .15s;display:inline-flex;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:${on ? "#F5891F" : "#222222"};color:#fff;font:800 12px var(--font-jakarta),system-ui,sans-serif;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap">${pin.labels.join(" · ")}</div>`,
+          html: `<div style="opacity:${faded && !on ? 0.4 : 1};transform:translate(-50%,-50%) scale(${on ? 1.3 : 1});transition:transform .15s;display:inline-flex;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:${on ? "#F5891F" : "#222222"};color:#fff;font:800 12px var(--font-jakarta),system-ui,sans-serif;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap">${pin.labels.join(" · ")}</div>`,
           iconSize: [0, 0],
         }),
       })
