@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { placeCode, toPlace } from "./places";
+import { citiesOfCountry, placeCode, toPlace } from "./places";
 
 describe("placeCode", () => {
   it("tres letras sin acentos", () => {
@@ -29,5 +29,22 @@ describe("toPlace", () => {
 
   it("descarta resultados sin coordenadas", () => {
     expect(toPlace({ name: "X", lat: "abc", lon: "1" })).toBeNull();
+  });
+});
+
+describe("citiesOfCountry", () => {
+  it("las ciudades principales de un país, con su huso", () => {
+    const cities = citiesOfCountry("it", "Italia");
+    expect(cities[0]).toMatchObject({ name: "Roma", country: "Italia", countryCode: "it", timezone: "Europe/Rome", code: "ROM" });
+    expect(cities.map((c) => c.name)).toEqual(expect.arrayContaining(["Milán", "Florencia", "Venecia"]));
+  });
+
+  it("la capital está aunque no sea una ciudad común", () => {
+    expect(citiesOfCountry("ar", "Argentina").map((c) => c.name)).toContain("Buenos Aires");
+    expect(citiesOfCountry("pt", "Portugal").map((c) => c.name)).toContain("Lisboa");
+  });
+
+  it("un país desconocido no tiene ciudades", () => {
+    expect(citiesOfCountry("zz", "Nada")).toEqual([]);
   });
 });
