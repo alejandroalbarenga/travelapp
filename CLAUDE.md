@@ -55,7 +55,7 @@ Proyecto personal de Ale. **MVP usable el 16 de octubre de 2026** (el viaje arra
 
 ## Comandos
 
-- `npm run dev`: servidor local en http://localhost:3000.
+- `npm run dev`: servidor local en http://localhost:3000. Sin sesión abre directo en `/demo` (el viaje de ejemplo); `/login` sigue andando.
 - `npm test`: pruebas de la lógica (`src/lib/*.test.ts`, con Vitest).
 - `npm run lint` y `npm run build` antes de commitear.
 - Next.js 16 cambió APIs respecto de versiones anteriores: ante la duda, leer `node_modules/next/dist/docs/` (ver `AGENTS.md`).
