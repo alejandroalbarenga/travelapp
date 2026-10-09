@@ -382,8 +382,8 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 
 ### 056 · Buscar por país al agregar una ciudad
 **Fecha:** 2026-10-09
-**Decisión:** si en "Agregar ciudad" se escribe un país ("Italia"), además de lo que encuentra Nominatim se listan sus diez ciudades más pobladas, sacadas de Wikidata (gratis y sin clave; Overpass fallaba). La lista de cada país queda en caché semanas; si Wikidata falla, no se guarda nada y simplemente no hay sugerencias.
-También: con el teclado abierto en el iPhone, los sheets se acomodan a la parte de la pantalla que se ve (`visualViewport`) en vez de quedar tapados y correrse para arriba.
+**Decisión:** si en "Agregar ciudad" se escribe un país ("Italia"), además de lo que encuentra Nominatim se listan sus ciudades principales (hasta diez, con la capital). Salen de `src/lib/country-cities.json`, una lista de 202 países sacada una vez de Wikidata y retocada a mano (sin áreas metropolitanas ni provincias; Países Bajos y Suiza aparte, porque ahí las ciudades figuran como municipios). Al principio se consultaba Wikidata en cada búsqueda, pero a veces tardaba más de 10 segundos y desde Vercel no andaba.
+También: con el teclado abierto en el iPhone, los sheets se acomodan a la parte de la pantalla que se ve (`visualViewport`, comparada con el alto del layout, porque en el iPhone `innerHeight` también se achica). Y el buscador de ciudades ya no enfoca el campo solo en el teléfono: hacerlo mientras el sheet sube hacía que el iPhone corriera la página y el sheet se fuera de la pantalla. En la compu se enfoca cuando terminó de entrar.
 **Por qué:** pedido de Ale; si no te acordás el nombre de la ciudad, buscar por país te la muestra.
 
 ### 057 · El alojamiento se completa desde la reserva

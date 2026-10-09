@@ -34,6 +34,16 @@ export function CitySearchSheet({
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const lastQuery = useRef("");
+  const input = useRef<HTMLInputElement>(null);
+
+  // En la compu el campo se enfoca solo, cuando el sheet ya terminó de entrar. En el teléfono no:
+  // enfocarlo mientras sube hace que el iPhone corra toda la página para mostrarlo y el sheet se va
+  // de la pantalla. Ahí se toca el campo y el teclado abre con el sheet ya en su lugar.
+  useEffect(() => {
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    const timer = setTimeout(() => input.current?.focus({ preventScroll: true }), 350);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Busca medio segundo después de dejar de escribir (OpenStreetMap pide no más de una consulta por segundo).
   useEffect(() => {
@@ -103,7 +113,7 @@ export function CitySearchSheet({
                 }}
                 placeholder="Buscá una ciudad"
                 aria-label="Ciudad"
-                autoFocus
+                ref={input}
                 className="h-[52px] min-w-0 flex-1 bg-transparent text-[17px] font-bold text-ink outline-none"
               />
             </label>

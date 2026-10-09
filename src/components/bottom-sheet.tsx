@@ -26,7 +26,8 @@ function useVisibleArea() {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      const keyboard = window.innerHeight - vv.height > 80;
+      // Contra el alto del layout: en el iPhone window.innerHeight también se achica con el teclado.
+      const keyboard = document.documentElement.clientHeight - vv.height > 80;
       setArea(keyboard ? { top: vv.offsetTop, height: vv.height } : null);
     };
     update();
