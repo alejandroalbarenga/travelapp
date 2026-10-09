@@ -558,7 +558,7 @@ export function TripScreen({
 
   const points = [...current.stops]
     .sort((a, b) => a.position - b.position)
-    .flatMap((s, i) => (s.lat != null && s.lng != null ? [{ lat: s.lat, lng: s.lng, label: String(i + 1), stopId: s.id }] : []));
+    .flatMap((s, i) => (s.lat != null && s.lng != null ? [{ lat: s.lat, lng: s.lng, label: String(i + 1), stopId: s.id, city: s.city }] : []));
 
   const ordered = [...current.stops].sort((a, b) => a.position - b.position);
   // "Agregar ciudad" desde el +: antes de la última (que suele ser la vuelta), como en el diseño.

@@ -155,3 +155,56 @@ input[type="time"]::-webkit-date-and-time-value {
   text-align: left;
   margin: 0;
 }
+
+/* Pantalla de carga (decisión 061, src/components/loading-screen.tsx). */
+.loading-float {
+  animation: loading-float 2.4s ease-in-out infinite;
+}
+@keyframes loading-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+/* La "o" rebota como una pelota: sube, cae y se aplasta un poco al tocar. */
+.loading-bounce {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: loading-bounce 1.2s cubic-bezier(.3, 0, .3, 1) infinite;
+}
+@keyframes loading-bounce {
+  0%, 100% { transform: translateY(0) scale(1.08, .9); }
+  12% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-22%) scale(.96, 1.05); }
+  88% { transform: translateY(0) scale(1, 1); }
+}
+.loading-plane {
+  animation: loading-plane 2s cubic-bezier(.6, 0, .4, 1) infinite;
+}
+@keyframes loading-plane {
+  0% { transform: translate(-12px, -50%); opacity: 0; }
+  10% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(164px, -50%); opacity: 0; }
+}
+.loading-trail {
+  animation: loading-trail 2s cubic-bezier(.6, 0, .4, 1) infinite;
+}
+@keyframes loading-trail {
+  0% { width: 0; opacity: 1; }
+  85% { opacity: 1; }
+  100% { width: 100%; opacity: 0; }
+}
+/* Cuatro frases, dos segundos cada una. */
+.loading-phrase {
+  opacity: 0;
+  animation: loading-phrase 8s ease-in-out infinite;
+}
+@keyframes loading-phrase {
+  0% { opacity: 0; transform: translateY(6px); }
+  5%, 21% { opacity: 1; transform: translateY(0); }
+  26%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-float, .loading-bounce, .loading-plane, .loading-trail { animation: none; }
+  .loading-phrase { animation: none; }
+  .loading-phrase:first-child { opacity: 1; }
+}

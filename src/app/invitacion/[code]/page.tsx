@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { formatRange } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { ClaimForm, type InviteMember } from "./claim-form";
+import { LoadingScreen } from "@/components/loading-screen";
 
 type InviteRow = {
   trip_id: string;
@@ -21,7 +22,7 @@ export default function InvitePage({ params }: PageProps<"/invitacion/[code]">) 
       className="mx-auto max-w-[440px] px-5"
       style={{ paddingTop: "calc(var(--safe-top) + 40px)", paddingBottom: "calc(var(--safe-bottom) + 24px)" }}
     >
-      <Suspense fallback={<p className="text-[15px] text-ink-2">Cargando la invitación…</p>}>
+      <Suspense fallback={<LoadingScreen label="Cargando la invitación" />}>
         <Invite params={params} />
       </Suspense>
     </main>

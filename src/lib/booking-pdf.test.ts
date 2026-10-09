@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseBooking, type PdfLine } from "./booking-pdf";
+import { euroCents, parseBooking, type PdfLine } from "./booking-pdf";
 
 const lines = (rows: [string, number][]): PdfLine[] => rows.map(([text, size]) => ({ text, size }));
 
@@ -17,7 +17,7 @@ describe("parseBooking", () => {
         ["Precio total € 245", 12],
       ]),
     );
-    expect(info).toEqual({ name: "Hotel Artemide", via: "booking", checkIn: "15:00", checkOut: "11:00" });
+    expect(info).toEqual({ name: "Hotel Artemide", via: "booking", checkIn: "15:00", checkOut: "11:00", priceCents: 24500 });
   });
 
   it("un itinerario de Airbnb en inglés, con AM y PM", () => {
@@ -35,5 +35,15 @@ describe("parseBooking", () => {
 
   it("lo que no encuentra queda vacío", () => {
     expect(parseBooking(lines([["Reserva", 20], ["Gracias por elegirnos", 12]]))).toEqual({});
+  });
+});
+
+describe("euroCents", () => {
+  it("montos con y sin centavos, en formato europeo o inglés", () => {
+    expect(euroCents("Precio total € 245")).toBe(24500);
+    expect(euroCents("Total: 1.234,56 €")).toBe(123456);
+    expect(euroCents("Total (EUR) 1,234.56")).toBe(123456);
+    expect(euroCents("Total EUR 380")).toBe(38000);
+    expect(euroCents("Total")).toBeNull();
   });
 });

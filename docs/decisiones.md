@@ -404,3 +404,31 @@ También: con el teclado abierto en el iPhone, los sheets se acomodan a la parte
 **Fecha:** 2026-10-09
 **Decisión:** todos los campos donde se escribe tienen letra de 16 px o más: con menos, Safari hace zoom al tocarlos. Los campos de fecha y hora pierden el estilo propio de iOS y el ancho mínimo, así no se salen de la grilla (por ejemplo "Desde" y "Hasta" en "Nuevo viaje"). Un campo nuevo tiene que respetar los 16 px.
 **Por qué:** pedido de Ale; al crear un viaje la pantalla se agrandaba al escribir y los campos se salían.
+
+### 060 · El teclado pasa por arriba de los sheets
+**Fecha:** 2026-10-09
+**Decisión:** con el teclado abierto en el iPhone, el sheet no cambia de tamaño: el teclado le pasa por arriba y tapa la parte de abajo. Si Safari corre la página para mostrar el campo, el sheet se corre lo mismo (`visualViewport.offsetTop`) y queda en su lugar, sin que se vea lo de atrás. Reemplaza lo de la 056, que achicaba el sheet a la parte visible.
+**Por qué:** pedido de Ale; achicado quedaba chico y se veía lo que había atrás.
+
+### 061 · Pantalla de carga
+**Fecha:** 2026-10-09
+**Decisión:** mientras carga una pantalla (inicio, viaje, invitación) se ve el logo flotando con la "o" que rebota, la línea punteada del recorrido con un avión rosado que la cruza y una frase que cambia cada dos segundos ("Armando la valija…", "Buscando los pasajes…", "Haciendo las cuentas…", "Ya casi salimos…"). Está hecha con CSS para que se vea antes de que cargue el JavaScript, y se queda quieta si el teléfono tiene "reducir movimiento". El diseño original no tenía pantalla de carga.
+**Por qué:** pedido de Ale; antes decía solo "Cargando…".
+
+### 062 · El logo dice "Vamo"
+**Fecha:** 2026-10-09
+**Decisión:** el logo pasa de "Vo" a "Vamo", escrito a mano como el anterior: Caveat Bold en blanco sobre el mismo navy (`#032F45`), con margen para que el iPhone y Android redondeen las esquinas sin cortar las letras. Las letras están convertidas en trazos en `public/logo.svg` (los íconos se dibujan desde ese archivo en `src/lib/app-icon.tsx`), con la "o" aparte para que rebote en la pantalla de carga.
+**Por qué:** pedido de Ale.
+
+### 063 · Los nombres de las ciudades en el mapa
+**Fecha:** 2026-10-09
+**Decisión:** al lado del número de cada pin va el nombre de la ciudad, en una pastilla blanca. Cada vez que el mapa se mueve o cambia el zoom se calcula cuáles entran sin pisar otro pin u otro nombre (a la derecha, o a la izquierda si no entra): primero la ciudad resaltada, después las de tu parte del viaje y después en el orden del recorrido. De lejos se ven algunos; al acercar, todos.
+**Por qué:** pedido de Ale; con solo los números había que adivinar qué ciudad era cada punto.
+
+### 064 · La tarjeta del alojamiento se convierte en el formulario
+**Fecha:** 2026-10-09
+**Decisión:** el alojamiento es una sola tarjeta con dos modos, como la ciudad (051):
+- **Vista:** el ícono según dónde se reservó, el nombre, dónde se reservó con el precio y quién pagó, las fechas, la hora de entrada y de salida, y quiénes están, con "Ver reserva" y "Editar". Tocar las bolitas también pasa a editar.
+- **Edición:** la misma tarjeta pasa a ser el formulario, con un solo botón "Subir la reserva · PDF o imagen", el nombre, check-in y checkout, "Reservado en", "Cuánto salió" (siempre a la vista; sin "Reservado en" cuenta como "Otro"), quién pagó, la división y "Quiénes están", que antes no se encontraba. "Listo" vuelve a la vista.
+Del PDF de la reserva ahora también sale el precio total, si está en euros. Una imagen se adjunta pero no se lee.
+**Por qué:** pedido de Ale; la tarjeta y el formulario separados confundían y no se veía dónde cambiar quiénes están.

@@ -1,3 +1,4 @@
+import { LoadingScreen } from "@/components/loading-screen";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { TripScreen } from "@/components/trip/trip-screen";
@@ -22,7 +23,7 @@ import {
 
 export default function TripPage({ params }: PageProps<"/viaje/[id]">) {
   return (
-    <Suspense fallback={<p className="p-5 text-[15px] text-ink-2">Cargando el viaje…</p>}>
+    <Suspense fallback={<LoadingScreen label="Cargando el viaje" />}>
       <Trip params={params} />
     </Suspense>
   );
