@@ -116,6 +116,15 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Con el teclado abierto, las listas de un sheet suman abajo el alto del teclado, para que el
+   último campo pueda subir hasta quedar arriba del teclado (ver bottom-sheet.tsx). */
+[data-sheet] .overflow-y-auto::after {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  height: var(--keyboard, 0px);
+}
+
 html,
 body {
   background: #fff;

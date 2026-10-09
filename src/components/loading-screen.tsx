@@ -11,8 +11,8 @@ export function LoadingScreen({ label = "Cargando" }: { label?: string }) {
   return (
     <div role="status" aria-label={label} className="fixed inset-0 z-[1] flex flex-col items-center justify-center bg-white">
       <div className="loading-float">
-        <svg viewBox="0 0 512 512" className="size-[96px] rounded-[28px] shadow-[0_12px_32px_rgb(3_47_69/0.28)]" aria-hidden>
-          <rect width="512" height="512" fill="#032F45" />
+        <svg viewBox="0 0 512 512" className="size-[96px] rounded-[28px] shadow-[0_12px_32px_rgb(255_56_92/0.3)]" aria-hidden>
+          <rect width="512" height="512" fill="#FF385C" />
           <path d={LOGO_VAM} fill="white" />
           <path d={LOGO_O} fill="white" className="loading-bounce" />
         </svg>
