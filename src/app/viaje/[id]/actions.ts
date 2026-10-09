@@ -42,7 +42,8 @@ export type SaveStopInput = {
 };
 
 // Guarda quién está, las notas y el alojamiento con su gasto (supabase/migrations/0003_stops.sql).
-export async function saveStop(input: SaveStopInput): Promise<{ error: string } | null> {
+// Devuelve el id del alojamiento, para subirle la reserva si se eligió antes de guardarlo.
+export async function saveStop(input: SaveStopInput): Promise<{ error: string } | { stayId: string | null }> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("save_stop", {
     p_stop_id: input.stopId,
@@ -57,12 +58,14 @@ export async function saveStop(input: SaveStopInput): Promise<{ error: string } 
   });
   if (!error) {
     // Las horas de check-in y checkout van aparte (migración 0009), si quedó un alojamiento.
-    if (!input.stayName.trim() && !input.bookedVia) return null;
-    const { error: timesError } = await supabase
+    if (!input.stayName.trim() && !input.bookedVia) return { stayId: null };
+    const { data: stay, error: timesError } = await supabase
       .from("stays")
       .update({ check_in_time: input.checkIn, check_out_time: input.checkOut })
-      .eq("stop_id", input.stopId);
-    return timesError ? { error: lockedError(timesError) ?? "No pudimos guardar las horas del alojamiento." } : null;
+      .eq("stop_id", input.stopId)
+      .select("id")
+      .maybeSingle();
+    return timesError ? { error: lockedError(timesError) ?? "No pudimos guardar las horas del alojamiento." } : { stayId: stay?.id ?? null };
   }
   if (error.message.includes("no suma")) return { error: "La división del alojamiento no suma el total." };
   if (error.message.includes("al menos")) return { error: "Tiene que quedar al menos una persona." };

@@ -64,7 +64,7 @@ export function ClaimForm({ code, members }: { code: string; members: InviteMemb
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Ej. Agustín"
             autoFocus
-            className="h-[50px] w-full rounded-field border border-line bg-white px-4 text-[15px] font-semibold outline-none focus:border-navy"
+            className="h-[50px] w-full rounded-field border border-line bg-white px-4 text-[16px] font-semibold outline-none focus:border-navy"
           />
         </label>
       )}

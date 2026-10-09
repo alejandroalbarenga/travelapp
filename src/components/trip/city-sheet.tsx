@@ -10,6 +10,7 @@ import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Attachment, BookingSource, Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
 import { BOOKING_LABEL } from "@/lib/trip-view";
+import { readBookingPdf } from "@/lib/read-booking-pdf";
 import { BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./attachment-controls";
@@ -75,7 +76,8 @@ export function CitySheet({
   onClose: () => void;
   onNights: (delta: number) => void;
   onOpenLeg: (fromStopId: string) => void;
-  onSave: (input: SaveStopInput, stay: Stay | null) => Promise<string | null>;
+  /** Con `receipt`: la reserva elegida antes de que el alojamiento existiera, para subirla al guardar. */
+  onSave: (input: SaveStopInput, stay: Stay | null, receipt?: File) => Promise<string | null>;
   onDelete: (stopId: string) => Promise<string | null>;
   /** Solo ver (decisión 034): todo deshabilitado, sin guardar ni borrar. */
   readOnly?: boolean;
@@ -116,8 +118,12 @@ export function CitySheet({
   const [checkIn, setCheckIn] = useState(stay?.check_in_time ?? "");
   const [checkOut, setCheckOut] = useState(stay?.check_out_time ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  // Qué se está editando: el alojamiento o quién está (se abren desde la tarjeta).
-  const [editingStay, setEditingStay] = useState(false);
+  // Qué se está editando: el alojamiento o quién está (se abren desde la tarjeta). Si todavía no hay
+  // alojamiento y se puede cargar, arranca abierto para completarlo.
+  const [editingStay, setEditingStay] = useState(!readOnly && !stop.locked && !stay && stop.nights > 0);
+  // La reserva elegida antes de guardar el alojamiento: se sube al guardar (decisión 057).
+  const [pendingReceipt, setPendingReceipt] = useState<File | null>(null);
+  const [readNote, setReadNote] = useState("");
   const [editingPeople, setEditingPeople] = useState(false);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -139,7 +145,8 @@ export function CitySheet({
     (priceCents > 0 && paidBy !== (stay?.paid_by_member_id ?? paidBy)) ||
     split !== null ||
     checkIn !== (stay?.check_in_time ?? "") ||
-    checkOut !== (stay?.check_out_time ?? "");
+    checkOut !== (stay?.check_out_time ?? "") ||
+    pendingReceipt !== null;
 
   const joined = prev ? people.filter((id) => !prev.member_ids.includes(id)) : [];
   const left = prev ? prev.member_ids.filter((id) => !people.includes(id)) : [];
@@ -160,6 +167,34 @@ export function CitySheet({
     .filter(Boolean)
     .join(" · ");
 
+  // Subir la reserva: si es un PDF, completa lo que esté vacío (nombre, dónde se reservó, horarios).
+  async function addReceipt(input: AttachmentInput): Promise<string | null> {
+    if ("file" in input && (input.file.type === "application/pdf" || input.file.name.toLowerCase().endsWith(".pdf"))) {
+      const info = await readBookingPdf(input.file).catch(() => null);
+      const found: string[] = [];
+      if (info?.name && !stayName.trim()) {
+        setStayName(info.name);
+        found.push("el nombre");
+      }
+      if (info?.via && !via) {
+        setVia(info.via);
+        found.push("dónde se reservó");
+      }
+      if (info?.checkIn && !checkIn) {
+        setCheckIn(info.checkIn);
+        found.push("el check-in");
+      }
+      if (info?.checkOut && !checkOut) {
+        setCheckOut(info.checkOut);
+        found.push("el checkout");
+      }
+      setReadNote(found.length ? `Sacamos de la reserva ${namesList(found)}. Revisá que esté bien.` : "No pudimos leer los datos de la reserva: completalos a mano.");
+    }
+    if (savedStayId) return onAddReceipt(savedStayId, input);
+    if ("file" in input) setPendingReceipt(input.file);
+    return null;
+  }
+
   function togglePerson(id: string) {
     const on = people.includes(id);
     if (on && people.length === 1) return;
@@ -169,6 +204,10 @@ export function CitySheet({
   function save(close: () => void) {
     if (!dirty) {
       close();
+      return;
+    }
+    if (pendingReceipt && !hasStay) {
+      setError("Poné el nombre del alojamiento para guardar la reserva.");
       return;
     }
     const hasExpense = !!via && priceCents > 0;
@@ -207,7 +246,7 @@ export function CitySheet({
       : null;
     setError("");
     startTransition(async () => {
-      const message = await onSave(input, newStay);
+      const message = await onSave(input, newStay, pendingReceipt ?? undefined);
       if (message) setError(message);
       else close();
     });
@@ -403,6 +442,40 @@ export function CitySheet({
               {/* Editar el alojamiento: nombre, dónde se reservó, comprobante, precio, quién pagó y la división. */}
               {editingStay && (
                 <div className="mt-3 rounded-[22px] border border-line p-4">
+                  {/* La reserva primero: si es un PDF, completa el resto (decisión 057). */}
+                  {stay && stay.attachments.length > 0 ? (
+                    <div className="mb-3 overflow-hidden rounded-[16px] border border-line">
+                      {stay.attachments.map((a, k) => (
+                        <AttachmentRow
+                          key={a.id}
+                          attachment={a}
+                          title="Comprobante"
+                          first={k === 0}
+                          onOpen={() => onViewReceipt(stay.id, a.id)}
+                          onRemove={readOnly ? undefined : () => onRemoveReceipt(stay.id, a)}
+                        />
+                      ))}
+                    </div>
+                  ) : pendingReceipt ? (
+                    <div className="mb-3 flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
+                      <FileText size={18} className="shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-bold">{pendingReceipt.name}</div>
+                        <div className="text-xs text-ink-2">Se sube al guardar</div>
+                      </div>
+                      <button type="button" onClick={() => (setPendingReceipt(null), setReadNote(""))} aria-label="Sacar la reserva" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mb-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-ink-2">
+                        <FileText size={14} /> Subí la reserva y completamos el nombre y los horarios
+                      </div>
+                      <AddAttachmentButtons withLink={false} onAdd={addReceipt} />
+                    </div>
+                  )}
+                  {readNote && <p className="-mt-1 mb-3 text-[13px] text-ink-2">{readNote}</p>}
                   <input
                     value={stayName}
                     onChange={(e) => setStayName(e.target.value)}
@@ -429,32 +502,6 @@ export function CitySheet({
                       </button>
                     ))}
                   </div>
-                  {stay && stay.attachments.length > 0 && (
-                    <div className="mt-3 overflow-hidden rounded-[16px] border border-line">
-                      {stay.attachments.map((a, k) => (
-                        <AttachmentRow
-                          key={a.id}
-                          attachment={a}
-                          title="Comprobante"
-                          first={k === 0}
-                          onOpen={() => onViewReceipt(stay.id, a.id)}
-                          onRemove={readOnly ? undefined : () => onRemoveReceipt(stay.id, a)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {savedStayId ? (
-                    stay!.attachments.length === 0 && (
-                      <>
-                        <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-ink-2">
-                          <FileText size={14} /> Subir comprobante
-                        </div>
-                        <AddAttachmentButtons withLink={false} onAdd={(input) => onAddReceipt(savedStayId, input)} />
-                      </>
-                    )
-                  ) : (
-                    hasStay && <p className="mt-3 text-[13px] text-ink-2">Guardá para poder subir el comprobante.</p>
-                  )}
                   {via && (
                     <>
                       <div className="mt-4 text-xs font-bold text-ink-2">Precio total</div>
@@ -683,7 +730,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
   return (
     <label className="block min-w-0 rounded-field border border-line px-3 py-2 focus-within:border-ink">
       <span className="block text-[11px] font-bold text-ink-2">{label}</span>
-      <input type="time" value={value} onChange={(e) => onChange(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[15px] font-bold outline-none" />
+      <input type="time" value={value} onChange={(e) => onChange(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
     </label>
   );
 }

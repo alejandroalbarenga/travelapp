@@ -47,7 +47,7 @@ function NewTripSheet({ onClose }: { onClose: () => void }) {
     });
   }
 
-  const field = "h-[52px] w-full rounded-field border border-line bg-white px-4 text-[15px] font-semibold outline-none focus:border-navy";
+  const field = "h-[52px] w-full rounded-field border border-line bg-white px-4 text-[16px] font-semibold outline-none focus:border-navy";
   return (
     <BottomSheet onClose={onClose} label="Nuevo viaje">
       {(close) => (

@@ -212,11 +212,11 @@ export function LegSheet({
             </div>
             <label className={box}>
               <div className="text-[11px] font-bold text-ink-2">Salida</div>
-              <input type="time" value={dep} onChange={(e) => setDep(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[15px] font-bold outline-none" />
+              <input type="time" value={dep} onChange={(e) => setDep(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
             </label>
             <label className={box}>
               <div className="text-[11px] font-bold text-ink-2">Llegada</div>
-              <input type="time" value={arr} onChange={(e) => setArr(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[15px] font-bold outline-none" />
+              <input type="time" value={arr} onChange={(e) => setArr(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
             </label>
           </div>
           <div className="mt-2 text-[13px] text-ink-2">

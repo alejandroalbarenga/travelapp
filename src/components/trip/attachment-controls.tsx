@@ -82,7 +82,7 @@ export function AddAttachmentButtons({
             autoCorrect="off"
             placeholder="Link de la reserva o la aerolínea"
             aria-label="Link"
-            className="h-11 min-w-0 flex-1 rounded-field border border-line bg-white px-3.5 text-sm text-ink outline-none focus:border-navy"
+            className="h-11 min-w-0 flex-1 rounded-field border border-line bg-white px-3.5 text-[16px] text-ink outline-none focus:border-navy"
           />
           <button type="button" disabled={pending} onClick={saveLink} className="bg-pink h-11 shrink-0 rounded-field px-4 text-sm font-bold text-white disabled:opacity-50">
             Agregar
