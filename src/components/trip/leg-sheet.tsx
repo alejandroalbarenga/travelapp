@@ -1,6 +1,6 @@
 "use client";
 
-import { Bus, Car, Clock, Ellipsis, Plane, Ticket, TrainFront, X, type LucideIcon } from "lucide-react";
+import { Bus, Car, Clock, Ellipsis, Pencil, Plane, Ticket, TrainFront, X, type LucideIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { sortTickets, ticketTitle } from "@/lib/attachments";
 import { addDays, formatWeekday, stopDates } from "@/lib/dates";
@@ -22,6 +22,13 @@ const MODES: { mode: LegMode; label: string; name: string; Icon: LucideIcon; on:
   { mode: "other", label: "Otro", name: "Traslado", Icon: Ellipsis, on: "border-other bg-other-bg text-other" },
 ];
 const MODE_ICON_COLOR: Record<LegMode, string> = { car: "text-car", train: "text-train", plane: "text-plane", bus: "text-bus", other: "text-other" };
+const MODE_BG: Record<LegMode, string> = {
+  car: "bg-car-bg text-car",
+  train: "bg-train-bg text-train",
+  plane: "bg-plane-bg text-plane",
+  bus: "bg-bus-bg text-bus",
+  other: "bg-other-bg text-other",
+};
 
 export type LegDraft = Omit<Leg, "id" | "attachments"> & { id?: string };
 
@@ -73,6 +80,9 @@ export function LegSheet({
   );
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  // Modo vista (decisión 055): un tramo ya cargado se abre para leerlo, como un itinerario; "Editar"
+  // pasa al formulario. Uno nuevo se abre directo en edición. Quien solo ve, siempre en vista.
+  const [editing, setEditing] = useState(!readOnly && !leg);
 
   const totalCents = parseAmount(price);
   const departsAt = dep ? zonedToInstant(date, dep, fromTz) : null;
@@ -141,11 +151,41 @@ export function LegSheet({
               De {from.city} a {to?.city ?? "casa"}
             </div>
           </div>
+          {!editing && !readOnly && (
+            <button type="button" onClick={() => setEditing(true)} className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-surface px-4 text-sm font-bold">
+              <Pencil size={15} /> Editar
+            </button>
+          )}
           <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface">
             <X size={20} />
           </button>
         </div>
 
+        {!editing && leg ? (
+          <div className="flex-1 overflow-y-auto px-5 pt-2 pb-6 [scrollbar-width:none]">
+            <LegView
+              leg={leg}
+              fromCity={from.city}
+              toCity={to?.city ?? "casa"}
+              date={date}
+              dep={dep}
+              arr={arr}
+              nextDay={!!(dep && arr && arr <= dep)}
+              duration={duration}
+              tzNote={
+                tzDiff !== 0 && to
+                  ? `${to.city} está ${Math.abs(tzDiff)} h ${tzDiff > 0 ? "adelante" : "atrás"} de ${from.city}. Los horarios van en la hora de cada ciudad.`
+                  : null
+              }
+              members={trip.members}
+              travellers={travellers}
+              myMemberId={myMemberId}
+              tickets={tickets}
+              withTicket={withTicket}
+              onOpenTicket={(t) => (t.kind === "link" && t.url ? window.open(t.url, "_blank", "noopener") : onViewTicket(fromStopId, t.id))}
+            />
+          </div>
+        ) : (
         <div className="flex-1 overflow-y-auto px-5 pt-1 pb-6 [scrollbar-width:none]">
           <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
           <div className={label}>Medio de transporte</div>
@@ -288,9 +328,21 @@ export function LegSheet({
               <p className="mt-2.5 text-[13px] text-ink-2">Guardá el tramo para adjuntar los pasajes.</p>
             ))}
         </div>
+        )}
 
         <div className="border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
           {error && <p className="mb-2 text-[13px] font-bold text-danger">{error}</p>}
+          {!editing ? (
+            myTicket ? (
+              <button type="button" onClick={() => onViewTicket(fromStopId, myTicket.id)} className="bg-pink flex h-14 w-full items-center justify-center gap-2 rounded-button text-base font-bold text-white">
+                <Ticket size={18} /> {myTicket.member_id ? "Ver mi pasaje" : "Ver pasaje"}
+              </button>
+            ) : (
+              <button type="button" onClick={close} className="bg-pink h-14 w-full rounded-button text-base font-bold text-white">
+                Cerrar
+              </button>
+            )
+          ) : (
           <div className={myTicket && !readOnly ? "grid grid-cols-2 gap-2" : ""}>
             {myTicket && (
               <button
@@ -313,9 +365,138 @@ export function LegSheet({
               </button>
             )}
           </div>
+          )}
         </div>
       </>
       )}
     </BottomSheet>
+  );
+}
+
+// Modo vista del tramo (decisión 055): en qué vas, a qué hora salís y llegás, cuánto salió y los pasajes.
+function LegView({
+  leg,
+  fromCity,
+  toCity,
+  date,
+  dep,
+  arr,
+  nextDay,
+  duration,
+  tzNote,
+  members,
+  travellers,
+  myMemberId,
+  tickets,
+  withTicket,
+  onOpenTicket,
+}: {
+  leg: Leg;
+  fromCity: string;
+  toCity: string;
+  date: string;
+  dep: string;
+  arr: string;
+  nextDay: boolean;
+  duration: number | null;
+  tzNote: string | null;
+  members: Trip["members"];
+  travellers: string[];
+  myMemberId: string | null;
+  tickets: LegAttachment[];
+  withTicket: number;
+  onOpenTicket: (ticket: LegAttachment) => void;
+}) {
+  const mode = MODES.find((m) => m.mode === leg.mode)!;
+  const Icon = mode.Icon;
+  const payer = members.find((m) => m.id === leg.paid_by_member_id);
+  const people = members.filter((m) => travellers.includes(m.id));
+  const mine = myMemberId ? leg.split.find((s) => s.member_id === myMemberId) : undefined;
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <span className={`flex size-12 shrink-0 items-center justify-center rounded-[14px] ${MODE_BG[leg.mode]}`}>
+          <Icon size={24} />
+        </span>
+        <div className="min-w-0">
+          <div className="text-[17px] font-bold">{mode.name}</div>
+          <div className="text-sm text-ink-2">
+            {formatWeekday(date)}
+            {duration != null ? ` · ${formatDuration(duration)}` : ""}
+          </div>
+        </div>
+      </div>
+
+      {/* Salida y llegada, como en un pasaje. */}
+      <div className="mt-5 rounded-[22px] border border-line p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-16 shrink-0 text-[26px] leading-none font-extrabold tracking-[-0.02em]">{dep || "--:--"}</div>
+          <div className="min-w-0 pt-0.5">
+            <div className="text-[16px] font-bold">{fromCity}</div>
+            <div className="text-[13px] text-ink-2">Salida</div>
+          </div>
+        </div>
+        <div className="my-2 ml-[30px] h-6 border-l-2 border-dotted border-dots" />
+        <div className="flex items-start gap-3">
+          <div className="w-16 shrink-0 text-[26px] leading-none font-extrabold tracking-[-0.02em]">
+            {arr || "--:--"}
+            {nextDay && <sup className="ml-0.5 text-xs font-bold text-orange">+1</sup>}
+          </div>
+          <div className="min-w-0 pt-0.5">
+            <div className="text-[16px] font-bold">{toCity}</div>
+            <div className="text-[13px] text-ink-2">Llegada{nextDay ? " · al día siguiente" : ""}</div>
+          </div>
+        </div>
+        {!dep && !arr && <p className="mt-3 text-[13px] text-ink-2">Todavía no se cargaron los horarios.</p>}
+      </div>
+      {tzNote && (
+        <div className="mt-2.5 flex items-start gap-2.5 rounded-field border border-tz-border bg-tz-bg px-3.5 py-3 text-[13px] leading-[1.4] text-tz-text">
+          <Clock size={16} className="mt-px shrink-0 text-orange" />
+          <span>{tzNote}</span>
+        </div>
+      )}
+
+      {/* Quiénes viajan y cuánto salió. */}
+      <div className="mt-5 flex items-center gap-3">
+        <div className="flex shrink-0">
+          {people.slice(0, 5).map((m, k) => (
+            <span key={m.id} className="flex size-9 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white" style={{ background: m.color, marginLeft: k ? -8 : 0 }}>
+              {m.initials}
+            </span>
+          ))}
+        </div>
+        <div className="min-w-0 text-sm text-ink-2">
+          {leg.total_price_cents
+            ? `${formatEuros(leg.total_price_cents)}${payer ? ` · pagó ${payer.display_name}` : ""}${mine ? ` · tu parte ${formatEuros(mine.amount_cents)}` : ""}`
+            : "Sin precio cargado"}
+        </div>
+      </div>
+
+      {/* Pasajes */}
+      <div className="mt-6 mb-2.5 flex items-baseline justify-between">
+        <span className="text-[17px] font-bold">Pasajes</span>
+        {tickets.length > 0 && (
+          <span className="text-xs font-bold text-ink-2">
+            {withTicket} de {travellers.length} viajeros
+          </span>
+        )}
+      </div>
+      {tickets.length ? (
+        <div className="overflow-hidden rounded-[18px] border border-line">
+          {tickets.map((t, k) => (
+            <AttachmentRow
+              key={t.id}
+              attachment={t}
+              title={t.kind === "link" ? "Link de la reserva" : ticketTitle(t.member_id, myMemberId, members)}
+              owner={members.find((m) => m.id === t.member_id)}
+              first={k === 0}
+              onOpen={() => onOpenTicket(t)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-ink-2">Todavía no hay un pasaje adjunto.</p>
+      )}
+    </>
   );
 }

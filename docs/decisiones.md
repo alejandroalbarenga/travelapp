@@ -355,3 +355,25 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 **Decisión:** en el celular, la tarjeta de la ciudad ya no lleva el círculo con su número (el orden lo da la lista). En la web, los números sobre la línea se quedan, igual que los pines del mapa.
 **Por qué:** decisión de Ale, para que la lista quede más limpia.
 - En la web, una ciudad bloqueada (o para quien solo ve) muestra "4 noches" al costado en vez del más y el menos.
+
+### 054 · Tu parte del viaje
+**Fecha:** 2026-10-08
+**Decisión:** quien se suma más tarde o se va antes ve el viaje entero, pero con su parte en primer plano. Su parte va de la primera a la última ciudad donde está (`stop_members`).
+- **Lista del viaje (celular):**
+  - Lo de antes de que llegue queda plegado arriba ("Antes de que llegues · Madrid → Oslo · 7 ciudades") y lo de después, abajo ("Después de que te vas").
+  - Los dos se abren con "Ver".
+  - El tramo que lo trae a su primera ciudad se ve igual, y el encabezado dice "Empezás en Alicante" con su fecha.
+- **Inicio:** la tarjeta muestra sus fechas, su cuenta regresiva ("hasta que llegás vos"), "Te sumás en Alicante" o "Hasta Riga", y la foto de su primera ciudad.
+- **Permisos:** no cambian. Dependen del rol (034), no de dónde se suma.
+- **Pendiente:** resaltar su parte en el mapa, plegar en Gastos los gastos donde no participa, y plegar también en la web.
+**Por qué:** decisión de Ale; alguien que se suma en Alicante no necesita ver primero tres semanas de viaje que no hizo.
+
+### 055 · El tramo en modo vista
+**Fecha:** 2026-10-08
+**Decisión:** como la ciudad (051), un tramo ya cargado se abre en modo vista, una lectura como de pasaje:
+- el medio, el día y la duración;
+- la salida y la llegada con hora y ciudad (con "+1" si se llega al día siguiente) y el aviso de huso;
+- quiénes viajan, el precio, quién pagó y tu parte;
+- los pasajes, y abajo "Ver mi pasaje".
+"Editar" (arriba, para los que pueden editar) pasa al formulario de siempre. Un tramo nuevo se abre directo en edición, y quien solo ve, siempre en vista.
+**Por qué:** decisión de Ale; una vez cargado, al tramo se entra para saber a qué hora salís y llegás, no para cambiarlo.
