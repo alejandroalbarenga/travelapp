@@ -1,6 +1,6 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Share, Ticket, TrainFront, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Share, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
@@ -14,7 +14,7 @@ import { addLinkAttachment, deleteAttachment, signedUrl, uploadAttachment, type 
 import { initialsFor, pickColor } from "@/lib/members";
 import type { Activity, Attachment, Expense, Leg, LegAttachment, LegMode, Member, MemberRole, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
-import { TripTabs, type TripTab } from "../trip-tabs";
+import type { TripTab } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
 import { CitySearchSheet, type CitySearchMode } from "./city-search-sheet";
 import { LegSheet, type LegDraft } from "./leg-sheet";
@@ -611,7 +611,7 @@ export function TripScreen({
           del header translúcido. */}
       <div
         ref={sheetRef}
-        className={`absolute inset-x-0 bottom-0 z-[1] overflow-hidden bg-white shadow-[0_-6px_24px_rgb(0_41_61/0.14)] ${
+        className={`absolute inset-x-0 bottom-0 z-[1] overflow-hidden bg-white shadow-[0_-6px_24px_rgb(0_0_0/0.14)] ${
           sheetAnimating ? "transition-[top,border-radius] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]" : ""
         }`}
         style={{ top: sheetTop, borderRadius: `${sheetRadius}px ${sheetRadius}px 0 0` }}
@@ -634,7 +634,7 @@ export function TripScreen({
           </button>
 
           <div className="flex items-center gap-3 pt-1.5">
-            <div className="bg-navy-gradient ml-[22px] flex size-11 shrink-0 items-center justify-center rounded-full text-white shadow-[0_4px_12px_rgb(0_41_61/0.25)]">
+            <div className="bg-navy ml-[22px] flex size-11 shrink-0 items-center justify-center rounded-full text-white shadow-[0_4px_12px_rgb(0_0_0/0.25)]">
               <House size={20} />
             </div>
             <div className="min-w-0 flex-1">
@@ -653,7 +653,7 @@ export function TripScreen({
                 <button
                   type="button"
                   onClick={() => setCitySearch({ kind: "add", afterStopId: null })}
-                  className="bg-navy-gradient mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-button text-[15px] font-bold text-white"
+                  className="bg-pink mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-button text-[15px] font-bold text-white"
                 >
                   <MapPin size={18} /> Agregar la primera ciudad
                 </button>
@@ -710,6 +710,10 @@ export function TripScreen({
           onSettle={settle}
           onUndo={undoSettle}
           onTransfer={() => setOpenTransfer(true)}
+          onBack={() => {
+            setTab("trip");
+            setFabOpen(false);
+          }}
         />
       )}
 
@@ -727,6 +731,17 @@ export function TripScreen({
           </div>
         </div>
         <div className="absolute top-0 right-0 flex flex-col gap-2.5">
+          <button
+            type="button"
+            aria-label="Gastos"
+            onClick={() => {
+              setTab("expenses");
+              setFabOpen(false);
+            }}
+            className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full"
+          >
+            <Wallet size={20} />
+          </button>
           <button type="button" aria-label="Calendario del viaje" onClick={() => setCalendar({ kind: "view" })} className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
             <Calendar size={20} />
           </button>
@@ -739,7 +754,7 @@ export function TripScreen({
             style={{ opacity: 1 - headerOpacity }}
           >
             <Users size={20} />
-            <span className="absolute -top-[3px] -right-[3px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-orange px-[5px] text-[10px] font-extrabold text-white">
+            <span className="absolute -top-[3px] -right-[3px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-pink px-[5px] text-[10px] font-extrabold text-white">
               {travellers}
             </span>
           </button>
@@ -754,22 +769,21 @@ export function TripScreen({
         </div>
       </div>
 
-      <TripTabs
-        tab={tab}
-        onChange={(t) => {
-          setTab(t);
-          setFabOpen(false);
-        }}
-      />
       {canEdit && fabOpen && (
         <>
           <button type="button" aria-label="Cerrar el menú" onClick={() => setFabOpen(false)} className="fixed inset-0 z-[3] bg-[rgb(15_16_18/0.38)]" />
-          <div className="fixed right-5 z-[4] flex flex-col items-end gap-2.5" style={{ bottom: "calc(var(--safe-bottom) + 90px)" }}>
-            {[
-              { label: "Agregar ciudad", Icon: MapPin, onClick: () => setCitySearch({ kind: "add", afterStopId: lastBeforeReturn }) },
-              { label: "Agregar tramo", Icon: Route, onClick: () => (firstMissingLeg ? setOpenLeg(firstMissingLeg) : undefined), disabled: !firstMissingLeg },
-              { label: "Agregar gasto", Icon: Receipt, onClick: () => setOpenExpense("new"), disabled: false },
-            ].map(({ label, Icon, onClick, disabled }) => (
+          <div className="fixed inset-x-0 z-[4] flex flex-col items-center gap-2.5" style={{ bottom: "calc(var(--safe-bottom) + 90px)" }}>
+            {(tab === "expenses"
+              ? [
+                  { label: "Agregar gasto", Icon: Receipt, onClick: () => setOpenExpense("new"), disabled: false },
+                  { label: "Registrar transferencia", Icon: ArrowLeftRight, onClick: () => setOpenTransfer(true), disabled: false },
+                ]
+              : [
+                  { label: "Agregar ciudad", Icon: MapPin, onClick: () => setCitySearch({ kind: "add", afterStopId: lastBeforeReturn }), disabled: false },
+                  { label: "Agregar tramo", Icon: Route, onClick: () => (firstMissingLeg ? setOpenLeg(firstMissingLeg) : undefined), disabled: !firstMissingLeg },
+                  { label: "Agregar gasto", Icon: Receipt, onClick: () => setOpenExpense("new"), disabled: false },
+                ]
+            ).map(({ label, Icon, onClick, disabled }, k, all) => (
               <button
                 key={label}
                 type="button"
@@ -779,6 +793,8 @@ export function TripScreen({
                   onClick();
                 }}
                 className="glass flex h-[52px] items-center gap-2.5 rounded-full pr-[18px] pl-2 text-[15px] font-bold disabled:opacity-50"
+                // Aparecen de a una, de abajo hacia arriba (tuk, tuk, tuk).
+                style={{ animation: `fab-pop 260ms cubic-bezier(.2,.9,.3,1.2) ${(all.length - 1 - k) * 70}ms both` }}
               >
                 <span className="flex size-9 items-center justify-center rounded-full bg-navy/10 text-navy">
                   <Icon size={16} />
@@ -792,12 +808,12 @@ export function TripScreen({
       {canEdit && (
       <button
         type="button"
-        aria-label="Agregar"
-        onClick={() => (tab === "expenses" ? setOpenExpense("new") : setFabOpen((o) => !o))}
-        className="fixed right-5 z-[2] flex size-14 items-center justify-center rounded-full border border-white/[.18] bg-[linear-gradient(180deg,rgb(6_56_80/0.95)_0%,rgb(0_41_61/0.95)_100%)] text-white shadow-[0_10px_30px_rgb(0_41_61/0.3),inset_0_1px_0_rgb(255_255_255/0.18)] backdrop-blur-xl"
+        aria-expanded={fabOpen}
+        onClick={() => setFabOpen((o) => !o)}
+        className="fixed left-1/2 z-[4] flex h-11 -translate-x-1/2 items-center rounded-full bg-navy px-6 text-[15px] font-bold text-white shadow-[0_8px_24px_rgb(0_0_0/0.22)]"
         style={{ bottom: "calc(var(--safe-bottom) + 20px)" }}
       >
-        <Plus size={28} className={`transition-transform duration-200 ${fabOpen ? "rotate-45" : ""}`} />
+        {fabOpen ? "Cerrar" : "Agregar"}
       </button>
       )}
 
@@ -806,6 +822,9 @@ export function TripScreen({
 
       {openCity && current.stops.some((s) => s.id === openCity) && (
         <CitySheet
+          // Una ficha nueva por ciudad: si se cambia de ciudad con la ficha abierta (un pin del mapa,
+          // el calendario), no se arrastran los datos de la anterior.
+          key={openCity}
           trip={current}
           stopId={openCity}
           myMemberId={myMemberId}
@@ -832,6 +851,7 @@ export function TripScreen({
       )}
       {openLeg && (
         <LegSheet
+          key={openLeg}
           trip={current}
           fromStopId={openLeg}
           myMemberId={myMemberId}
@@ -985,7 +1005,7 @@ function StopCard({
       aria-label={`Abrir ${stop.name}`}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      className="bg-card-gradient relative flex cursor-pointer items-center gap-3 rounded-card border border-navy/[.07] py-[9px] pr-1 pl-3 shadow-card"
+      className="relative flex cursor-pointer items-center gap-3 rounded-card bg-white py-[9px] pr-1 pl-3"
     >
       <div className="relative size-16 shrink-0">
         <div
@@ -994,9 +1014,7 @@ function StopCard({
         >
           {!stop.photoUrl && stop.code}
         </div>
-        <div className="bg-navy-gradient absolute -top-1.5 -left-1.5 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-white px-1.5 text-xs font-extrabold text-white">
-          {stop.number}
-        </div>
+        {/* Sin el número de la ciudad (decisión 052): el orden ya lo da la lista; en el mapa sigue. */}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <span className="truncate text-[17px] font-bold">{stop.name}</span>
@@ -1069,7 +1087,7 @@ function LegRow({
       <div className="absolute top-0 bottom-0 left-[43px] border-l-2 border-dotted border-dots" />
       {canEdit ? (
         <button type="button" aria-label="Agregar ciudad acá" onClick={onAddCity} className="relative ml-[22px] flex size-11 shrink-0 items-center justify-center">
-          <span className="flex size-[30px] items-center justify-center rounded-full border border-line bg-white text-navy shadow-[0_2px_6px_rgb(0_41_61/0.08)]">
+          <span className="flex size-[30px] items-center justify-center rounded-full border border-line bg-white text-navy shadow-[0_2px_6px_rgb(0_0_0/0.08)]">
             <Plus size={16} />
           </span>
         </button>
@@ -1078,7 +1096,7 @@ function LegRow({
       )}
       {leg && Icon ? (
         <>
-          <button type="button" onClick={onOpen} className="relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full border border-navy/[.07] bg-white pr-3 pl-1.5 shadow-card">
+          <button type="button" onClick={onOpen} className="relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full border border-line bg-white pr-3 pl-1.5">
             <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${MODE_CLASS[leg.mode]}`}>
               <Icon size={16} />
             </span>
@@ -1093,7 +1111,7 @@ function LegRow({
           {(leg.hasTicket || canEdit) && (
           <button type="button" onClick={onTicket} aria-label={leg.hasTicket ? "Ver pasaje" : "Adjuntar pasaje"} className="relative ml-1.5 flex size-11 shrink-0 items-center justify-center">
             {leg.hasTicket ? (
-              <span className="bg-navy-gradient flex size-[34px] items-center justify-center rounded-full text-white shadow-button">
+              <span className="bg-navy flex size-[34px] items-center justify-center rounded-full text-white shadow-button">
                 <Ticket size={16} />
               </span>
             ) : (

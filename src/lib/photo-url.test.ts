@@ -31,9 +31,11 @@ describe("pickPhoto", () => {
     expect(pickPhoto(null, media)).toBeNull();
   });
 
-  it("acepta un collage como foto principal", () => {
+  it("si la foto principal es un collage, busca una foto común en el artículo", () => {
     const summary = { thumbnail: { source: `${T}/3/3c/Bruselas_collage.png/330px-Bruselas_collage.png` } };
-    expect(pickPhoto(summary, null)).toBe(`${T}/3/3c/Bruselas_collage.png/500px-Bruselas_collage.png`);
+    const media = { items: [{ type: "image", title: "Archivo:Grand-Place.jpg", srcset: [{ src: "//thumb.wikimedia.org/g/Grand.jpg/500px-Grand.jpg" }] }] };
+    expect(pickPhoto(summary, media)).toBe("https://thumb.wikimedia.org/g/Grand.jpg/500px-Grand.jpg");
+    expect(pickPhoto({ thumbnail: { source: `${T}/m/Montage_Amsterdam.jpg/330px-Montage_Amsterdam.jpg` } }, null)).toBeNull();
   });
 });
 

@@ -15,7 +15,7 @@ import { BottomSheet } from "../bottom-sheet";
 export type CalendarMode = { kind: "view"; stopId?: string } | { kind: "pick"; stopId: string };
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
-const SHADES = ["bg-[#DCE3EA]", "bg-[#C9D3DD]"];
+const SHADES = ["bg-[#EBEBEB]", "bg-[#DDDDDD]"];
 
 export function CalendarSheet({
   trip,
@@ -84,7 +84,7 @@ export function CalendarSheet({
             </div>
             {picking ? (
               <button type="button" onClick={() => save(close)} disabled={pending} className="flex h-11 shrink-0 items-center disabled:opacity-70">
-                <span className="bg-navy-gradient flex h-9 items-center rounded-full px-4 text-sm font-bold text-white">{pending ? "…" : "Guardar"}</span>
+                <span className="bg-pink flex h-9 items-center rounded-full px-4 text-sm font-bold text-white">{pending ? "…" : "Guardar"}</span>
               </button>
             ) : (
               <span className="size-11 shrink-0" />
@@ -142,7 +142,7 @@ export function CalendarSheet({
                       const mine = bar.stopId === highlighted;
                       const style = { left: `calc(${(bar.left / 7) * 100}% + 1px)`, width: `calc(${(bar.width / 7) * 100}% - 2px)` };
                       const className = `absolute bottom-2.5 flex h-7 items-center overflow-hidden px-2 text-[11px] font-bold ${
-                        mine ? "bg-navy text-white" : `${SHADES[bar.shade]} text-[#33414D]`
+                        mine ? "bg-navy text-white" : `${SHADES[bar.shade]} text-[#222222]`
                       } ${bar.startsHere ? "rounded-l-full" : ""} ${bar.endsHere ? "rounded-r-full" : ""}`;
                       return picking ? (
                         <span key={bar.stopId} className={`pointer-events-none ${className}`} style={style}>

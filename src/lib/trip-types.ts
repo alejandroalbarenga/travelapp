@@ -78,6 +78,9 @@ export type Stay = {
   split: { member_id: string; amount_cents: number }[];
   /** Comprobantes de la reserva. */
   attachments: Attachment[];
+  /** Horas de check-in y checkout, "HH:MM" (decisión 051). */
+  check_in_time: string | null;
+  check_out_time: string | null;
 };
 
 export type ExpenseCategory = "transport" | "lodging" | "food" | "activities" | "other";

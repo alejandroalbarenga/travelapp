@@ -44,7 +44,7 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
          trip_members (id, display_name, initials, color, user_id, role),
          stops (id, position, city, country, country_code, code, tagline, notes, nights, timezone, lat, lng, photo_url, locked,
                 stop_members (member_id),
-                stays (id, stop_id, name, booked_via, total_price_cents, paid_by_member_id,
+                stays (id, stop_id, name, booked_via, total_price_cents, paid_by_member_id, check_in_time, check_out_time,
                        expense:expenses!stays_expense_id_fkey (expense_splits (member_id, amount_cents)),
                        stay_attachments (id, kind, storage_path, url, file_name, size_bytes))),
          legs (id, from_stop_id, to_stop_id, mode, departs_at, arrives_at, total_price_cents, paid_by_member_id,
@@ -97,7 +97,14 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
     settlements: row.settlements,
     activity: row.activity,
     stays: row.stops.flatMap((s) =>
-      s.stays.map(({ expense, stay_attachments, ...st }) => ({ ...st, split: expense?.expense_splits ?? [], attachments: stay_attachments })),
+      s.stays.map(({ expense, stay_attachments, ...st }) => ({
+        ...st,
+        split: expense?.expense_splits ?? [],
+        attachments: stay_attachments,
+        // La base devuelve "14:00:00".
+        check_in_time: st.check_in_time?.slice(0, 5) ?? null,
+        check_out_time: st.check_out_time?.slice(0, 5) ?? null,
+      })),
     ),
   };
 

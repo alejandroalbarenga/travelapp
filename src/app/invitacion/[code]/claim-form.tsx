@@ -23,7 +23,7 @@ export function ClaimForm({ code, members }: { code: string; members: InviteMemb
   return (
     <div className="mt-6">
       <div className="text-[13px] font-bold text-ink-2">¿Quién sos?</div>
-      <div className="mt-2 overflow-hidden rounded-card border border-navy/[.07] shadow-card">
+      <div className="mt-2 border-y border-divider">
         {members.map((m, i) => (
           <button
             key={m.id}
@@ -75,7 +75,7 @@ export function ClaimForm({ code, members }: { code: string; members: InviteMemb
         type="button"
         onClick={confirm}
         disabled={!selected || pending}
-        className="bg-navy-gradient mt-5 h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-70"
+        className="bg-pink mt-5 h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-70"
       >
         {pending ? "Entrando…" : "Entrar al viaje"}
       </button>
@@ -85,7 +85,7 @@ export function ClaimForm({ code, members }: { code: string; members: InviteMemb
 
 function Check() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00293D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222222" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M20 6 9 17l-5-5" />
     </svg>
   );

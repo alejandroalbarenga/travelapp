@@ -152,6 +152,8 @@ export const DEMO_TRIP: Trip = {
       paid_by_member_id: RO,
       split: [AL, RO, JO].map((member_id) => ({ member_id, amount_cents: 8800 })),
       attachments: [{ id: "sa1", kind: "pdf", storage_path: "demo/sa1.pdf", url: null, file_name: "Reserva_Booking_Bruselas.pdf", size_bytes: 96256 }],
+      check_in_time: "15:00",
+      check_out_time: "11:00",
     },
     {
       id: "st2",
@@ -162,6 +164,8 @@ export const DEMO_TRIP: Trip = {
       paid_by_member_id: AL,
       split: [AL, RO, JO].map((member_id) => ({ member_id, amount_cents: 14000 })),
       attachments: [],
+      check_in_time: "14:00",
+      check_out_time: "10:00",
     },
   ],
   expenses,

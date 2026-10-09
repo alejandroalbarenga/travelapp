@@ -119,7 +119,7 @@ export function TripMap({
     if (points.length === 0) return;
     const line = points.map((p) => [p.lat, p.lng] as [number, number]);
     L.polyline(line, { color: "#fff", weight: 6, opacity: 0.9, interactive: false }).addTo(g);
-    L.polyline(line, { color: "#00293D", weight: 3, dashArray: "1 7", lineCap: "round", interactive: false }).addTo(g);
+    L.polyline(line, { color: "#222222", weight: 3, dashArray: "1 7", lineCap: "round", interactive: false }).addTo(g);
 
     // Una ciudad que aparece dos veces (Madrid) comparte pin: "1 · 13".
     const groups = new Map<string, { lat: number; lng: number; labels: string[]; stopId: string; stopIds: string[] }>();
@@ -136,7 +136,7 @@ export function TripMap({
         zIndexOffset: on ? 1000 : 0,
         icon: L.divIcon({
           className: "",
-          html: `<div style="transform:translate(-50%,-50%) scale(${on ? 1.3 : 1});transition:transform .15s;display:inline-flex;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:${on ? "#F5891F" : "#00293D"};color:#fff;font:800 12px var(--font-jakarta),system-ui,sans-serif;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap">${pin.labels.join(" · ")}</div>`,
+          html: `<div style="transform:translate(-50%,-50%) scale(${on ? 1.3 : 1});transition:transform .15s;display:inline-flex;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:${on ? "#F5891F" : "#222222"};color:#fff;font:800 12px var(--font-jakarta),system-ui,sans-serif;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap">${pin.labels.join(" · ")}</div>`,
           iconSize: [0, 0],
         }),
       })
@@ -146,5 +146,5 @@ export function TripMap({
     if (refit) fit(L);
   }
 
-  return <div ref={el} className="absolute inset-0 z-0 bg-[#E8EEF4]" />;
+  return <div ref={el} className="absolute inset-0 z-0 bg-[#EFEFEF]" />;
 }

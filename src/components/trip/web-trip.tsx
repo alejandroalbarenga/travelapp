@@ -1,6 +1,6 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, Share, TrainFront, Trash2, type LucideIcon } from "lucide-react";
+import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, Share, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { LegMode, Member } from "@/lib/trip-types";
@@ -30,7 +30,7 @@ const MODE_CLASS: Record<LegMode, string> = {
 const COL_MIN = 230;
 const COL_GAP = 56;
 const ROW_GAP = 72;
-const DOTS = "2px dotted #9FB2C4";
+const DOTS = "2px dotted #B0B0B0";
 
 export function WebTrip({
   view,
@@ -75,66 +75,73 @@ export function WebTrip({
   expenses: ReactNode;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
-  const iconButton = "flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-white shadow-[0_1px_2px_rgb(0_41_61/0.06)]";
+  const iconButton = "flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-white shadow-[0_1px_2px_rgb(0_0_0/0.06)]";
 
   return (
     <div className="absolute inset-0 bg-white">
       <div className="absolute inset-y-0 left-0 w-[58%] overflow-hidden bg-white">
         <header className="absolute inset-x-0 top-0 z-[2] border-b border-divider bg-white px-8 pt-[18px]" style={{ height: WEB_HEADER_HEIGHT }}>
           <div className="flex items-center gap-3.5">
-            <Link href="/" aria-label="Volver al inicio" className={iconButton}>
-              <ChevronLeft size={20} />
-            </Link>
+            {/* En Gastos, la flecha vuelve al viaje (Viaje y Gastos van separados, como en el celular: decisión 049). */}
+            {tab === "expenses" ? (
+              <button type="button" onClick={() => onTab("trip")} aria-label="Volver al viaje" className={iconButton}>
+                <ChevronLeft size={20} />
+              </button>
+            ) : (
+              <Link href="/" aria-label="Volver al inicio" className={iconButton}>
+                <ChevronLeft size={20} />
+              </Link>
+            )}
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[22px] font-extrabold tracking-[-0.02em]">{view.name}</h1>
-              <div className="mt-0.5 text-[13px] whitespace-nowrap text-ink-2">
-                {view.range} · {view.stops.length} {view.stops.length === 1 ? "destino" : "destinos"}
-              </div>
-            </div>
-            <NightsRing view={view} label="noches planeadas" />
-          </div>
-          <div className="mt-3.5 flex items-center justify-between gap-2.5">
-            <div className="flex gap-1 rounded-full bg-surface p-1">
-              {(["trip", "expenses"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => onTab(t)}
-                  aria-current={tab === t ? "page" : undefined}
-                  className={`h-9 rounded-full px-5 text-sm ${tab === t ? "bg-white font-extrabold text-navy shadow-[0_2px_8px_rgb(0_41_61/0.12)]" : "font-semibold text-ink-2"}`}
-                >
-                  {t === "trip" ? "Viaje" : "Gastos"}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={onMembers} aria-label="Integrantes" className="flex h-11 shrink-0 items-center rounded-full border border-line bg-white px-1.5 shadow-[0_1px_2px_rgb(0_41_61/0.06)]">
-                {members.slice(0, 5).map((m, i) => (
-                  <span
-                    key={m.id}
-                    className="flex size-[30px] items-center justify-center rounded-full border-2 border-white text-[10px] font-extrabold text-white"
-                    style={{ background: m.color, marginLeft: i ? -9 : 0 }}
-                  >
-                    {m.initials}
-                  </span>
-                ))}
-              </button>
-              <button type="button" onClick={onCalendar} aria-label="Calendario" className={iconButton}>
-                <Calendar size={18} />
-              </button>
-              <button type="button" aria-label="Compartir" className={iconButton}>
-                <Share size={18} />
-              </button>
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => (tab === "expenses" ? onAddExpense() : onAddCity())}
-                  className="bg-navy-gradient flex h-11 shrink-0 items-center gap-1.5 rounded-full px-[18px] text-sm font-bold whitespace-nowrap text-white shadow-button"
-                >
-                  <Plus size={16} /> {tab === "expenses" ? "Agregar gasto" : "Agregar ciudad"}
-                </button>
+              {tab === "expenses" ? (
+                <>
+                  <div className="truncate text-[13px] font-bold text-ink-2">{view.name}</div>
+                  <h1 className="truncate text-[22px] font-extrabold tracking-[-0.02em]">Gastos</h1>
+                </>
+              ) : (
+                <>
+                  <h1 className="truncate text-[22px] font-extrabold tracking-[-0.02em]">{view.name}</h1>
+                  <div className="mt-0.5 truncate text-[13px] text-ink-2">
+                    {view.range} · {view.stops.length} {view.stops.length === 1 ? "destino" : "destinos"}
+                  </div>
+                </>
               )}
             </div>
+            {tab === "trip" && <NightsRing view={view} label="noches planeadas" />}
+          </div>
+          <div className="mt-3.5 flex min-w-0 items-center gap-2">
+            <button type="button" onClick={onMembers} aria-label="Integrantes" className="flex h-11 shrink-0 items-center rounded-full border border-line bg-white px-1.5">
+              {members.slice(0, 5).map((m, i) => (
+                <span
+                  key={m.id}
+                  className="flex size-[30px] items-center justify-center rounded-full border-2 border-white text-[10px] font-extrabold text-white"
+                  style={{ background: m.color, marginLeft: i ? -9 : 0 }}
+                >
+                  {m.initials}
+                </span>
+              ))}
+            </button>
+            <div className="min-w-0 flex-1" />
+            {tab === "trip" && (
+              <button type="button" onClick={() => onTab("expenses")} className="flex h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-white px-4 text-sm font-bold">
+                <Wallet size={17} /> Gastos
+              </button>
+            )}
+            <button type="button" onClick={onCalendar} aria-label="Calendario" className={iconButton}>
+              <Calendar size={18} />
+            </button>
+            <button type="button" aria-label="Compartir" className={iconButton}>
+              <Share size={18} />
+            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => (tab === "expenses" ? onAddExpense() : onAddCity())}
+                className="bg-pink flex h-11 shrink-0 items-center rounded-full px-5 text-sm font-bold whitespace-nowrap text-white"
+              >
+                {tab === "expenses" ? "Agregar gasto" : "Agregar ciudad"}
+              </button>
+            )}
           </div>
         </header>
 
@@ -148,7 +155,7 @@ export function WebTrip({
                   <div className="text-base font-bold">Todavía no hay ciudades</div>
                   <p className="mt-1 text-sm text-ink-2">Cargá la primera y después las que siguen, con sus noches. Las fechas se calculan solas.</p>
                   {canEdit && (
-                    <button type="button" onClick={() => onAddCity(null)} className="bg-navy-gradient mt-4 h-12 rounded-button px-6 text-[15px] font-bold text-white">
+                    <button type="button" onClick={() => onAddCity(null)} className="bg-pink mt-4 h-12 rounded-button px-6 text-[15px] font-bold text-white">
                       Agregar la primera ciudad
                     </button>
                   )}
@@ -258,7 +265,7 @@ function WebStopCard({
         type="button"
         onClick={() => onOpenCity(stop.id)}
         aria-label={`Destino ${stop.number}`}
-        className="bg-navy-gradient absolute top-0 left-1/2 z-[3] flex h-9 min-w-9 -translate-x-1/2 items-center justify-center rounded-full border-[3px] border-white px-2.5 text-sm font-extrabold text-white shadow-[0_4px_12px_rgb(0_41_61/0.22)]"
+        className="bg-navy absolute top-0 left-1/2 z-[3] flex h-9 min-w-9 -translate-x-1/2 items-center justify-center rounded-full border-[3px] border-white px-2.5 text-sm font-extrabold text-white shadow-[0_4px_12px_rgb(0_0_0/0.22)]"
       >
         {stop.number}
       </button>
@@ -272,7 +279,7 @@ function WebStopCard({
           style={{ width: "calc(50% + 10px)", left: even ? "calc(50% + 24px)" : "auto", right: even ? "auto" : "calc(50% + 24px)", justifyContent: even ? "flex-start" : "flex-end" }}
         >
           <span
-            className={`flex h-9 max-w-full items-center gap-1.5 overflow-hidden rounded-full bg-white pr-2.5 pl-1 text-xs font-bold whitespace-nowrap shadow-[0_2px_8px_rgb(0_41_61/0.1)] ${leg ? "border border-line text-ink" : "border-[1.5px] border-dashed border-dots text-ink-2"}`}
+            className={`flex h-9 max-w-full items-center gap-1.5 overflow-hidden rounded-full bg-white pr-2.5 pl-1 text-xs font-bold whitespace-nowrap shadow-[0_2px_8px_rgb(0_0_0/0.1)] ${leg ? "border border-line text-ink" : "border-[1.5px] border-dashed border-dots text-ink-2"}`}
           >
             <span className={`relative flex size-7 shrink-0 items-center justify-center rounded-full ${leg ? MODE_CLASS[leg.mode] : "bg-surface text-ink-2"}`}>
               <Icon size={14} />
@@ -293,7 +300,7 @@ function WebStopCard({
           type="button"
           onClick={() => onOpenCity(stop.id)}
           aria-label={stop.name}
-          className="relative block aspect-[4/3] w-full overflow-hidden rounded-[22px] bg-cover bg-center shadow-[0_6px_18px_rgb(0_41_61/0.1)]"
+          className="relative block aspect-[4/3] w-full overflow-hidden rounded-[22px] bg-cover bg-center shadow-[0_6px_18px_rgb(0_0_0/0.1)]"
           style={{ backgroundColor: stop.tint, backgroundImage: stop.photoUrl ? `url("${stop.photoUrl}")` : undefined }}
         >
           {!stop.photoUrl && <span className="absolute inset-0 flex items-center justify-center text-lg font-extrabold tracking-[0.04em] text-white">{stop.code}</span>}
@@ -354,7 +361,12 @@ function WebStopCard({
               <Plus size={14} />
             </button>
           </div>
-        ) : null}
+        ) : (
+          <span className="flex h-[34px] shrink-0 items-center gap-1.5 text-sm font-bold">
+            {stop.locked && <Lock size={14} />}
+            {stop.nights === 0 ? "De paso" : `${stop.nights} ${stop.nightsLabel}`}
+          </span>
+        )}
       </div>
     </div>
   );

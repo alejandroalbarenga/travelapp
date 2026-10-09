@@ -17,7 +17,7 @@ export function NewTripButton({ big = false }: { big?: boolean }) {
         onClick={() => setOpen(true)}
         className={
           big
-            ? "bg-navy-gradient flex h-14 w-full items-center justify-center gap-2 rounded-button text-base font-bold text-white shadow-button"
+            ? "bg-pink flex h-14 w-full items-center justify-center gap-2 rounded-button text-base font-bold text-white shadow-button"
             : "flex h-10 items-center gap-1.5 rounded-full bg-navy px-4 text-[13px] font-bold text-white"
         }
       >
@@ -77,7 +77,7 @@ function NewTripSheet({ onClose }: { onClose: () => void }) {
             {error && <p className="mt-3 text-[13px] font-bold text-danger">{error}</p>}
           </div>
           <div className="border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
-            <button type="button" onClick={create} disabled={pending} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
+            <button type="button" onClick={create} disabled={pending} className="bg-pink h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
               {pending ? "Creando…" : "Crear viaje"}
             </button>
           </div>

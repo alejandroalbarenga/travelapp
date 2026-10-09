@@ -57,7 +57,7 @@ export function TransferSheet({
             </button>
             <span className="text-base font-bold">Transferencia</span>
             <button type="button" onClick={() => save(close)} disabled={pending} className="flex h-11 items-center disabled:opacity-50">
-              <span className="bg-navy-gradient flex h-9 items-center rounded-full px-4 text-sm font-bold text-white">{pending ? "…" : "Guardar"}</span>
+              <span className="bg-pink flex h-9 items-center rounded-full px-4 text-sm font-bold text-white">{pending ? "…" : "Guardar"}</span>
             </button>
           </div>
 
