@@ -1,6 +1,6 @@
 "use client";
 
-import { Bus, Car, Clock, Ellipsis, Pencil, Plane, Ticket, TrainFront, X, type LucideIcon } from "lucide-react";
+import { Bus, Car, Clock, Ellipsis, Pencil, Plane, Ticket, TrainFront, type LucideIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { sortTickets, ticketTitle } from "@/lib/attachments";
 import { addDays, formatWeekday, stopDates } from "@/lib/dates";
@@ -8,7 +8,7 @@ import { durationMinutes, formatDuration, localTime, timeZoneDiffHours, zonedToI
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Leg, LegAttachment, LegMode, Trip } from "@/lib/trip-types";
-import { BottomSheet } from "../bottom-sheet";
+import { BackButton, BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
@@ -141,7 +141,8 @@ export function LegSheet({
     <BottomSheet onClose={onClose} label={`Tramo de ${from.city} a ${to?.city ?? "casa"}`}>
       {(close) => (
       <>
-        <div className="flex items-start gap-3 px-5 pt-2 pb-1">
+        <div className="flex items-start gap-3 px-3 pt-2 pb-1">
+          <BackButton onClick={close} />
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-bold text-ink-2">
               {to ? `Tramo ${i + 1} de ${stops.length - 1}` : "Vuelta a casa"}
@@ -156,9 +157,6 @@ export function LegSheet({
               <Pencil size={15} /> Editar
             </button>
           )}
-          <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface">
-            <X size={20} />
-          </button>
         </div>
 
         {!editing && leg ? (

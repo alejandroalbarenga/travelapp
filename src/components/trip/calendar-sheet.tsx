@@ -1,11 +1,10 @@
 "use client";
 
-import { X } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addDays, formatRange, stopDates } from "@/lib/dates";
 import { arrivalChange, buildCalendar } from "@/lib/calendar";
 import type { Trip } from "@/lib/trip-types";
-import { BottomSheet } from "../bottom-sheet";
+import { BackButton, BottomSheet } from "../bottom-sheet";
 
 // Pantalla 08 · Calendario (decisión 020). Modo ver: cada ciudad es una barra y tocarla abre la
 // ciudad. Modo elegir llegada (desde la ciudad): tocás un día y al guardar cambian las noches de la
@@ -75,9 +74,7 @@ export function CalendarSheet({
       {(close) => (
         <>
           <div className="flex shrink-0 items-center gap-2 px-3 pb-2">
-            <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface">
-              <X size={20} />
-            </button>
+            <BackButton onClick={close} />
             <div className="min-w-0 flex-1 text-center">
               <div className="truncate text-base font-bold">{picking ? `Llegada a ${stops[pickIndex].city}` : trip.name}</div>
               <div className="truncate text-xs text-ink-2">{picking ? "Elegí el día de llegada" : formatRange(trip.start_date, trip.end_date)}</div>

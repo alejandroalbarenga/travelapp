@@ -1,10 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { ChevronLeft, X } from "lucide-react";
 import { useIsWeb } from "@/lib/use-is-web";
 
-// Sheet desde abajo (docs/diseño.md): entra deslizándose, el fondo oscuro aparece con un fundido,
-// se cierra tocando el fondo, con Escape o arrastrando el handle hacia abajo.
+// En el celular es una pantalla completa que entra desde la derecha (decisión 068: ya no hay sheets,
+// salvo el panel del viaje sobre el mapa). Se vuelve con la flecha, deslizando desde el borde
+// izquierdo, con el "atrás" del teléfono o del navegador (cada pantalla abierta es una entrada del
+// historial) o con Escape.
 // En la web (desde 1100 px), dentro del viaje sube dentro del panel izquierdo, debajo del header, y el
 // mapa queda a la vista (como en el diseño); fuera del viaje (ej. "Nuevo viaje") es una ventana centrada.
 
@@ -100,6 +103,79 @@ function useFieldAboveKeyboard(sheet: RefObject<HTMLDivElement | null>, keyboard
   }, [sheet]);
 }
 
+/** Mientras el historial vuelve una entrada (al cerrar una pantalla), la que se abre espera. */
+let pendingBack: Promise<void> | null = null;
+let lastScreenId = 0;
+
+function goBack() {
+  pendingBack = new Promise((resolve) => {
+    const done = () => {
+      window.removeEventListener("popstate", done);
+      clearTimeout(timer);
+      pendingBack = null;
+      resolve();
+    };
+    window.addEventListener("popstate", done);
+    // Por si el navegador no avisa.
+    const timer = setTimeout(done, 600);
+  });
+  history.back();
+}
+
+function screensInHistory(): string[] {
+  return (history.state?.vamoScreens as string[] | undefined) ?? [];
+}
+
+/**
+ * Cada pantalla abierta suma una entrada al historial (con la misma URL), así el "atrás" del
+ * teléfono, del navegador o el gesto de Safari la cierran en vez de salir del viaje. Si se cierra de
+ * otra forma (la flecha, al guardar), saca su entrada.
+ */
+function useHistoryEntry(active: boolean, onBack: () => void) {
+  const onBackRef = useRef(onBack);
+  useEffect(() => {
+    onBackRef.current = onBack;
+  });
+
+  useEffect(() => {
+    if (!active) return;
+    const id = `pantalla-${++lastScreenId}`;
+    let pushed = false;
+    let cancelled = false;
+    const push = () => {
+      if (cancelled) return;
+      // Next.js le suma su estado a la entrada (pushState sin URL no navega).
+      history.pushState({ vamoScreens: [...screensInHistory(), id] }, "");
+      pushed = true;
+    };
+    if (pendingBack) pendingBack.then(push);
+    else push();
+
+    const onPop = () => {
+      if (pushed && !screensInHistory().includes(id)) {
+        pushed = false;
+        onBackRef.current();
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("popstate", onPop);
+      if (pushed && screensInHistory().at(-1) === id) goBack();
+    };
+  }, [active]);
+}
+
+/** Volver (en el celular, flecha) o cerrar (en la web, cruz): va arriba a la izquierda de cada pantalla. */
+export function BackButton({ onClick, className = "rounded-full bg-surface" }: { onClick: () => void; className?: string }) {
+  const web = useIsWeb();
+  return (
+    <button type="button" onClick={onClick} aria-label={web ? "Cerrar" : "Volver"} className={`flex size-11 shrink-0 items-center justify-center ${className}`}>
+      {web ? <X size={20} /> : <ChevronLeft size={24} />}
+    </button>
+  );
+}
+
 export function BottomSheet({
   onClose,
   label,
@@ -113,15 +189,13 @@ export function BottomSheet({
   /** Hasta dónde sube el sheet. "auto" = lo que ocupe el contenido. */
   top?: string;
   scrim?: number;
-  /** La rayita va encima del contenido (por ejemplo, sobre una foto) en vez de ocupar una franja propia. */
+  /** El contenido empieza arriba de todo, debajo de la barra de estado (por ejemplo, una foto). */
   overlayHandle?: boolean;
   /** Recibe `close`, que anima la salida y después llama a onClose. */
   children: (close: () => void) => ReactNode;
 }) {
   const [shown, setShown] = useState(false);
-  const [drag, setDrag] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const start = useRef<number | null>(null);
+  const [drag, setDrag] = useState<number | null>(null);
   const web = useIsWeb();
   const panel = useContext(SheetPanelContext);
   const keyboard = useKeyboard();
@@ -141,10 +215,33 @@ export function BottomSheet({
   }, []);
 
   const close = useCallback(() => {
-    setDrag(0);
+    setDrag(null);
     setShown(false);
     setTimeout(onClose, DURATION);
   }, [onClose]);
+
+  useHistoryEntry(!web, close);
+
+  // Deslizar desde el borde izquierdo hacia la derecha vuelve atrás, como en el iPhone.
+  const swipe = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipe.current = t.clientX <= 28 ? { x: t.clientX, y: t.clientY, horizontal: null } : null;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    const s = swipe.current;
+    if (!s) return;
+    const dx = e.touches[0].clientX - s.x;
+    const dy = e.touches[0].clientY - s.y;
+    if (s.horizontal === null && Math.hypot(dx, dy) > 8) s.horizontal = dx > Math.abs(dy);
+    if (s.horizontal) setDrag(Math.max(0, dx));
+  };
+  const onTouchEnd = () => {
+    const moved = drag ?? 0;
+    swipe.current = null;
+    if (moved > window.innerWidth * 0.3) close();
+    else setDrag(null);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
@@ -188,69 +285,49 @@ export function BottomSheet({
       aria-modal="true"
       aria-label={label}
     >
-      <button
-        type="button"
-        aria-label="Cerrar"
-        tabIndex={-1}
-        onClick={close}
-        className="absolute inset-0 transition-opacity duration-[250ms]"
-        style={{ background: `rgb(15 16 18 / ${scrim})`, opacity: shown ? 1 : 0 }}
-      />
       {web ? (
+        <>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            tabIndex={-1}
+            onClick={close}
+            className="absolute inset-0 transition-opacity duration-[250ms]"
+            style={{ background: `rgb(15 16 18 / ${scrim})`, opacity: shown ? 1 : 0 }}
+          />
+          <div
+            className="absolute top-1/2 left-1/2 flex w-[min(560px,calc(100vw-48px))] flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_20px_60px_rgb(0_0_0/0.25)]"
+            style={{
+              height: top === "auto" ? undefined : "min(860px, calc(100dvh - 64px))",
+              maxHeight: "calc(100dvh - 64px)",
+              transform: `translate(-50%, -50%) scale(${shown ? 1 : 0.96})`,
+              opacity: shown ? 1 : 0,
+              transition: `transform ${DURATION}ms cubic-bezier(.2,.8,.2,1), opacity 200ms`,
+            }}
+          >
+            {overlayHandle ? null : <div className="h-3 shrink-0" />}
+            {children(close)}
+          </div>
+        </>
+      ) : (
         <div
-          className="absolute top-1/2 left-1/2 flex w-[min(560px,calc(100vw-48px))] flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_20px_60px_rgb(0_0_0/0.25)]"
+          ref={sheetRef}
+          data-sheet
+          className="absolute inset-0 flex flex-col overflow-hidden bg-white shadow-[-8px_0_24px_rgb(0_0_0/0.08)]"
           style={{
-            height: top === "auto" ? undefined : "min(860px, calc(100dvh - 64px))",
-            maxHeight: "calc(100dvh - 64px)",
-            transform: `translate(-50%, -50%) scale(${shown ? 1 : 0.96})`,
-            opacity: shown ? 1 : 0,
-            transition: `transform ${DURATION}ms cubic-bezier(.2,.8,.2,1), opacity 200ms`,
+            ["--keyboard" as string]: `${keyboard.height}px`,
+            // La foto de la ciudad va debajo de la barra de estado; el resto empieza abajo de ella.
+            paddingTop: overlayHandle ? 0 : "calc(var(--safe-top) + 8px)",
+            transform: shown ? `translateX(${drag ?? 0}px)` : "translateX(100%)",
+            transition: drag !== null && shown ? "none" : `transform ${DURATION}ms cubic-bezier(.2,.8,.2,1)`,
           }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
         >
-          {overlayHandle ? null : <div className="h-3 shrink-0" />}
           {children(close)}
         </div>
-      ) : (
-      <div
-        ref={sheetRef}
-        data-sheet
-        className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[560px] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-10px_40px_rgb(0_0_0/0.18)]"
-        style={{
-          ["--keyboard" as string]: `${keyboard.height}px`,
-          top: top === "auto" ? undefined : top,
-          maxHeight: top === "auto" ? "calc(100% - var(--safe-top) - 52px)" : undefined,
-          transform: shown ? `translateY(${drag}px)` : "translateY(calc(100% + 40px))",
-          transition: dragging ? "none" : `transform ${DURATION}ms cubic-bezier(.2,.8,.2,1)`,
-        }}
-      >
-        {/* Handle: se puede arrastrar hacia abajo para cerrar. */}
-        <div
-          className={`flex shrink-0 cursor-grab touch-none justify-center pt-2 pb-1 ${overlayHandle ? "absolute inset-x-0 top-0 z-10" : ""}`}
-          onPointerDown={(e) => {
-            start.current = e.clientY;
-            setDragging(true);
-            e.currentTarget.setPointerCapture(e.pointerId);
-          }}
-          onPointerMove={(e) => {
-            if (start.current !== null) setDrag(Math.max(0, e.clientY - start.current));
-          }}
-          onPointerUp={() => {
-            const moved = drag;
-            start.current = null;
-            setDragging(false);
-            if (moved > 110) close();
-            else setDrag(0);
-          }}
-          onPointerCancel={() => {
-            start.current = null;
-            setDragging(false);
-            setDrag(0);
-          }}
-        >
-          <div className={`h-[5px] w-10 rounded-full ${overlayHandle ? "bg-white/70" : "bg-handle"}`} />
-        </div>
-        {children(close)}
-      </div>
       )}
     </div>
   );

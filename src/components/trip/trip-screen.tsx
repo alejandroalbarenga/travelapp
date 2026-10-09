@@ -561,8 +561,8 @@ export function TripScreen({
     .flatMap((s, i) => (s.lat != null && s.lng != null ? [{ lat: s.lat, lng: s.lng, label: String(i + 1), stopId: s.id, city: s.city }] : []));
 
   const ordered = [...current.stops].sort((a, b) => a.position - b.position);
-  // "Agregar ciudad" desde el +: antes de la última (que suele ser la vuelta), como en el diseño.
-  const lastBeforeReturn = (ordered[ordered.length - 2] ?? ordered[ordered.length - 1])?.id ?? null;
+  // "Agregar ciudad" desde el +: después de la última ciudad (decisión 068).
+  const lastStop = ordered[ordered.length - 1]?.id ?? null;
   const expensesView = buildExpensesView(current, myMemberId);
   const firstMissingLeg = ordered.slice(0, -1).find((s) => !current.legs.some((l) => l.from_stop_id === s.id))?.id ?? null;
 
@@ -586,7 +586,7 @@ export function TripScreen({
           focusStopId={openCity}
           part={part}
           partStopIds={partStopIds}
-          onAddCity={(afterStopId) => setCitySearch({ kind: "add", afterStopId: afterStopId === undefined ? lastBeforeReturn : afterStopId })}
+          onAddCity={(afterStopId) => setCitySearch({ kind: "add", afterStopId: afterStopId === undefined ? lastStop : afterStopId })}
           onAddExpense={() => setOpenExpense("new")}
           onNights={changeNights}
           onLock={(stopId) => toggleLock(stopId)}
@@ -823,7 +823,7 @@ export function TripScreen({
                   { label: "Registrar transferencia", Icon: ArrowLeftRight, onClick: () => setOpenTransfer(true), disabled: false },
                 ]
               : [
-                  { label: "Agregar ciudad", Icon: MapPin, onClick: () => setCitySearch({ kind: "add", afterStopId: lastBeforeReturn }), disabled: false },
+                  { label: "Agregar ciudad", Icon: MapPin, onClick: () => setCitySearch({ kind: "add", afterStopId: lastStop }), disabled: false },
                   { label: "Agregar tramo", Icon: Route, onClick: () => (firstMissingLeg ? setOpenLeg(firstMissingLeg) : undefined), disabled: !firstMissingLeg },
                   { label: "Agregar gasto", Icon: Receipt, onClick: () => setOpenExpense("new"), disabled: false },
                 ]

@@ -1,10 +1,10 @@
 "use client";
 
-import { MapPin, TriangleAlert, X } from "lucide-react";
+import { MapPin, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Place } from "@/lib/places";
 import type { Trip } from "@/lib/trip-types";
-import { BottomSheet } from "../bottom-sheet";
+import { BackButton, BottomSheet } from "../bottom-sheet";
 
 // Pantalla 10 · Agregar ciudad (docs/diseño.md). También sirve para cambiar la ciudad de una parada.
 // Busca en OpenStreetMap mientras escribís; al elegir un resultado se completan país, ubicación y huso.
@@ -84,8 +84,9 @@ export function CitySearchSheet({
     <BottomSheet onClose={onClose} label={mode.kind === "add" ? "Agregar ciudad" : "Cambiar ciudad"} top="calc(var(--safe-top) + 12px)" scrim={0.4}>
       {(close) => (
         <>
-          <div className="flex items-start justify-between gap-3 px-5 pt-2">
-            <div className="min-w-0">
+          <div className="flex items-start gap-3 px-3 pt-2">
+            <BackButton onClick={close} />
+            <div className="min-w-0 flex-1">
               <div className="text-[22px] font-extrabold tracking-[-0.02em]">
                 {mode.kind === "add" ? "¿Qué ciudad agregás?" : `Cambiar ${current?.city ?? "la ciudad"}`}
               </div>
@@ -97,9 +98,6 @@ export function CitySearchSheet({
                   : "Elegí la ciudad correcta: se actualizan el país, el mapa y el huso horario."}
               </div>
             </div>
-            <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface">
-              <X size={20} />
-            </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]">

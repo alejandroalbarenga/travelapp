@@ -1,9 +1,9 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { BottomSheet } from "@/components/bottom-sheet";
+import { BackButton, BottomSheet } from "@/components/bottom-sheet";
 import { validateNewTrip } from "@/lib/home";
 import { createTrip } from "./actions";
 
@@ -52,11 +52,9 @@ function NewTripSheet({ onClose }: { onClose: () => void }) {
     <BottomSheet onClose={onClose} label="Nuevo viaje">
       {(close) => (
         <>
-          <div className="flex items-start gap-3 px-5 pt-2 pb-1">
+          <div className="flex items-center gap-3 px-3 pt-2 pb-1">
+            <BackButton onClick={close} />
             <h2 className="min-w-0 flex-1 text-2xl leading-[1.15] font-extrabold tracking-[-0.02em]">Nuevo viaje</h2>
-            <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface">
-              <X size={20} />
-            </button>
           </div>
           <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6">
             <label className="block">
