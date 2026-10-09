@@ -1,10 +1,12 @@
 "use client";
 
-import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { deleteLock, lockMessage, nightsLock } from "@/lib/stop-lock";
+import { foldLabel, myPart } from "@/lib/my-part";
+import { formatWeekday } from "@/lib/dates";
 import type { SaveExpenseInput, SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
 import { buildExpensesView, type ExpenseRowView, type TransferView } from "@/lib/expenses-view";
 import type { ChipDisplay } from "@/lib/legs";
@@ -106,6 +108,9 @@ export function TripScreen({
   const [openExpense, setOpenExpense] = useState<string | null>(null);
   const [openTransfer, setOpenTransfer] = useState(false);
   const [calendar, setCalendar] = useState<CalendarMode | null>(null);
+  // Tu parte del viaje (decisión 054): lo de antes de que llegues y después de que te vas, plegado.
+  const [showBefore, setShowBefore] = useState(false);
+  const [showAfter, setShowAfter] = useState(false);
   // Versión web desde 1100 px: dos paneles (web-trip.tsx). Los sheets y avisos son los mismos.
   const isWeb = useIsWeb();
   // Deslizar ciudades (decisión 042): cuál está abierta, las borradas que todavía se pueden
@@ -507,10 +512,10 @@ export function TripScreen({
     });
     return null;
   }
-  const view = buildTripView(hidden.length ? { ...current, stops: current.stops.filter((s) => !hidden.includes(s.id)) } : current, {
-    chipDisplay,
-    myMemberId,
-  });
+  const listTrip = hidden.length ? { ...current, stops: current.stops.filter((s) => !hidden.includes(s.id)) } : current;
+  const view = buildTripView(listTrip, { chipDisplay, myMemberId });
+  // Tu parte del viaje: null si hacés el viaje entero (decisión 054).
+  const part = myPart(listTrip.start_date, listTrip.stops, myMemberId);
 
   function changeNights(stopId: string, delta: number) {
     const stop = current.stops.find((s) => s.id === stopId);
@@ -638,8 +643,10 @@ export function TripScreen({
               <House size={20} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[15px] font-bold">Empieza el viaje</div>
-              <div className="mt-0.5 text-xs font-bold tracking-[0.06em] text-ink-2">{view.startLabel}</div>
+              <div className="text-[15px] font-bold">{part && part.first > 0 ? `Empezás en ${part.firstCity}` : "Empieza el viaje"}</div>
+              <div className="mt-0.5 text-xs font-bold tracking-[0.06em] text-ink-2">
+                {part && part.first > 0 ? `${formatWeekday(part.arrival)} ${part.arrival.slice(0, 4)}`.toUpperCase() : view.startLabel}
+              </div>
             </div>
             <NightsRing view={view} />
           </div>
@@ -661,7 +668,32 @@ export function TripScreen({
             </div>
           )}
 
-          {view.stops.map((stop, i) => (
+          {part && part.first > 0 && (
+            <FoldRow
+              title="Antes de que llegues"
+              sub={foldLabel(view.stops.slice(0, part.first).map((s) => s.name))}
+              open={showBefore}
+              onToggle={() => setShowBefore((o) => !o)}
+            />
+          )}
+
+          {view.stops.map((stop, i) => {
+            const beforeHidden = !!part && i < part.first && !showBefore;
+            const afterHidden = !!part && i > part.last && !showAfter;
+            if (afterHidden) return null;
+            // Plegado lo de antes: igual se ve el tramo que te trae a tu primera ciudad.
+            if (beforeHidden)
+              return i === part!.first - 1 ? (
+                <LegRow
+                  key={stop.id}
+                  stop={stop}
+                  canEdit={canEdit}
+                  onOpen={() => setOpenLeg(stop.id)}
+                  onTicket={() => (stop.leg?.hasTicket ? viewTickets(stop.id) : setOpenLeg(stop.id))}
+                  onAddCity={() => setCitySearch({ kind: "add", afterStopId: stop.id })}
+                />
+              ) : null;
+            return (
             <div key={stop.id}>
               <SwipeRow
                 enabled={canEdit}
@@ -686,6 +718,14 @@ export function TripScreen({
                 onTicket={() => (stop.leg?.hasTicket ? viewTickets(stop.id) : setOpenLeg(stop.id))}
                 onAddCity={() => setCitySearch({ kind: "add", afterStopId: stop.id })}
               />
+              {part && i === part.last && part.last < view.stops.length - 1 && (
+                <FoldRow
+                  title="Después de que te vas"
+                  sub={foldLabel(view.stops.slice(part.last + 1).map((s) => s.name))}
+                  open={showAfter}
+                  onToggle={() => setShowAfter((o) => !o)}
+                />
+              )}
               {i === view.stops.length - 1 && (
                 <div className="flex items-center gap-2.5 pl-7">
                   <span className="flex size-8 items-center justify-center rounded-full border border-navy/[.07] bg-white text-ink-2 shadow-card">
@@ -695,7 +735,8 @@ export function TripScreen({
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -966,6 +1007,25 @@ export function TripScreen({
 function localToday() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Bloque plegado de la parte del viaje que no hacés (decisión 054): se abre para mirarla.
+function FoldRow({ title, sub, open, onToggle }: { title: string; sub: string; open: boolean; onToggle: () => void }) {
+  return (
+    <div className="relative">
+      <div className="absolute top-0 bottom-0 left-[43px] border-l-2 border-dotted border-dots" />
+      <button type="button" onClick={onToggle} aria-expanded={open} className="relative flex w-full items-center gap-3 py-2.5 pr-3 text-left">
+        <span className="ml-[22px] flex size-11 shrink-0 items-center justify-center rounded-full border-[1.5px] border-dashed border-dots bg-white text-ink-2">
+          <ChevronDown size={18} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-bold">{title}</span>
+          <span className="block truncate text-[13px] text-ink-2">{sub}</span>
+        </span>
+        <span className="shrink-0 text-[13px] font-bold">{open ? "Ocultar" : "Ver"}</span>
+      </button>
+    </div>
+  );
 }
 
 function Dots({ height }: { height: number }) {

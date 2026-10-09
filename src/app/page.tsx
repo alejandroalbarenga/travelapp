@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { findCityPhoto } from "@/lib/city-photo";
 import { formatRange } from "@/lib/dates";
 import { countdown, splitTrips, todayInUruguay, tripSubtitle } from "@/lib/home";
+import { myPart, type MyPart } from "@/lib/my-part";
 import { createClient } from "@/lib/supabase/server";
 import { NewTripButton } from "./new-trip";
 import { SignOutButton } from "./sign-out-button";
@@ -29,7 +30,7 @@ type TripRow = {
   start_date: string;
   end_date: string;
   trip_members: { id: string; display_name: string; initials: string; color: string; user_id: string | null }[];
-  stops: { city: string; position: number; country_code: string | null; photo_url: string | null }[];
+  stops: { city: string; position: number; nights: number; country_code: string | null; photo_url: string | null; stop_members: { member_id: string }[] }[];
 };
 
 /** "uy" → 🇺🇾 */
@@ -46,16 +47,36 @@ async function Trips() {
 
   const { data } = await supabase
     .from("trips")
-    .select("id, name, start_date, end_date, trip_members (id, display_name, initials, color, user_id), stops (city, position, country_code, photo_url)")
+    .select(
+      "id, name, start_date, end_date, trip_members (id, display_name, initials, color, user_id), stops (city, position, nights, country_code, photo_url, stop_members (member_id))",
+    )
     .order("start_date");
-  const trips = ((data ?? []) as TripRow[]).map((t) => ({ ...t, stops: [...t.stops].sort((a, b) => a.position - b.position) }));
+  // Cada viaje con tus fechas (decisión 054): si te sumás más tarde o te vas antes, la tarjeta muestra
+  // tu parte, y la cuenta regresiva es hasta que llegás vos.
+  const trips = ((data ?? []) as TripRow[]).map((t) => {
+    const stops = [...t.stops].sort((a, b) => a.position - b.position);
+    const myId = t.trip_members.find((m) => m.user_id === userId)?.id ?? null;
+    const part: MyPart | null = myPart(
+      t.start_date,
+      stops.map((s) => ({ ...s, member_ids: s.stop_members.map((m) => m.member_id) })),
+      myId,
+    );
+    return {
+      ...t,
+      stops,
+      part,
+      start_date: part?.arrival ?? t.start_date,
+      end_date: part?.departure ?? t.end_date,
+    };
+  });
   const today = todayInUruguay();
   const { upcoming, past } = splitTrips(trips, today);
 
   // Foto de cada viaje: la de su primera ciudad de verdad (no la escala de salida si es la misma que la vuelta).
   const photos = await Promise.all(
     trips.map(async (t) => {
-      const stop = t.stops.find((s, i) => i > 0 || t.stops.length === 1) ?? t.stops[0];
+      // Si te sumás más tarde, la foto es la de tu primera ciudad.
+      const stop = t.part ? t.stops[t.part.first] : (t.stops.find((s, i) => i > 0 || t.stops.length === 1) ?? t.stops[0]);
       return [t.id, stop ? (stop.photo_url ?? (await findCityPhoto(stop.city))) : null] as const;
     }),
   );
@@ -110,7 +131,11 @@ async function Trips() {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[17px] font-bold">{t.name}</div>
                 <div className="mt-0.5 text-sm text-ink-2">{formatRange(t.start_date, t.end_date)}</div>
-                <div className="text-sm text-ink-2">{tripSubtitle(t.stops.length, t.start_date, t.end_date)}</div>
+                <div className="text-sm text-ink-2">
+                  {t.part
+                    ? `${t.part.first > 0 ? `Te sumás en ${t.part.firstCity}` : `Hasta ${t.part.lastCity}`} · ${tripSubtitle(t.part.last - t.part.first + 1, t.start_date, t.end_date)}`
+                    : tripSubtitle(t.stops.length, t.start_date, t.end_date)}
+                </div>
               </div>
               <div className="flex shrink-0 -space-x-2 pt-0.5">
                 {t.trip_members.slice(0, 5).map((m) => (
