@@ -365,7 +365,9 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
   - El tramo que lo trae a su primera ciudad se ve igual, y el encabezado dice "Empezás en Alicante" con su fecha.
 - **Inicio:** la tarjeta muestra sus fechas, su cuenta regresiva ("hasta que llegás vos"), "Te sumás en Alicante" o "Hasta Riga", y la foto de su primera ciudad.
 - **Permisos:** no cambian. Dependen del rol (034), no de dónde se suma.
-- **Pendiente:** resaltar su parte en el mapa, plegar en Gastos los gastos donde no participa, y plegar también en la web.
+- **Mapa:** su recorrido va fuerte (desde la ciudad de la que viene) y el resto tenue, con los pines de las otras ciudades atenuados. Arranca encuadrado en su parte.
+- **Gastos:** los de las ciudades donde no estuvo van plegados al final ("Gastos del resto del viaje"). El total y el balance no cambian.
+- **Web:** el mismo pliegue antes y después de la grilla.
 **Por qué:** decisión de Ale; alguien que se suma en Alicante no necesita ver primero tres semanas de viaje que no hizo.
 
 ### 055 · El tramo en modo vista

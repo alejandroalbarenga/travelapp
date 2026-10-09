@@ -516,6 +516,9 @@ export function TripScreen({
   const view = buildTripView(listTrip, { chipDisplay, myMemberId });
   // Tu parte del viaje: null si hacés el viaje entero (decisión 054).
   const part = myPart(listTrip.start_date, listTrip.stops, myMemberId);
+  const listOrder = [...listTrip.stops].sort((a, b) => a.position - b.position);
+  const partStopIds = part ? listOrder.slice(part.first, part.last + 1).map((s) => s.id) : null;
+  const foldStopIds = part ? listOrder.filter((_, i) => i < part.first || i > part.last).map((s) => s.id) : [];
 
   function changeNights(stopId: string, delta: number) {
     const stop = current.stops.find((s) => s.id === stopId);
@@ -577,6 +580,8 @@ export function TripScreen({
           onOpenCity={setOpenCity}
           onOpenLeg={setOpenLeg}
           focusStopId={openCity}
+          part={part}
+          partStopIds={partStopIds}
           onAddCity={(afterStopId) => setCitySearch({ kind: "add", afterStopId: afterStopId === undefined ? lastBeforeReturn : afterStopId })}
           onAddExpense={() => setOpenExpense("new")}
           onNights={changeNights}
@@ -595,13 +600,14 @@ export function TripScreen({
               onSettle={settle}
               onUndo={undoSettle}
               onTransfer={() => setOpenTransfer(true)}
+              foldStopIds={foldStopIds}
               embedded
             />
           }
         />
       ) : (
       <>
-      <TripMap points={points} visibleTop={56} visibleBottom={LIST_TOP} onPinClick={setOpenCity} />
+      <TripMap points={points} visibleTop={56} visibleBottom={LIST_TOP} onPinClick={setOpenCity} partStopIds={partStopIds} />
 
 
       {/* Header blanco: aparece de a poco cuando la lista llega arriba (el mapa deja de verse). */}
@@ -751,6 +757,7 @@ export function TripScreen({
           onSettle={settle}
           onUndo={undoSettle}
           onTransfer={() => setOpenTransfer(true)}
+          foldStopIds={foldStopIds}
           onBack={() => {
             setTab("trip");
             setFabOpen(false);

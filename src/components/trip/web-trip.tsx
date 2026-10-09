@@ -4,6 +4,7 @@ import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { LegMode, Member } from "@/lib/trip-types";
+import { foldLabel, type MyPart } from "@/lib/my-part";
 import type { StopView, TripView } from "@/lib/trip-view";
 import type { TripTab } from "../trip-tabs";
 import { NightsRing } from "./nights-ring";
@@ -41,6 +42,8 @@ export function WebTrip({
   canEdit,
   nightsFrozen,
   focusStopId,
+  part = null,
+  partStopIds = null,
   onOpenCity,
   onOpenLeg,
   onAddCity,
@@ -61,6 +64,9 @@ export function WebTrip({
   nightsFrozen: (stopId: string) => boolean;
   /** La ciudad abierta: el mapa se acerca a ella. */
   focusStopId: string | null;
+  /** Tu parte del viaje (decisión 054): lo de antes y después va plegado, y el mapa la resalta. */
+  part?: MyPart | null;
+  partStopIds?: string[] | null;
   onOpenCity: (stopId: string) => void;
   onOpenLeg: (fromStopId: string) => void;
   /** Agregar una ciudad después de esa (null: al principio; undefined: antes de la vuelta). */
@@ -75,6 +81,9 @@ export function WebTrip({
   expenses: ReactNode;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [showBefore, setShowBefore] = useState(false);
+  const [showAfter, setShowAfter] = useState(false);
+  const gridStops = part ? view.stops.filter((_, i) => (i >= part.first || showBefore) && (i <= part.last || showAfter)) : view.stops;
   const iconButton = "flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-white shadow-[0_1px_2px_rgb(0_0_0/0.06)]";
 
   return (
@@ -158,8 +167,12 @@ export function WebTrip({
                   )}
                 </div>
               ) : (
+                <>
+                {part && part.first > 0 && (
+                  <WebFold title="Antes de que llegues" sub={foldLabel(view.stops.slice(0, part.first).map((s) => s.name))} open={showBefore} onToggle={() => setShowBefore((o) => !o)} />
+                )}
                 <Grid
-                  stops={view.stops}
+                  stops={gridStops}
                   canEdit={canEdit}
                   nightsFrozen={nightsFrozen}
                   onHover={setHovered}
@@ -169,6 +182,10 @@ export function WebTrip({
                   onLock={onLock}
                   onDelete={onDelete}
                 />
+                {part && part.last < view.stops.length - 1 && (
+                  <WebFold title="Después de que te vas" sub={foldLabel(view.stops.slice(part.last + 1).map((s) => s.name))} open={showAfter} onToggle={() => setShowAfter((o) => !o)} />
+                )}
+                </>
               )}
               {view.stops.length > 0 && <div className="mt-10 text-center text-[13px] font-bold text-ink-2">{view.returnText}</div>}
             </div>
@@ -177,9 +194,26 @@ export function WebTrip({
       </div>
 
       <div className="absolute inset-y-4 right-4 left-[58%] overflow-hidden rounded-[24px]">
-        <TripMap points={points} visibleTop={16} visibleBottom={100000} onPinClick={onOpenCity} highlightStopId={hovered} focusStopId={focusStopId} />
+        <TripMap points={points} visibleTop={16} visibleBottom={100000} onPinClick={onOpenCity} highlightStopId={hovered} focusStopId={focusStopId} partStopIds={partStopIds} />
       </div>
     </div>
+  );
+}
+
+function WebFold({ title, sub, open, onToggle }: { title: string; sub: string; open: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="my-6 flex w-full items-center gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-5 py-3.5 text-left"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-bold">{title}</span>
+        <span className="block truncate text-[13px] text-ink-2">{sub}</span>
+      </span>
+      <span className="text-[13px] font-bold">{open ? "Ocultar" : "Ver"}</span>
+    </button>
   );
 }
 
