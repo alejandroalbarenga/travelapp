@@ -50,7 +50,7 @@ Proyecto personal de Ale. **MVP usable el 16 de octubre de 2026** (el viaje arra
 - **Vercel** (free tier) para el deploy, conectado a GitHub.
 - **npm** como gestor de paquetes.
 - Fuentes: Plus Jakarta Sans, y Caveat solo para la frase de cada ciudad.
-- Logo e ícono: `public/logo.svg` (de Ale). Los íconos de cada tamaño se dibujan desde ese archivo en `src/lib/app-icon.tsx`.
+- Logo e ícono: `public/logo.svg` ("Vamo" en Caveat Bold, blanco sobre navy; decisión 062). Los íconos de cada tamaño se dibujan desde ese archivo en `src/lib/app-icon.tsx`.
 - **Mapa**: OpenStreetMap con Leaflet; ubicación de las ciudades con Nominatim (decisión 030).
 
 ## Comandos

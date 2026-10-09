@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
-// Ícono de Vamo y vamo: el logo de Ale (public/logo.svg, "Vo" en blanco sobre navy #032F45)
+// Ícono de Vamo y vamo: el logo (public/logo.svg, "Vamo" en blanco sobre navy #032F45)
 // dibujado en cada tamaño. Ocupa todo el cuadrado; iOS y Android le redondean las esquinas.
 
 let logo: Promise<string> | null = null;

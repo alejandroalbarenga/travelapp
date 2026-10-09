@@ -8,6 +8,7 @@ import { myPart, type MyPart } from "@/lib/my-part";
 import { createClient } from "@/lib/supabase/server";
 import { NewTripButton } from "./new-trip";
 import { SignOutButton } from "./sign-out-button";
+import { LoadingScreen } from "@/components/loading-screen";
 
 // Pantalla 00 · Inicio (docs/diseño.md): tus viajes próximos con foto y cuenta regresiva, el botón
 // "Nuevo viaje" y los viajes pasados. Las estadísticas (países, noches afuera) quedan para después.
@@ -17,7 +18,7 @@ export default function Home() {
       className="mx-auto max-w-[1080px] px-5"
       style={{ paddingTop: "calc(var(--safe-top) + 24px)", paddingBottom: "calc(var(--safe-bottom) + 40px)" }}
     >
-      <Suspense fallback={<p className="text-[15px] text-ink-2">Cargando tus viajes…</p>}>
+      <Suspense fallback={<LoadingScreen label="Cargando tus viajes" />}>
         <Trips />
       </Suspense>
     </main>

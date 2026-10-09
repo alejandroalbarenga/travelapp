@@ -1,7 +1,7 @@
 "use client";
 
-import { Bed, BedDouble, Bus, Calendar, Car, ChevronRight, DoorClosed, DoorOpen, Ellipsis, FileText, Hotel, House, Lock, Minus, Plane, Plus, Pencil, StickyNote, TrainFront, Trash2, X, type LucideIcon } from "lucide-react";
-import { useState, useTransition } from "react";
+import { Bed, BedDouble, Bus, Calendar, Car, ChevronRight, DoorClosed, DoorOpen, Ellipsis, FileText, Hotel, House, Lock, Minus, Plane, Plus, Pencil, StickyNote, TrainFront, Trash2, Upload, X, type LucideIcon } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import type { SaveStopInput } from "@/app/viaje/[id]/actions";
 import { formatDay, formatRange, stopDates } from "@/lib/dates";
 import { largePhoto } from "@/lib/photo-url";
@@ -13,7 +13,7 @@ import { BOOKING_LABEL } from "@/lib/trip-view";
 import { readBookingPdf } from "@/lib/read-booking-pdf";
 import { BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
-import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./attachment-controls";
+import { AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
 // Pantalla 06 · Ciudad (decisión 051, referencia: el detalle de un viaje en Airbnb).
 // Arriba la planificación (fechas y noches); después el alojamiento como tarjeta, con quién está;
@@ -121,10 +121,11 @@ export function CitySheet({
   // Qué se está editando: el alojamiento o quién está (se abren desde la tarjeta). Si todavía no hay
   // alojamiento y se puede cargar, arranca abierto para completarlo.
   const [editingStay, setEditingStay] = useState(!readOnly && !stop.locked && !stay && stop.nights > 0);
+  const receiptInput = useRef<HTMLInputElement>(null);
+  const [reading, setReading] = useState(false);
   // La reserva elegida antes de guardar el alojamiento: se sube al guardar (decisión 057).
   const [pendingReceipt, setPendingReceipt] = useState<File | null>(null);
   const [readNote, setReadNote] = useState("");
-  const [editingPeople, setEditingPeople] = useState(false);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -134,7 +135,7 @@ export function CitySheet({
   const savedSplit =
     !peopleChanged && stay?.split.length && stay.total_price_cents ? splitStateFrom(stay.total_price_cents, stay.split, order) : null;
   const splitValue: SplitState = split ?? savedSplit ?? { memberIds: order.filter((id) => people.includes(id)), mode: "equal", custom: {} };
-  const hasStay = !!(stayName.trim() || via);
+  const hasStay = !!(stayName.trim() || via || priceCents > 0);
 
   const dirty =
     peopleChanged ||
@@ -167,8 +168,23 @@ export function CitySheet({
     .filter(Boolean)
     .join(" · ");
 
-  // Subir la reserva: si es un PDF, completa lo que esté vacío (nombre, dónde se reservó, horarios).
+  // Subir la reserva: si es un PDF, completa lo que esté vacío (nombre, dónde se reservó, horarios y
+  // precio). Una imagen se adjunta, pero no se lee.
+  async function pickReceipt(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setReading(true);
+    const message = await addReceipt({ file });
+    setReading(false);
+    if (message) setError(message);
+  }
+
   async function addReceipt(input: AttachmentInput): Promise<string | null> {
+    if ("file" in input && !input.file.type.startsWith("image/") && input.file.type !== "application/pdf" && !input.file.name.toLowerCase().endsWith(".pdf")) {
+      return "Tiene que ser un PDF o una imagen.";
+    }
+    if ("file" in input && input.file.type.startsWith("image/")) setReadNote("La imagen queda adjunta. Los datos completalos a mano.");
     if ("file" in input && (input.file.type === "application/pdf" || input.file.name.toLowerCase().endsWith(".pdf"))) {
       const info = await readBookingPdf(input.file).catch(() => null);
       const found: string[] = [];
@@ -187,6 +203,10 @@ export function CitySheet({
       if (info?.checkOut && !checkOut) {
         setCheckOut(info.checkOut);
         found.push("el checkout");
+      }
+      if (info?.priceCents && !priceCents) {
+        setPrice(formatAmountInput(info.priceCents));
+        found.push("el precio");
       }
       setReadNote(found.length ? `Sacamos de la reserva ${namesList(found)}. Revisá que esté bien.` : "No pudimos leer los datos de la reserva: completalos a mano.");
     }
@@ -210,7 +230,9 @@ export function CitySheet({
       setError("Poné el nombre del alojamiento para guardar la reserva.");
       return;
     }
-    const hasExpense = !!via && priceCents > 0;
+    // Con precio pero sin "Reservado en", cuenta como "Otro" para que se guarde con su gasto.
+    const bookedVia = via ?? (priceCents > 0 ? "other" : null);
+    const hasExpense = !!bookedVia && priceCents > 0;
     const { splits, remainingCents } = computeSplits(priceCents, splitValue);
     if (hasExpense && remainingCents !== 0) {
       setError("La división del alojamiento no suma el total.");
@@ -222,8 +244,8 @@ export function CitySheet({
       memberIds: people,
       notes,
       stayName,
-      bookedVia: via,
-      stayPriceCents: via ? priceCents || null : null,
+      bookedVia,
+      stayPriceCents: bookedVia ? priceCents || null : null,
       stayPaidByMemberId: hasExpense ? paidBy : null,
       stayDescription: `${stayName.trim() || "Alojamiento"} · ${nightsText}`,
       staySplits: hasExpense ? splits : [],
@@ -235,7 +257,7 @@ export function CitySheet({
           id: stay?.id ?? `nuevo-${stopId}`,
           stop_id: stopId,
           name: stayName.trim() || null,
-          booked_via: via,
+          booked_via: bookedVia,
           total_price_cents: input.stayPriceCents,
           paid_by_member_id: input.stayPaidByMemberId,
           split: input.staySplits,
@@ -359,8 +381,156 @@ export function CitySheet({
             )}
 
             <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
-              {/* El alojamiento como tarjeta, con quién está abajo. */}
-              {hasStay || stop.nights > 0 || editingStay ? (
+              {/* El alojamiento (decisión 064): en vista es una tarjeta con todo lo de la estadía; al editar,
+                  la misma tarjeta se convierte en el formulario, con quiénes están adentro. */}
+              {editingStay ? (
+                <div className="mt-5 rounded-[22px] border border-line bg-white p-4 shadow-card">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="min-w-0 flex-1 text-[17px] font-bold">Alojamiento</div>
+                    <button type="button" onClick={() => setEditingStay(false)} className="h-10 shrink-0 rounded-full bg-surface px-4 text-sm font-bold">
+                      Listo
+                    </button>
+                  </div>
+
+                  {/* La reserva primero: un solo botón, PDF o imagen; el PDF completa el resto (decisión 057). */}
+                  {stay && stay.attachments.length > 0 ? (
+                    <div className="overflow-hidden rounded-[16px] border border-line">
+                      {stay.attachments.map((a, k) => (
+                        <AttachmentRow
+                          key={a.id}
+                          attachment={a}
+                          title="Reserva"
+                          first={k === 0}
+                          onOpen={() => onViewReceipt(stay.id, a.id)}
+                          onRemove={readOnly ? undefined : () => onRemoveReceipt(stay.id, a)}
+                        />
+                      ))}
+                    </div>
+                  ) : pendingReceipt ? (
+                    <div className="flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
+                      <FileText size={18} className="shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-bold">{pendingReceipt.name}</div>
+                        <div className="text-xs text-ink-2">Se sube al guardar</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPendingReceipt(null);
+                          setReadNote("");
+                        }}
+                        aria-label="Sacar la reserva"
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input ref={receiptInput} type="file" accept="application/pdf,.pdf,image/*" hidden onChange={pickReceipt} />
+                      <button
+                        type="button"
+                        disabled={reading}
+                        onClick={() => receiptInput.current?.click()}
+                        className="flex h-[52px] w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold disabled:opacity-60"
+                      >
+                        <Upload size={17} /> {reading ? "Leyendo la reserva…" : "Subir la reserva · PDF o imagen"}
+                      </button>
+                      <p className="mt-1.5 text-xs text-ink-2">Con el PDF completamos el nombre, los horarios y el precio.</p>
+                    </>
+                  )}
+                  {readNote && <p className="mt-2 text-[13px] text-ink-2">{readNote}</p>}
+
+                  <input
+                    value={stayName}
+                    onChange={(e) => setStayName(e.target.value)}
+                    placeholder="Nombre del alojamiento"
+                    aria-label="Alojamiento"
+                    className="mt-3 h-12 w-full rounded-field border border-line px-4 text-[16px] font-bold outline-none focus:border-ink"
+                  />
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <TimeField label="Check-in después de" value={checkIn} onChange={setCheckIn} />
+                    <TimeField label="Checkout antes de" value={checkOut} onChange={setCheckOut} />
+                  </div>
+
+                  <div className="mt-4 mb-2 text-xs font-bold text-ink-2">Reservado en</div>
+                  <div className="flex flex-wrap gap-2">
+                    {/* "Directo" ya no se ofrece (decisión 045), pero se sigue viendo si estaba elegido. */}
+                    {[...VIAS, ...(via === "direct" ? [{ via: "direct" as const, label: BOOKING_LABEL.direct }] : [])].map((v) => (
+                      <button
+                        key={v.via}
+                        type="button"
+                        onClick={() => setVia(via === v.via ? null : v.via)}
+                        aria-pressed={via === v.via}
+                        className={`h-10 rounded-full border px-4 text-[13px] font-bold ${via === v.via ? "border-ink bg-ink text-white" : "border-line bg-white"}`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 text-xs font-bold text-ink-2">Cuánto salió</div>
+                  <div className="mt-0.5 flex items-baseline gap-1.5">
+                    <span className="text-2xl font-extrabold">€</span>
+                    <input
+                      inputMode="decimal"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value.replace(/[^\d,.]/g, ""))}
+                      onBlur={() => setPrice(priceCents ? formatAmountInput(priceCents) : "")}
+                      placeholder="0,00"
+                      aria-label="Precio total"
+                      className="h-10 min-w-0 flex-1 bg-transparent text-2xl font-extrabold outline-none placeholder:text-ink-5"
+                    />
+                  </div>
+                  {priceCents > 0 && (
+                    <>
+                      <div className="mt-3 mb-2 text-xs font-bold text-ink-2">Pagó</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {trip.members.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setPaidBy(m.id)}
+                            aria-pressed={paidBy === m.id}
+                            className={`flex h-10 items-center gap-1.5 rounded-full pr-3 pl-1 text-[13px] font-bold ${paidBy === m.id ? "bg-ink text-white" : "bg-surface"}`}
+                          >
+                            <span className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: m.color }}>
+                              {m.initials}
+                            </span>
+                            {m.display_name}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-4">
+                        <SplitEditor members={trip.members} totalCents={priceCents} value={splitValue} onChange={setSplit} />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Quiénes están en esta ciudad. */}
+                  <div className="mt-4 mb-2 text-xs font-bold text-ink-2">Quiénes están</div>
+                  <div className="flex flex-wrap gap-2">
+                    {trip.members.map((m) => {
+                      const on = people.includes(m.id);
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => togglePerson(m.id)}
+                          aria-pressed={on}
+                          className={`flex h-11 items-center gap-2 rounded-full border pr-3.5 pl-[5px] text-sm font-bold ${on ? "border-ink bg-white" : "border-line bg-white text-ink-3"}`}
+                        >
+                          <span className="flex size-[34px] items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: m.color, opacity: on ? 1 : 0.45 }}>
+                            {m.initials}
+                          </span>
+                          {m.display_name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {peopleNote && <p className="mx-1 mt-2 text-[13px] text-ink-2">{peopleNote}</p>}
+                </div>
+              ) : hasStay || stop.nights > 0 ? (
                 <div className="mt-5 overflow-hidden rounded-[22px] border border-line bg-white shadow-card">
                   <div className="flex gap-3.5 p-3">
                     <StayIcon via={via} />
@@ -368,11 +538,14 @@ export function CitySheet({
                       <div className={`text-[19px] leading-[1.2] font-bold ${hasStay ? "" : "text-ink-3"}`}>{stayName.trim() || (hasStay ? "Alojamiento" : "¿Dónde se quedan?")}</div>
                       {staySub && <div className="mt-0.5 text-sm text-ink-2">{staySub}</div>}
                       <div className="mt-2 text-sm text-ink-2">{stop.nights === 0 ? formatDay(arrival) : formatRange(arrival, departure)}</div>
+                      {(checkIn || checkOut) && (
+                        <div className="mt-0.5 text-sm text-ink-2">{[checkIn && `Entrada ${checkIn}`, checkOut && `Salida ${checkOut}`].filter(Boolean).join(" · ")}</div>
+                      )}
                     </div>
                   </div>
                   <div className="mx-3 h-px bg-divider" />
                   <div className="flex items-center gap-2 p-3">
-                    <button type="button" onClick={() => !readOnly && setEditingPeople((e) => !e)} aria-label="Quién está" className="flex min-w-0 flex-1 items-center">
+                    <button type="button" onClick={() => !readOnly && setEditingStay(true)} aria-label="Quiénes están" className="flex min-w-0 flex-1 items-center">
                       {trip.members
                         .filter((m) => people.includes(m.id))
                         .slice(0, 5)
@@ -395,8 +568,8 @@ export function CitySheet({
                       </button>
                     )}
                     {!readOnly && (
-                      <button type="button" onClick={() => setEditingStay((e) => !e)} className="h-10 shrink-0 rounded-full bg-surface px-4 text-sm font-bold">
-                        {editingStay ? "Listo" : hasStay ? "Editar" : "Agregar"}
+                      <button type="button" onClick={() => setEditingStay(true)} className="h-10 shrink-0 rounded-full bg-surface px-4 text-sm font-bold">
+                        {hasStay ? "Editar" : "Agregar"}
                       </button>
                     )}
                   </div>
@@ -409,141 +582,8 @@ export function CitySheet({
                 >
                   <Bed size={18} className="shrink-0 text-ink-3" />
                   <span className="min-w-0 flex-1 text-ink-2">De paso, sin noche acá</span>
-                  {!readOnly && <span className="font-bold">Agregar alojamiento</span>}
+                  <span className="font-bold">Agregar alojamiento</span>
                 </button>
-              )}
-
-              {/* Quién está: se edita tocando las bolitas. */}
-              {editingPeople && (
-                <div className="mt-3">
-                  <div className="flex flex-wrap gap-2">
-                    {trip.members.map((m) => {
-                      const on = people.includes(m.id);
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => togglePerson(m.id)}
-                          aria-pressed={on}
-                          className={`flex h-11 items-center gap-2 rounded-full border pr-3.5 pl-[5px] text-sm font-bold ${on ? "border-ink bg-white" : "border-line bg-white text-ink-3"}`}
-                        >
-                          <span className="flex size-[34px] items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: m.color, opacity: on ? 1 : 0.45 }}>
-                            {m.initials}
-                          </span>
-                          {m.display_name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {peopleNote && <p className="mx-1 mt-2 text-[13px] text-ink-2">{peopleNote}</p>}
-                </div>
-              )}
-
-              {/* Editar el alojamiento: nombre, dónde se reservó, comprobante, precio, quién pagó y la división. */}
-              {editingStay && (
-                <div className="mt-3 rounded-[22px] border border-line p-4">
-                  {/* La reserva primero: si es un PDF, completa el resto (decisión 057). */}
-                  {stay && stay.attachments.length > 0 ? (
-                    <div className="mb-3 overflow-hidden rounded-[16px] border border-line">
-                      {stay.attachments.map((a, k) => (
-                        <AttachmentRow
-                          key={a.id}
-                          attachment={a}
-                          title="Comprobante"
-                          first={k === 0}
-                          onOpen={() => onViewReceipt(stay.id, a.id)}
-                          onRemove={readOnly ? undefined : () => onRemoveReceipt(stay.id, a)}
-                        />
-                      ))}
-                    </div>
-                  ) : pendingReceipt ? (
-                    <div className="mb-3 flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
-                      <FileText size={18} className="shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-bold">{pendingReceipt.name}</div>
-                        <div className="text-xs text-ink-2">Se sube al guardar</div>
-                      </div>
-                      <button type="button" onClick={() => (setPendingReceipt(null), setReadNote(""))} aria-label="Sacar la reserva" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface">
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="mb-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-ink-2">
-                        <FileText size={14} /> Subí la reserva y completamos el nombre y los horarios
-                      </div>
-                      <AddAttachmentButtons withLink={false} onAdd={addReceipt} />
-                    </div>
-                  )}
-                  {readNote && <p className="-mt-1 mb-3 text-[13px] text-ink-2">{readNote}</p>}
-                  <input
-                    value={stayName}
-                    onChange={(e) => setStayName(e.target.value)}
-                    placeholder="Nombre del alojamiento"
-                    aria-label="Alojamiento"
-                    className="h-12 w-full rounded-field border border-line px-4 text-[16px] font-bold outline-none focus:border-ink"
-                  />
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <TimeField label="Check-in después de" value={checkIn} onChange={setCheckIn} />
-                    <TimeField label="Checkout antes de" value={checkOut} onChange={setCheckOut} />
-                  </div>
-                  <div className="mt-3 mb-2 text-xs font-bold text-ink-2">Reservado en</div>
-                  <div className="flex flex-wrap gap-2">
-                    {/* "Directo" ya no se ofrece (decisión 045), pero se sigue viendo si estaba elegido. */}
-                    {[...VIAS, ...(via === "direct" ? [{ via: "direct" as const, label: BOOKING_LABEL.direct }] : [])].map((v) => (
-                      <button
-                        key={v.via}
-                        type="button"
-                        onClick={() => setVia(via === v.via ? null : v.via)}
-                        aria-pressed={via === v.via}
-                        className={`h-10 rounded-full border px-4 text-[13px] font-bold ${via === v.via ? "border-ink bg-ink text-white" : "border-line bg-white"}`}
-                      >
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
-                  {via && (
-                    <>
-                      <div className="mt-4 text-xs font-bold text-ink-2">Precio total</div>
-                      <div className="mt-0.5 flex items-baseline gap-1.5">
-                        <span className="text-2xl font-extrabold">€</span>
-                        <input
-                          inputMode="decimal"
-                          value={price}
-                          onChange={(e) => setPrice(e.target.value.replace(/[^\d,.]/g, ""))}
-                          onBlur={() => setPrice(priceCents ? formatAmountInput(priceCents) : "")}
-                          placeholder="0,00"
-                          aria-label="Precio total"
-                          className="h-10 min-w-0 flex-1 bg-transparent text-2xl font-extrabold outline-none placeholder:text-ink-5"
-                        />
-                      </div>
-                      {priceCents > 0 && (
-                        <>
-                          <div className="mt-3 mb-2 text-xs font-bold text-ink-2">Pagó</div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {trip.members.map((m) => (
-                              <button
-                                key={m.id}
-                                type="button"
-                                onClick={() => setPaidBy(m.id)}
-                                aria-pressed={paidBy === m.id}
-                                className={`flex h-10 items-center gap-1.5 rounded-full pr-3 pl-1 text-[13px] font-bold ${paidBy === m.id ? "bg-ink text-white" : "bg-surface"}`}
-                              >
-                                <span className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: m.color }}>
-                                  {m.initials}
-                                </span>
-                                {m.display_name}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-4">
-                            <SplitEditor members={trip.members} totalCents={priceCents} value={splitValue} onChange={setSplit} />
-                          </div>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
               )}
 
               {/* Línea de tiempo: el día que llegás y el día que te vas. */}

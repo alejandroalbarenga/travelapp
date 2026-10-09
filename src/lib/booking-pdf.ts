@@ -1,8 +1,8 @@
 import type { BookingSource } from "./trip-types";
 
-// Completar el alojamiento desde el PDF de la reserva (decisión 057): el nombre, dónde se reservó y
-// los horarios de check-in y checkout. Se lee en el teléfono con pdf.js, sin mandar el archivo a
-// ningún servicio. Son reglas simples para las confirmaciones de Booking, Airbnb y Hostelworld (en
+// Completar el alojamiento desde el PDF de la reserva (decisión 057): el nombre, dónde se reservó,
+// los horarios de check-in y checkout, y el precio total si está en euros (decisión 064). Se lee en
+// el teléfono con pdf.js, sin mandar el archivo a ningún servicio. Son reglas simples para las confirmaciones de Booking, Airbnb y Hostelworld (en
 // español o inglés): lo que no se encuentra queda vacío para completar a mano.
 
 /** Una línea del PDF con el tamaño de su letra (el nombre del alojamiento suele ser lo más grande). */
@@ -13,6 +13,7 @@ export type BookingInfo = {
   via?: BookingSource;
   checkIn?: string; // "15:00"
   checkOut?: string; // "11:00"
+  priceCents?: number;
 };
 
 const TIME = /\b(\d{1,2})(?::|h)(\d{2})\s*(a\.?\s?m\.?|p\.?\s?m\.?)?/gi;
@@ -59,6 +60,16 @@ export function parseBooking(lines: PdfLine[]): BookingInfo {
   if (ins.length) info.checkIn = ins[0];
   if (outs.length) info.checkOut = outs[outs.length - 1];
 
+  // El precio: la última línea con "total" y un monto en euros (Booking pone primero los parciales).
+  const totals = lines.filter((l) => /total/i.test(l.text) && /€|eur\b/i.test(l.text));
+  for (const l of totals.reverse()) {
+    const cents = euroCents(l.text);
+    if (cents) {
+      info.priceCents = cents;
+      break;
+    }
+  }
+
   // El nombre: la línea con la letra más grande que no sea la marca ni un título.
   const candidates = lines
     .map((l) => ({ ...l, text: l.text.replace(/\s+/g, " ").trim() }))
@@ -67,4 +78,15 @@ export function parseBooking(lines: PdfLine[]): BookingInfo {
   if (biggest) info.name = biggest.text;
 
   return info;
+}
+
+/** "Precio total € 1.234,56" → 123456. El separador decimal es el último si le siguen dos cifras. */
+export function euroCents(text: string): number | null {
+  const amounts = [...text.matchAll(/\d[\d.,\s]*\d|\d/g)].map((m) => m[0].replace(/\s/g, ""));
+  const raw = amounts[amounts.length - 1];
+  if (!raw) return null;
+  const decimal = /[.,]\d{2}$/.test(raw);
+  const whole = (decimal ? raw.slice(0, -3) : raw).replace(/[.,]/g, "");
+  const cents = Number(whole) * 100 + (decimal ? Number(raw.slice(-2)) : 0);
+  return Number.isFinite(cents) && cents > 0 ? cents : null;
 }

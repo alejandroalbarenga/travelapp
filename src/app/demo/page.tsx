@@ -4,6 +4,7 @@ import { TripScreen } from "@/components/trip/trip-screen";
 import { withCityPhotos } from "@/lib/city-photo";
 import { findPlaces } from "@/app/viaje/[id]/actions";
 import { DEMO_MY_MEMBER_ID, DEMO_TRIP } from "@/lib/demo-trip";
+import { LoadingScreen } from "@/components/loading-screen";
 
 // Pantalla del Viaje con el viaje de ejemplo, sin base ni login. Solo existe en desarrollo
 // (en producción da 404) y sirve para ver y ajustar el diseño.
@@ -12,7 +13,7 @@ import { DEMO_MY_MEMBER_ID, DEMO_TRIP } from "@/lib/demo-trip";
 export default function DemoPage({ searchParams }: PageProps<"/demo">) {
   if (process.env.NODE_ENV !== "development") notFound();
   return (
-    <Suspense fallback={<p className="p-5 text-[15px] text-ink-2">Cargando el viaje…</p>}>
+    <Suspense fallback={<LoadingScreen label="Cargando el viaje" />}>
       <DemoTrip searchParams={searchParams} />
     </Suspense>
   );
