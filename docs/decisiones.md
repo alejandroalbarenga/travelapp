@@ -455,3 +455,13 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 - "Agregar ciudad" desde el chip "Agregar" propone ponerla después de la última ciudad (antes era antes de la última).
 - El logo de la pantalla de carga va sin sombra.
 **Por qué:** pedido de Ale; los sheets ya ocupaban casi toda la pantalla y con el teclado se rompían.
+
+### 069 · El tramo se completa desde el pasaje
+**Fecha:** 2026-10-09
+**Decisión:** arriba del formulario del tramo va "Subir el pasaje · PDF o imagen" (mientras el tramo no tenga pasajes). Se lee en el teléfono, igual que la reserva del alojamiento (057, 067), y se completa lo que esté vacío: el medio de transporte (por las palabras del pasaje: vuelo, embarque, Ryanair, Renfe, tren, FlixBus, autobús…), la hora de salida y de llegada (sin contar la hora de embarque; también si vienen en tabla) y el precio en euros. Las reglas están en `src/lib/ticket-pdf.ts`. Si el tramo todavía no está guardado, el pasaje se sube al guardar (`save_leg` devuelve el id del tramo) y queda como pasaje tuyo. Los pasajes que se agregan abajo también completan lo vacío.
+**Por qué:** pedido de Ale; el pasaje ya tiene todo, no hace falta tipearlo.
+
+### 070 · Las fechas de "Nuevo viaje" con el mismo aspecto que los otros campos
+**Fecha:** 2026-10-09
+**Decisión:** "Desde" y "Hasta" muestran la fecha escrita ("sáb 17 oct", con el año si no es el actual) con un ícono de calendario, y "Elegir" si están vacías. Encima va el campo de fecha nativo transparente, que abre el selector del teléfono (en la compu, el calendario).
+**Por qué:** pedido de Ale; en el iPhone el campo de fecha nativo quedaba desalineado.
