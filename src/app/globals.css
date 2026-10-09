@@ -1,36 +1,40 @@
 @import "tailwindcss";
 
-/* Tokens del sistema visual. Valores de docs/decisiones.md (026) y docs/diseño.md. */
+/* Tokens del sistema visual. Valores de docs/decisiones.md (026 y 050) y docs/diseño.md.
+   Paleta de la decisión 050: negro #222222 como color principal (se sigue llamando "navy" en el
+   código para no tocar cada componente) y rosado #FF385C para pocos detalles; grises neutros. */
 @theme {
   --font-sans: var(--font-jakarta), system-ui, sans-serif;
   --font-hand: var(--font-caveat), cursive;
 
   /* Primario y acento */
-  --color-navy: #00293d;
-  --color-navy-light: #06384f;
-  --color-navy-dark: #001b29;
-  --color-navy-soft: rgb(0 41 61 / 0.1);
-  --color-navy-tint: #eaf2f8;
+  --color-navy: #222222;
+  --color-navy-light: #3a3a3a;
+  --color-navy-dark: #000000;
+  --color-navy-soft: rgb(34 34 34 / 0.08);
+  --color-navy-tint: #f2f2f2;
+  --color-pink: #ff385c;
+  --color-pink-dark: #e00b41;
   --color-orange: #f5891f;
   --color-orange-light: #ffa445;
 
   /* Texto */
-  --color-ink: #1a1c1e;
-  --color-ink-2: #5f6368;
-  --color-ink-3: #8a929b;
-  --color-ink-4: #9aa0a6;
-  --color-ink-5: #b4b9bf;
+  --color-ink: #222222;
+  --color-ink-2: #6a6a6a;
+  --color-ink-3: #8a8a8a;
+  --color-ink-4: #a0a0a0;
+  --color-ink-5: #b8b8b8;
 
   /* Superficies y bordes */
-  --color-surface: #eef3f8;
-  --color-surface-2: #f6f9fc;
-  --color-line: #e2e8ef;
-  --color-divider: #edf1f6;
-  --color-divider-2: #e6ecf2;
-  --color-dots: #c3ceda;
-  --color-dots-web: #9fb2c4;
-  --color-dash: #cfd8e2;
-  --color-handle: #d3dbe4;
+  --color-surface: #f2f2f2;
+  --color-surface-2: #f7f7f7;
+  --color-line: #dddddd;
+  --color-divider: #ebebeb;
+  --color-divider-2: #e4e4e4;
+  --color-dots: #c4c4c4;
+  --color-dots-web: #b0b0b0;
+  --color-dash: #cccccc;
+  --color-handle: #d6d6d6;
 
   /* Estados */
   --color-success: #1f9d55;
@@ -74,18 +78,15 @@
   --radius-card-xl: 30px;
   --radius-sheet: 28px;
 
-  /* Sombras */
-  --shadow-card: 0 1px 2px rgb(0 41 61 / 0.06), 0 8px 22px rgb(0 41 61 / 0.07), inset 0 1px 0 #fff;
-  --shadow-button: 0 6px 16px rgb(0 41 61 / 0.22);
-  --shadow-glass: 0 10px 30px rgb(0 41 61 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  /* Sombras: grises neutras y suaves, sin tinte azul (decisión 050). */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.05), 0 6px 16px rgb(0 0 0 / 0.06);
+  --shadow-button: 0 6px 16px rgb(0 0 0 / 0.18);
+  --shadow-glass: 0 6px 20px rgb(0 0 0 / 0.12);
 }
 
-@utility bg-navy-gradient {
-  background-image: linear-gradient(180deg, var(--color-navy-light) 0%, var(--color-navy) 100%);
-}
-
+/* Tarjetas: blancas lisas (decisión 049; antes iban de blanco a #F6F9FC). */
 @utility bg-card-gradient {
-  background-image: linear-gradient(180deg, #fff 0%, var(--color-surface-2) 100%);
+  background-color: #fff;
 }
 
 /* Vidrio claro: botones flotantes sobre el mapa, menú del +. */
@@ -97,13 +98,16 @@
   box-shadow: var(--shadow-glass);
 }
 
-/* Vidrio oscuro: control Viaje / Gastos. */
-@utility glass-dark {
-  background-color: rgb(0 41 61 / 0.84);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgb(255 255 255 / 0.16);
-  box-shadow: 0 12px 32px rgb(0 41 61 / 0.3), inset 0 1px 0 rgb(255 255 255 / 0.14);
+/* Opciones del chip "Agregar": suben y aparecen de a una (decisión 049). */
+@keyframes fab-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Safe areas del iPhone (notch y barra de inicio). */

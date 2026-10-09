@@ -80,7 +80,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - `trip_members`: id, trip_id, user_id (nullable), display_name, initials, color, role (admin/editor/viewer)
 - `stops`: id, trip_id, position, city, country, country_code, code, tagline (frase), notes, nights (≥ 0), timezone, lat, lng, photo_url
 - `stop_members`: stop_id, member_id (quién está en cada parada)
-- `stays`: id, stop_id, name, address, booked_via (booking/airbnb/direct/other, nullable), total_price_cents, paid_by_member_id, expense_id, notes
+- `stays`: id, stop_id, name, address, booked_via (booking/airbnb/hostelworld/direct/other, nullable), total_price_cents, paid_by_member_id, expense_id, notes, check_in_time, check_out_time
 - `stay_attachments`: id, stay_id, kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at
 - `legs`: id, trip_id, from_stop_id, to_stop_id, mode (car/train/plane/bus/other), departs_at, arrives_at, total_price_cents, paid_by_member_id, expense_id
 - `leg_attachments`: id, leg_id, member_id (de quién es el pasaje, nullable), kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at

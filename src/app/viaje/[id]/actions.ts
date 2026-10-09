@@ -36,6 +36,9 @@ export type SaveStopInput = {
   stayPaidByMemberId: string | null;
   stayDescription: string;
   staySplits: { member_id: string; amount_cents: number }[];
+  /** "HH:MM" o null (decisión 051). */
+  checkIn: string | null;
+  checkOut: string | null;
 };
 
 // Guarda quién está, las notas y el alojamiento con su gasto (supabase/migrations/0003_stops.sql).
@@ -52,7 +55,15 @@ export async function saveStop(input: SaveStopInput): Promise<{ error: string } 
     p_stay_description: input.stayDescription,
     p_stay_splits: input.staySplits,
   });
-  if (!error) return null;
+  if (!error) {
+    // Las horas de check-in y checkout van aparte (migración 0009), si quedó un alojamiento.
+    if (!input.stayName.trim() && !input.bookedVia) return null;
+    const { error: timesError } = await supabase
+      .from("stays")
+      .update({ check_in_time: input.checkIn, check_out_time: input.checkOut })
+      .eq("stop_id", input.stopId);
+    return timesError ? { error: lockedError(timesError) ?? "No pudimos guardar las horas del alojamiento." } : null;
+  }
   if (error.message.includes("no suma")) return { error: "La división del alojamiento no suma el total." };
   if (error.message.includes("al menos")) return { error: "Tiene que quedar al menos una persona." };
   return { error: lockedError(error) ?? "No pudimos guardar los cambios." };

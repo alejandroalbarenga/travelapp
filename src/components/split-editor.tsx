@@ -74,7 +74,7 @@ export function SplitEditor({
                 custom: mode === "custom" && Object.keys(value.custom).length === 0 ? equalCustom(totalCents, value.memberIds) : value.custom,
               })
             }
-            className={`h-[38px] rounded-full text-[13px] font-bold ${value.mode === mode ? "bg-white text-navy shadow-[0_2px_8px_rgb(0_41_61/0.12)]" : "text-ink-2"}`}
+            className={`h-[38px] rounded-full text-[13px] font-bold ${value.mode === mode ? "bg-white text-navy shadow-[0_2px_8px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
           >
             {mode === "equal" ? "Partes iguales" : "Montos distintos"}
           </button>

@@ -310,3 +310,48 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 - **Bloquear y borrar** (042) aparecen al pasar el mouse por la foto, porque en la compu no se desliza. Esto no está en el diseño.
 - **El móvil no cambia.**
 **Por qué:** Ale la pidió para cargar cosas más cómodo desde la compu (decisión 022).
+
+### 049 · Ajustes de diseño en el celular
+**Fecha:** 2026-10-08
+**Decisión:** cambia el diseño original en tres cosas.
+- **Sin la barra Viaje / Gastos de abajo.** Gastos se abre con una bolita flotante arriba a la derecha (billetera), la primera de la columna, y su flecha de volver lleva al viaje.
+- **El + redondo pasa a ser un chip "Agregar"** abajo al medio. Al tocarlo pregunta qué agregar: en el viaje, ciudad, tramo o gasto; en Gastos, gasto o transferencia.
+- **Las tarjetas son blancas lisas**, sin el degradé a `#F6F9FC`.
+- En la web, Viaje y Gastos también van separados: el header tiene un botón "Gastos" (billetera) y, en Gastos, la flecha vuelve al viaje.
+**Por qué:** decisión de Ale al probarla.
+
+### 050 · Más limpio: blanco, negro y rosado, sin degradés
+**Fecha:** 2026-10-08
+**Decisión:** reemplaza la paleta de la 026.
+- **Nada de degradés** en la app: botones, tarjetas y el inicio quedan lisos. La única excepción es la foto de la ficha de la ciudad, que se funde en el blanco.
+- **Fondos y tarjetas blancos.** Las sombras son grises suaves, sin tinte.
+- **Color principal: negro `#222222`.** Textos, números de las ciudades, el chip "Agregar", el mapa y las tarjetas oscuras. En el código sigue llamándose `navy` (`--color-navy`) para no tocar cada componente.
+- **Rosado `#FF385C`** (`bg-pink`) en pocos lugares: los botones que confirman (Guardar, Crear viaje, Agregar ciudad, Entrar…) y el número de integrantes.
+- **Grises neutros** en vez de los azulados: superficie `#F2F2F2`, bordes `#DDDDDD` y líneas `#EBEBEB`.
+- **El inicio, como Airbnb:** la foto del viaje limpia y el texto abajo, sin caja.
+- **Las notas** van en un campo blanco con borde, sin el halo naranja.
+- **Menos cajas:** la lista de ciudades, los gastos, el balance, los movimientos, los integrantes y el transporte de la ciudad van sin recuadro ni sombra, con líneas finas entre filas. Quedan en caja solo los bloques: el alojamiento, las burbujas del balance y los adjuntos.
+- El naranja queda solo para avisos (huso horario, noches que faltan) y para el día de hoy en el calendario.
+**Por qué:** decisión de Ale, para que la app se vea más profesional y limpia (referencia: Airbnb).
+
+### 051 · La ficha de la ciudad como un itinerario
+**Fecha:** 2026-10-08
+**Decisión:** reemplaza el armado de la pantalla 06 (referencia: el detalle de un viaje en Airbnb).
+- **Arriba:** la ciudad y su país. Debajo, la planificación: las fechas (abren el calendario) y las noches.
+- **El alojamiento es una tarjeta:** un ícono según dónde se reservó (hotel para Booking, casa para Airbnb, cama para Hostelworld), nombre, "Booking · €264 · pagó Rodrigo" y las fechas. Abajo van las bolitas de quién está y "Editar" (o "Ver reserva" si hay comprobante).
+- **El formulario del alojamiento** se abre desde la tarjeta: nombre, horas de check-in y checkout, dónde se reservó, comprobante, precio, quién pagó y la división. Quién está se edita tocando las bolitas.
+- **Una línea de tiempo por día:**
+  - el día que llegás: el transporte que te trae y "Check-in · Después de las 14:00";
+  - después, "N noches en la ciudad";
+  - el día que te vas: "Checkout · Antes de las 11:00" y el transporte a la ciudad siguiente.
+  - Tocar un transporte abre el tramo.
+  - En una ciudad de paso hay un solo día, con los dos transportes.
+- **Dos modos.** Vista (ciudad bloqueada o solo ver) es una lectura limpia: sin controles, con las notas como texto. Edición es todo lo de arriba, más las notas y "Borrar la ciudad".
+- **Datos:** `stays.check_in_time` y `stays.check_out_time` (migración 0009), que se guardan junto con la ciudad.
+**Por qué:** decisión de Ale; la ficha tiene que leerse como un itinerario, no como un formulario.
+
+### 052 · Sin el número de cada ciudad en la lista
+**Fecha:** 2026-10-08
+**Decisión:** en el celular, la tarjeta de la ciudad ya no lleva el círculo con su número (el orden lo da la lista). En la web, los números sobre la línea se quedan, igual que los pines del mapa.
+**Por qué:** decisión de Ale, para que la lista quede más limpia.
+- En la web, una ciudad bloqueada (o para quien solo ve) muestra "4 noches" al costado en vez del más y el menos.

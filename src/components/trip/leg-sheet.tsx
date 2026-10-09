@@ -296,19 +296,19 @@ export function LegSheet({
               <button
                 type="button"
                 onClick={() => onViewTicket(fromStopId, myTicket.id)}
-                className={`flex h-14 w-full items-center justify-center gap-2 rounded-button text-base font-bold ${readOnly ? "bg-navy-gradient text-white" : "border border-line bg-white text-navy"}`}
+                className={`flex h-14 w-full items-center justify-center gap-2 rounded-button text-base font-bold ${readOnly ? "bg-pink text-white" : "border border-line bg-white text-navy"}`}
               >
                 <Ticket size={18} /> {myTicket.member_id ? "Ver mi pasaje" : "Ver pasaje"}
               </button>
             )}
             {readOnly ? (
               !myTicket && (
-                <button type="button" onClick={close} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white">
+                <button type="button" onClick={close} className="bg-pink h-14 w-full rounded-button text-base font-bold text-white">
                   Cerrar
                 </button>
               )
             ) : (
-              <button type="button" onClick={() => save(close)} disabled={pending} className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
+              <button type="button" onClick={() => save(close)} disabled={pending} className="bg-pink h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
                 {pending ? "Guardando…" : myTicket ? "Guardar" : "Guardar tramo"}
               </button>
             )}

@@ -74,7 +74,7 @@ export function SwipeRow({
             onOpenChange(null);
             onLock();
           }}
-          className="bg-navy-gradient absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-1 rounded-card text-xs font-bold text-white"
+          className="bg-navy absolute inset-y-0 left-0 flex flex-col items-center justify-center gap-1 rounded-card text-xs font-bold text-white"
           style={{ width: Math.max(offset, ACTION_WIDTH) }}
         >
           {locked ? <LockOpen size={20} /> : <Lock size={20} />}

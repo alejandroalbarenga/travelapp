@@ -75,7 +75,7 @@ export function BottomSheet({
           style={{ background: `rgb(15 16 18 / ${scrim * 0.6})`, opacity: shown ? 1 : 0 }}
         />
         <div
-          className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-10px_40px_rgb(0_41_61/0.18)]"
+          className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-10px_40px_rgb(0_0_0/0.18)]"
           style={{
             top: top === "auto" ? undefined : 12,
             maxHeight: top === "auto" ? "calc(100% - 12px)" : undefined,
@@ -102,7 +102,7 @@ export function BottomSheet({
       />
       {web ? (
         <div
-          className="absolute top-1/2 left-1/2 flex w-[min(560px,calc(100vw-48px))] flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_20px_60px_rgb(0_41_61/0.25)]"
+          className="absolute top-1/2 left-1/2 flex w-[min(560px,calc(100vw-48px))] flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_20px_60px_rgb(0_0_0/0.25)]"
           style={{
             height: top === "auto" ? undefined : "min(860px, calc(100dvh - 64px))",
             maxHeight: "calc(100dvh - 64px)",
@@ -116,7 +116,7 @@ export function BottomSheet({
         </div>
       ) : (
       <div
-        className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[560px] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-10px_40px_rgb(0_41_61/0.18)]"
+        className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[560px] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-10px_40px_rgb(0_0_0/0.18)]"
         style={{
           top: top === "auto" ? undefined : top,
           maxHeight: top === "auto" ? "calc(100dvh - var(--safe-top) - 52px)" : undefined,

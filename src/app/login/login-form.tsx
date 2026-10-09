@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-// Login con código por email (decisión 003): pedís el código, te llega al mail y lo escribís acá.
+// Login con código por email (decisión 003): pedís el código, te llega al email y lo escribís acá.
 
 function errorMessage(code: string | undefined): string {
   switch (code) {
@@ -14,7 +14,7 @@ function errorMessage(code: string | undefined): string {
     case "invalid_credentials":
       return "El código no es correcto o ya venció.";
     case "email_address_invalid":
-      return "Ese mail no parece válido.";
+      return "Ese email no parece válido.";
     default:
       return "Algo salió mal. Probá de nuevo.";
   }
@@ -31,7 +31,7 @@ export function LoginForm() {
     e.preventDefault();
     const value = email.trim().toLowerCase();
     if (!value.includes("@")) {
-      setError("Escribí tu mail.");
+      setError("Escribí tu email.");
       return;
     }
     setBusy(true);
@@ -66,15 +66,15 @@ export function LoginForm() {
   }
 
   const field =
-    "h-[54px] w-full rounded-field border border-line bg-white px-4 text-[17px] font-bold text-ink outline-none focus:border-navy focus:shadow-[0_0_0_4px_rgb(0_41_61/0.06)]";
-  const primary = "bg-navy-gradient mt-4 h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50";
+    "h-[54px] w-full rounded-field border border-line bg-white px-4 text-[17px] font-bold text-ink outline-none focus:border-navy focus:shadow-[0_0_0_4px_rgb(0_0_0/0.06)]";
+  const primary = "bg-pink mt-4 h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50";
 
   if (step === "email") {
     return (
       <form onSubmit={sendCode} className="mt-2">
-        <p className="text-[15px] text-ink-2">Entrá con tu mail. Te mandamos un código para confirmar que sos vos.</p>
+        <p className="text-[15px] text-ink-2">Entrá con tu email. Te mandamos un código para confirmar que sos vos.</p>
         <label className="mt-6 block">
-          <span className="mb-2 block text-[13px] font-bold text-ink-2">Mail</span>
+          <span className="mb-2 block text-[13px] font-bold text-ink-2">Email</span>
           <input
             type="email"
             inputMode="email"
@@ -82,7 +82,7 @@ export function LoginForm() {
             autoCapitalize="none"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="vos@mail.com"
+            placeholder="vos@email.com"
             className={field}
           />
         </label>
@@ -125,7 +125,7 @@ export function LoginForm() {
         }}
         className="mt-2 h-11 w-full text-[13px] font-bold text-navy"
       >
-        Usar otro mail
+        Usar otro email
       </button>
     </form>
   );

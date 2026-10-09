@@ -93,7 +93,7 @@ export function CitySearchSheet({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]">
-            <label className="mt-4 flex h-14 items-center gap-2.5 rounded-[18px] border-[1.5px] border-navy px-4 text-navy shadow-[0_0_0_4px_rgb(0_41_61/0.06)]">
+            <label className="mt-4 flex h-14 items-center gap-2.5 rounded-[18px] border-[1.5px] border-navy px-4 text-navy shadow-[0_0_0_4px_rgb(0_0_0/0.06)]">
               <MapPin size={20} className="shrink-0" />
               <input
                 value={query}
@@ -183,7 +183,7 @@ export function CitySearchSheet({
               type="button"
               onClick={() => confirm(close)}
               disabled={pending}
-              className="bg-navy-gradient h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-70"
+              className="bg-pink h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-70"
             >
               {pending ? "Guardando…" : mode.kind === "add" ? "Agregar ciudad" : "Cambiar ciudad"}
             </button>

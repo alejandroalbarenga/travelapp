@@ -39,6 +39,7 @@ export function ExpensesScreen({
   onUndo,
   onTransfer,
   embedded = false,
+  onBack,
 }: {
   tripName: string;
   view: ExpensesView;
@@ -51,6 +52,8 @@ export function ExpensesScreen({
   onTransfer: () => void;
   /** En la web va dentro del panel izquierdo: sin su propio header (lo tiene el panel). */
   embedded?: boolean;
+  /** Volver al viaje (en el celular, Gastos se abre desde la bolita de arriba). */
+  onBack?: () => void;
 }) {
   const [showAllActivity, setShowAllActivity] = useState(false);
   const balanceRef = useRef<HTMLDivElement>(null);
@@ -72,9 +75,15 @@ export function ExpensesScreen({
     <div className={embedded ? "flex h-full flex-col bg-white" : "absolute inset-0 z-[1] flex flex-col bg-white"}>
       <div className={`relative z-[2] shrink-0 bg-white px-5 pb-3.5 ${embedded ? "hidden" : ""}`} style={{ paddingTop: "calc(var(--safe-top) + 12px)" }}>
         <div className="flex items-center gap-3">
-          <Link href="/" aria-label="Volver al inicio" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_2px_rgb(0_41_61/0.08),0_4px_12px_rgb(0_41_61/0.06)]">
-            <ChevronLeft size={20} />
-          </Link>
+          {onBack ? (
+            <button type="button" onClick={onBack} aria-label="Volver al viaje" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_2px_rgb(0_0_0/0.08),0_4px_12px_rgb(0_0_0/0.06)]">
+              <ChevronLeft size={20} />
+            </button>
+          ) : (
+            <Link href="/" aria-label="Volver al inicio" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_1px_2px_rgb(0_0_0/0.08),0_4px_12px_rgb(0_0_0/0.06)]">
+              <ChevronLeft size={20} />
+            </Link>
+          )}
           <div className="min-w-0">
             <div className="truncate text-[13px] font-bold text-navy">{tripName}</div>
             <h1 className="mt-0.5 text-[28px] leading-[1.1] font-extrabold tracking-[-0.02em]">Gastos</h1>
@@ -88,7 +97,7 @@ export function ExpensesScreen({
       >
 
       {view.groups.length > 0 && (
-        <section className="bg-navy-gradient mt-1.5 rounded-card-lg px-3 pt-4 pb-3 shadow-card">
+        <section className="mt-1.5 rounded-card-lg bg-navy px-3 pt-4 pb-3">
           <div className="px-2 text-[13px] font-bold text-white/75">Cómo está cada uno</div>
           <div className="mt-2">
             <BalanceBubbles bubbles={view.bubbles} />
@@ -96,7 +105,7 @@ export function ExpensesScreen({
         </section>
       )}
 
-      <section className="mt-3 rounded-card-lg border border-navy/[.07] bg-white p-[18px] shadow-card">
+      <section className="mt-6 px-1">
         <div className="text-[13px] font-bold text-ink-2">Total del viaje</div>
         <div className="mt-1 text-[40px] leading-[1.1] font-extrabold tracking-[-0.02em]">{view.total}</div>
         <div className="mt-1 text-[13px] text-ink-2">{view.summary}</div>
@@ -131,7 +140,7 @@ export function ExpensesScreen({
             <span className="text-[17px] font-bold">{g.name}</span>
             <span className="text-[13px] text-ink-2">{g.dates}</span>
           </div>
-          <div className="overflow-hidden rounded-card border border-navy/[.07] bg-white shadow-card">
+          <div className="border-y border-divider">
             {g.rows.map((r, i) => {
               const Icon = r.legMode ? MODE_ICON[r.legMode] : CATEGORY_ICON[r.category];
               return (
@@ -180,7 +189,7 @@ export function ExpensesScreen({
           </button>
         )}
         {(view.pending.length > 0 || view.settled.length > 0) && (
-          <div className="mt-3 overflow-hidden rounded-card border border-navy/[.07] bg-white shadow-card">
+          <div className="mt-3 border-y border-divider">
             {view.pending.map((t, i) => (
               <div key={`p-${t.from}-${t.to}`} className={`flex flex-col gap-3 p-3.5 ${i ? "border-t border-divider" : ""}`}>
                 <TransferLine t={t} member={member} verb="le debe" />
@@ -228,7 +237,7 @@ export function ExpensesScreen({
             <div className="text-xl font-extrabold tracking-[-0.01em]">Movimientos</div>
             <div className="mt-1 text-[13px] text-ink-2">Todo lo que se cargó, cambió o borró. No se puede editar.</div>
           </div>
-          <div className="mt-3 overflow-hidden rounded-card border border-navy/[.07] bg-white shadow-card">
+          <div className="mt-3 border-y border-divider">
             {(showAllActivity ? view.activity : view.activity.slice(0, ACTIVITY_PREVIEW)).map((a, i) => (
               <ActivityRow key={a.id} a={a} first={i === 0} />
             ))}

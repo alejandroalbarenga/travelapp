@@ -86,7 +86,7 @@ async function Trips() {
       </div>
 
       {upcoming.length === 0 && (
-        <div className="rounded-card-lg border border-navy/[.07] bg-white p-5 text-center shadow-card">
+        <div className="py-6 text-center">
           <p className="text-[15px] text-ink-2">{trips.length ? "No tenés viajes por delante." : "Todavía no tenés viajes. Armá el primero, o pedile a alguien del grupo el link de invitación."}</p>
           <div className="mt-4">
             <NewTripButton big />
@@ -94,33 +94,27 @@ async function Trips() {
         </div>
       )}
 
-      <div className="grid gap-3.5 md:grid-cols-2">
+      {/* Como Airbnb: la foto limpia, sin degradé ni caja, y el texto abajo (decisión 050). */}
+      <div className="grid gap-x-5 gap-y-7 md:grid-cols-2">
         {upcoming.map((t) => (
-          <Link
-            key={t.id}
-            href={`/viaje/${t.id}`}
-            className="relative block h-[212px] overflow-hidden rounded-card-xl bg-navy shadow-card"
-            style={photo.get(t.id) ? { backgroundImage: `url(${photo.get(t.id)})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-          >
-            <div className="absolute inset-0 bg-linear-to-b from-black/0 via-black/10 to-black/75" />
-            <span className="glass absolute top-3.5 left-3.5 flex h-8 items-center rounded-full px-3 text-xs font-bold text-navy">
-              {formatRange(t.start_date, t.end_date)}
-            </span>
-            <span className="absolute top-3.5 right-3.5 flex h-8 items-center rounded-xl bg-navy/85 px-3 text-xs font-extrabold text-white">
-              {countdown(t.start_date, t.end_date, today)}
-            </span>
-            <div className="absolute inset-x-4 bottom-4 flex items-end gap-3 text-white">
+          <Link key={t.id} href={`/viaje/${t.id}`} className="block">
+            <div
+              className="relative aspect-[16/10] overflow-hidden rounded-[20px] bg-surface bg-cover bg-center"
+              style={photo.get(t.id) ? { backgroundImage: `url(${photo.get(t.id)})` } : undefined}
+            >
+              <span className="absolute top-3 left-3 flex h-8 items-center rounded-full bg-white px-3 text-xs font-bold text-ink shadow-[0_2px_8px_rgb(0_0_0/0.12)]">
+                {countdown(t.start_date, t.end_date, today)}
+              </span>
+            </div>
+            <div className="mt-3 flex items-start gap-3">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[24px] leading-[1.1] font-extrabold tracking-[-0.02em]">{t.name}</div>
-                <div className="mt-1 text-[13px] font-semibold text-white/85">{tripSubtitle(t.stops.length, t.start_date, t.end_date)}</div>
+                <div className="truncate text-[17px] font-bold">{t.name}</div>
+                <div className="mt-0.5 text-sm text-ink-2">{formatRange(t.start_date, t.end_date)}</div>
+                <div className="text-sm text-ink-2">{tripSubtitle(t.stops.length, t.start_date, t.end_date)}</div>
               </div>
-              <div className="flex shrink-0 -space-x-2">
+              <div className="flex shrink-0 -space-x-2 pt-0.5">
                 {t.trip_members.slice(0, 5).map((m) => (
-                  <span
-                    key={m.id}
-                    className="flex size-8 items-center justify-center rounded-full border-2 border-white/80 text-[11px] font-bold text-white"
-                    style={{ background: m.color }}
-                  >
+                  <span key={m.id} className="flex size-7 items-center justify-center rounded-full border-2 border-white text-[10px] font-bold text-white" style={{ background: m.color }}>
                     {m.initials}
                   </span>
                 ))}
@@ -133,9 +127,9 @@ async function Trips() {
       {past.length > 0 && (
         <>
           <h2 className="mt-8 mb-3 text-[20px] font-extrabold tracking-[-0.01em]">Viajes pasados</h2>
-          <div className="overflow-hidden rounded-card border border-navy/[.07] bg-white shadow-card">
+          <div>
             {past.map((t, i) => (
-              <Link key={t.id} href={`/viaje/${t.id}`} className={`flex items-center gap-3 p-3 ${i ? "border-t border-divider" : ""}`}>
+              <Link key={t.id} href={`/viaje/${t.id}`} className={`flex items-center gap-3 py-3 ${i ? "border-t border-divider" : ""}`}>
                 <span
                   className="size-14 shrink-0 rounded-2xl bg-surface"
                   style={photo.get(t.id) ? { backgroundImage: `url(${photo.get(t.id)})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}

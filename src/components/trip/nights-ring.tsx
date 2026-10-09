@@ -10,7 +10,7 @@ export function NightsRing({ view, label = "noches" }: { view: Pick<TripView, "p
   return (
     <div className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-navy/[.06] bg-surface pr-3 pl-[7px]">
       <svg viewBox="0 0 22 22" className="size-[22px] shrink-0 -rotate-90" aria-hidden>
-        <circle cx="11" cy="11" r="8.5" fill="none" stroke="#D3DBE4" strokeWidth="3.5" />
+        <circle cx="11" cy="11" r="8.5" fill="none" stroke="#E0E0E0" strokeWidth="3.5" />
         {progress > 0 && (
           <circle
             cx="11"
@@ -26,7 +26,7 @@ export function NightsRing({ view, label = "noches" }: { view: Pick<TripView, "p
         )}
       </svg>
       <span className="text-[13px] whitespace-nowrap">
-        <strong style={{ color: view.nightsStatus === "over" ? "#A8382B" : "#00293D" }}>
+        <strong style={{ color: view.nightsStatus === "over" ? "#A8382B" : "#222222" }}>
           {view.plannedNights}/{view.tripNights}
         </strong>{" "}
         {label}

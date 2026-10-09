@@ -106,7 +106,7 @@ export function MembersSheet({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 [scrollbar-width:none]">
-            <div className="overflow-hidden rounded-card border border-navy/[.07] shadow-card">
+            <div className="border-y border-divider">
               {trip.members.map((m, i) => {
                 const editable = isAdmin && m.role !== "admin";
                 return (
@@ -146,7 +146,7 @@ export function MembersSheet({
                             disabled={pending}
                             onClick={() => m.role !== role && setRole(m.id, role)}
                             aria-pressed={m.role === role}
-                            className={`h-9 rounded-full text-[13px] font-bold ${m.role === role ? "bg-white text-navy shadow-[0_2px_8px_rgb(0_41_61/0.12)]" : "text-ink-2"}`}
+                            className={`h-9 rounded-full text-[13px] font-bold ${m.role === role ? "bg-white text-navy shadow-[0_2px_8px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
                           >
                             {ROLE_LABEL[role]}
                           </button>
@@ -177,7 +177,7 @@ export function MembersSheet({
                       aria-label="Nombre del integrante"
                       className="h-12 min-w-0 flex-1 rounded-field border border-line bg-white px-3.5 text-[15px] outline-none focus:border-navy"
                     />
-                    <button type="button" disabled={pending} onClick={addMember} className="bg-navy-gradient h-12 shrink-0 rounded-field px-4 text-sm font-bold text-white disabled:opacity-70">
+                    <button type="button" disabled={pending} onClick={addMember} className="bg-pink h-12 shrink-0 rounded-field px-4 text-sm font-bold text-white disabled:opacity-70">
                       Agregar
                     </button>
                   </div>
@@ -202,7 +202,7 @@ export function MembersSheet({
             <button
               type="button"
               onClick={invite}
-              className="bg-navy-gradient flex h-14 w-full items-center justify-center gap-2.5 rounded-button text-base font-bold text-white"
+              className="bg-pink flex h-14 w-full items-center justify-center gap-2.5 rounded-button text-base font-bold text-white"
             >
               <Link2 size={20} />
               {copied ? "Link copiado" : "Invitar con un link"}
