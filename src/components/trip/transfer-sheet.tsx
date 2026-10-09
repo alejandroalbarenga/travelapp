@@ -73,7 +73,7 @@ export function TransferSheet({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Ej. Bizum, efectivo, por la cena"
-                className="h-[50px] w-full rounded-field border border-line bg-white px-4 text-[15px] outline-none focus:border-navy"
+                className="h-[50px] w-full rounded-field border border-line bg-white px-4 text-[16px] outline-none focus:border-navy"
               />
             </label>
             <p className="mt-3 text-[13px] leading-[1.4] text-ink-2">Cuenta para el balance como un pago y queda en los movimientos.</p>

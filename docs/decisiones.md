@@ -379,3 +379,28 @@ Quien entra con el link de invitación (reclamando un integrante o sumándose co
 - los pasajes, y abajo "Ver mi pasaje".
 "Editar" (arriba, para los que pueden editar) pasa al formulario de siempre. Un tramo nuevo se abre directo en edición, y quien solo ve, siempre en vista.
 **Por qué:** decisión de Ale; una vez cargado, al tramo se entra para saber a qué hora salís y llegás, no para cambiarlo.
+
+### 056 · Buscar por país al agregar una ciudad
+**Fecha:** 2026-10-09
+**Decisión:** si en "Agregar ciudad" se escribe un país ("Italia"), además de lo que encuentra Nominatim se listan sus diez ciudades más pobladas, sacadas de Wikidata (gratis y sin clave; Overpass fallaba). La lista de cada país queda en caché semanas; si Wikidata falla, no se guarda nada y simplemente no hay sugerencias.
+También: con el teclado abierto en el iPhone, los sheets se acomodan a la parte de la pantalla que se ve (`visualViewport`) en vez de quedar tapados y correrse para arriba.
+**Por qué:** pedido de Ale; si no te acordás el nombre de la ciudad, buscar por país te la muestra.
+
+### 057 · El alojamiento se completa desde la reserva
+**Fecha:** 2026-10-09
+**Decisión:**
+- Una ciudad sin alojamiento (que se puede editar y tiene noches) se abre con el formulario del alojamiento ya abierto.
+- Arriba del formulario va "Subí la reserva". Si es un PDF, se lee en el teléfono con pdf.js (sin mandarlo a ningún servicio) y se completa lo que esté vacío: el nombre (la línea con la letra más grande que no sea la marca ni un título), dónde se reservó (Booking, Airbnb o Hostelworld) y los horarios de check-in (el primero que aparece) y checkout (el último). Las reglas están en `src/lib/booking-pdf.ts`.
+- Si el alojamiento todavía no está guardado, la reserva se sube al guardar (`saveStop` devuelve el id del alojamiento).
+- Una captura no se lee: se adjunta y listo.
+**Por qué:** pedido de Ale; la reserva ya tiene todo, no hace falta tipearlo. Son reglas simples y gratis: si con reservas reales fallan seguido, se puede pasar a leerlas con un modelo de IA (cuesta y necesita una clave).
+
+### 058 · La frase de cada ciudad sale sola
+**Fecha:** 2026-10-09
+**Decisión:** si una ciudad no tiene frase guardada (`stops.tagline`), se muestra la descripción corta de su artículo de Wikipedia en español, con mayúscula al principio: "Capital de Italia", "Ciudad de Italia, situada en la región de Toscana". Se busca al mostrar el viaje, como la foto (`withCityPhotos`), y queda en caché semanas. Nadie la escribe a mano. Si el nombre es ambiguo o Wikipedia no tiene descripción, no hay frase.
+**Por qué:** pedido de Ale; las ciudades nuevas quedaban sin frase. Se eligió Wikipedia porque es gratis y sin clave, aunque es más informativa que las frases del diseño; una frase con más onda necesitaría un modelo de IA.
+
+### 059 · Sin zoom al escribir en el iPhone
+**Fecha:** 2026-10-09
+**Decisión:** todos los campos donde se escribe tienen letra de 16 px o más: con menos, Safari hace zoom al tocarlos. Los campos de fecha y hora pierden el estilo propio de iOS y el ancho mínimo, así no se salen de la grilla (por ejemplo "Desde" y "Hasta" en "Nuevo viaje"). Un campo nuevo tiene que respetar los 16 px.
+**Por qué:** pedido de Ale; al crear un viaje la pantalla se agrandaba al escribir y los campos se salían.

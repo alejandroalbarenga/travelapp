@@ -121,7 +121,7 @@ export function ExpenseSheet({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Ej. Cena en Bruselas"
-                className="h-[50px] w-full rounded-field border border-line bg-white px-4 text-[15px] outline-none focus:border-navy"
+                className="h-[50px] w-full rounded-field border border-line bg-white px-4 text-[16px] outline-none focus:border-navy"
               />
             </label>
 
@@ -130,7 +130,7 @@ export function ExpenseSheet({
               <select
                 value={stopId ?? ""}
                 onChange={(e) => setStopId(e.target.value || null)}
-                className="h-[50px] w-full rounded-field border border-line bg-white px-3 text-[15px] font-semibold outline-none"
+                className="h-[50px] w-full rounded-field border border-line bg-white px-3 text-[16px] font-semibold outline-none"
               >
                 {stops.map((s, i) => (
                   <option key={s.id} value={s.id}>

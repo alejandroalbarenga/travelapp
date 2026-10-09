@@ -100,7 +100,7 @@ export function SplitEditor({
                       onChange={(e) => onChange({ ...value, custom: { ...value.custom, [id]: e.target.value.replace(/[^\d,.]/g, "") } })}
                       placeholder="0,00"
                       aria-label={`Monto de ${m.display_name}`}
-                      className="w-[70px] bg-transparent text-right text-[15px] font-extrabold outline-none"
+                      className="w-[70px] bg-transparent text-right text-[16px] font-extrabold outline-none"
                     />
                   </label>
                 </div>

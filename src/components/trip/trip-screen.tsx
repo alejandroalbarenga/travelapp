@@ -78,7 +78,7 @@ export function TripScreen({
   setStopLocked?: (stopId: string, locked: boolean) => Promise<{ error: string } | null>;
   addMember?: (tripId: string, name: string) => Promise<{ member: Member } | { error: string }>;
   saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | null>;
-  saveStop?: (input: SaveStopInput) => Promise<{ error: string } | null>;
+  saveStop?: (input: SaveStopInput) => Promise<{ error: string } | { stayId: string | null }>;
   deleteStop?: (stopId: string) => Promise<{ error: string } | null>;
   setMemberRole?: (memberId: string, role: "editor" | "viewer") => Promise<{ error: string } | null>;
   findPlaces?: (query: string) => Promise<Place[]>;
@@ -136,17 +136,21 @@ export function TripScreen({
   const openness = 1 - sheetTop / LIST_TOP; // 0 abajo, 1 arriba del todo
   const [, startTransition] = useTransition();
 
-  async function storeStop(input: SaveStopInput, stay: Stay | null): Promise<string | null> {
+  /** Con `receipt`, después de guardar le sube la reserva que se eligió antes de que existiera el alojamiento. */
+  async function storeStop(input: SaveStopInput, stay: Stay | null, receipt?: File): Promise<string | null> {
+    let stayId = stay?.id ?? null;
     if (saveStop) {
       const result = await saveStop(input);
-      if (result) return result.error;
+      if ("error" in result) return result.error;
+      stayId = result.stayId ?? stayId;
       router.refresh();
     }
     setCurrent((t) => ({
       ...t,
       stops: t.stops.map((s) => (s.id === input.stopId ? { ...s, member_ids: input.memberIds, notes: input.notes || null } : s)),
-      stays: [...t.stays.filter((s) => s.stop_id !== input.stopId), ...(stay ? [stay] : [])],
+      stays: [...t.stays.filter((s) => s.stop_id !== input.stopId), ...(stay && stayId ? [{ ...stay, id: stayId }] : [])],
     }));
+    if (receipt && stayId) return addAttachment({ kind: "stay", tripId: trip.id, stayId }, { file: receipt });
     return null;
   }
 

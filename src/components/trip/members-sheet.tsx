@@ -175,7 +175,7 @@ export function MembersSheet({
                       autoFocus
                       placeholder="Nombre, ej. Tomás"
                       aria-label="Nombre del integrante"
-                      className="h-12 min-w-0 flex-1 rounded-field border border-line bg-white px-3.5 text-[15px] outline-none focus:border-navy"
+                      className="h-12 min-w-0 flex-1 rounded-field border border-line bg-white px-3.5 text-[16px] outline-none focus:border-navy"
                     />
                     <button type="button" disabled={pending} onClick={addMember} className="bg-pink h-12 shrink-0 rounded-field px-4 text-sm font-bold text-white disabled:opacity-70">
                       Agregar

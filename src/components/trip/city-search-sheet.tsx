@@ -155,7 +155,7 @@ export function CitySearchSheet({
                 <select
                   value={after ?? ""}
                   onChange={(e) => setAfter(e.target.value || null)}
-                  className="h-[50px] w-full rounded-field border border-line bg-white px-3 text-[15px] font-semibold text-ink outline-none"
+                  className="h-[50px] w-full rounded-field border border-line bg-white px-3 text-[16px] font-semibold text-ink outline-none"
                 >
                   <option value="">Al principio</option>
                   {stops.map((s, i) => (
