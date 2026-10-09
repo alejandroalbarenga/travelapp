@@ -10,8 +10,9 @@ import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Attachment, BookingSource, Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
 import { BOOKING_LABEL } from "@/lib/trip-view";
-import { readBookingImage } from "@/lib/read-booking-image";
-import { readBookingPdf } from "@/lib/read-booking-pdf";
+import { parseBooking } from "@/lib/booking-pdf";
+import { namesList } from "@/lib/members";
+import { readDocumentLines } from "@/lib/read-document";
 import { BackButton, BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 import { AttachmentRow, type AttachmentInput } from "./attachment-controls";
@@ -42,10 +43,6 @@ const MODE_CLASS: Record<LegMode, string> = {
 const WEEKDAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 // Ícono del alojamiento según dónde se reservó: hotel, casa, hostel… (no la foto de la ciudad).
 const STAY_ICON: Record<BookingSource, LucideIcon> = { booking: Hotel, airbnb: House, hostelworld: BedDouble, direct: Hotel, other: Bed };
-
-function namesList(names: string[]): string {
-  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
-}
 
 function weekdayOf(date: string) {
   const [y, m, d] = date.split("-").map(Number);
@@ -187,7 +184,7 @@ export function CitySheet({
     }
     if ("file" in input) {
       const file = input.file;
-      const info = await (file.type.startsWith("image/") ? readBookingImage(file) : readBookingPdf(file)).catch(() => null);
+      const info = await readDocumentLines(file).then(parseBooking).catch(() => null);
       const found: string[] = [];
       if (info?.name && !stayName.trim()) {
         setStayName(info.name);

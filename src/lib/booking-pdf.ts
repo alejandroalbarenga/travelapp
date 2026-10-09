@@ -37,13 +37,17 @@ function toTime(h: string, m: string, ampm?: string): string | null {
 }
 
 /** Los horarios que aparecen en el texto que sigue a la palabra clave (hasta la otra palabra clave). */
-function timesAfter(text: string, keyword: RegExp, stop: RegExp): string[] {
+export function timesAfter(text: string, keyword: RegExp, stop: RegExp): string[] {
   const start = text.search(keyword);
   if (start < 0) return [];
-  let rest = text.slice(start).replace(keyword, "");
+  const rest = text.slice(start).replace(keyword, "");
   const end = rest.search(stop);
-  rest = rest.slice(0, Math.min(end < 0 ? 140 : end, 140));
-  return [...rest.matchAll(TIME)].map((m) => toTime(m[1], m[2], m[3])).filter((t): t is string => t !== null);
+  return timesIn(rest.slice(0, Math.min(end < 0 ? 140 : end, 140)));
+}
+
+/** Todos los horarios del texto, en orden: "de 3:00 PM a 11:00" → ["15:00", "11:00"]. */
+export function timesIn(text: string): string[] {
+  return [...text.matchAll(TIME)].map((m) => toTime(m[1], m[2], m[3])).filter((t): t is string => t !== null);
 }
 
 export function parseBooking(lines: PdfLine[]): BookingInfo {

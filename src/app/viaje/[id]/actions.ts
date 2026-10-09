@@ -175,9 +175,9 @@ export type SaveLegInput = {
 };
 
 // Guarda el tramo y crea, actualiza o borra su gasto (supabase/migrations/0002_legs.sql).
-export async function saveLeg(input: SaveLegInput): Promise<{ error: string } | null> {
+export async function saveLeg(input: SaveLegInput): Promise<{ error: string } | { legId: string }> {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("save_leg", {
+  const { data, error } = await supabase.rpc("save_leg", {
     p_trip_id: input.tripId,
     p_from_stop_id: input.fromStopId,
     p_to_stop_id: input.toStopId,
@@ -190,7 +190,7 @@ export async function saveLeg(input: SaveLegInput): Promise<{ error: string } | 
     p_splits: input.splits,
   });
   if (error) return { error: error.message.includes("no suma") ? "La división no suma el total." : "No pudimos guardar el tramo." };
-  return null;
+  return { legId: data as string };
 }
 
 export type SaveExpenseInput = {

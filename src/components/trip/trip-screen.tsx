@@ -77,7 +77,7 @@ export function TripScreen({
   saveNights?: (stopId: string, nights: number) => Promise<{ error: string } | null>;
   setStopLocked?: (stopId: string, locked: boolean) => Promise<{ error: string } | null>;
   addMember?: (tripId: string, name: string) => Promise<{ member: Member } | { error: string }>;
-  saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | null>;
+  saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | { legId: string }>;
   saveStop?: (input: SaveStopInput) => Promise<{ error: string } | { stayId: string | null }>;
   deleteStop?: (stopId: string) => Promise<{ error: string } | null>;
   setMemberRole?: (memberId: string, role: "editor" | "viewer") => Promise<{ error: string } | null>;
@@ -492,7 +492,9 @@ export function TripScreen({
     return null;
   }
 
-  async function storeLeg(draft: LegDraft, description: string): Promise<string | null> {
+  /** Con `ticket`, después de guardar le sube el pasaje que se eligió antes de que existiera el tramo. */
+  async function storeLeg(draft: LegDraft, description: string, ticket?: { file: File; memberId: string | null }): Promise<string | null> {
+    let legId = draft.id ?? `nuevo-${draft.from_stop_id}`;
     if (saveLeg) {
       const result = await saveLeg({
         tripId: trip.id,
@@ -506,14 +508,16 @@ export function TripScreen({
         description,
         splits: draft.split,
       });
-      if (result) return result.error;
+      if ("error" in result) return result.error;
+      legId = result.legId;
       router.refresh();
     }
     setCurrent((t) => {
       const previous = t.legs.find((l) => l.from_stop_id === draft.from_stop_id);
-      const leg: Leg = { ...draft, id: draft.id ?? `nuevo-${draft.from_stop_id}`, attachments: previous?.attachments ?? [] };
+      const leg: Leg = { ...draft, id: legId, attachments: previous?.attachments ?? [] };
       return { ...t, legs: [...t.legs.filter((l) => l.from_stop_id !== draft.from_stop_id), leg] };
     });
+    if (ticket) return addAttachment({ kind: "leg", tripId: trip.id, legId, memberId: ticket.memberId }, { file: ticket.file });
     return null;
   }
   const listTrip = hidden.length ? { ...current, stops: current.stops.filter((s) => !hidden.includes(s.id)) } : current;

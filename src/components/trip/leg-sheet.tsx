@@ -1,12 +1,15 @@
 "use client";
 
-import { Bus, Car, Clock, Ellipsis, Pencil, Plane, Ticket, TrainFront, type LucideIcon } from "lucide-react";
-import { useState, useTransition } from "react";
+import { Bus, Car, Clock, Ellipsis, FileText, Pencil, Plane, Ticket, TrainFront, Upload, X, type LucideIcon } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import { sortTickets, ticketTitle } from "@/lib/attachments";
 import { addDays, formatWeekday, stopDates } from "@/lib/dates";
+import { namesList } from "@/lib/members";
 import { durationMinutes, formatDuration, localTime, timeZoneDiffHours, zonedToInstant } from "@/lib/legs";
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
+import { readDocumentLines } from "@/lib/read-document";
+import { parseTicket } from "@/lib/ticket-pdf";
 import type { Leg, LegAttachment, LegMode, Trip } from "@/lib/trip-types";
 import { BackButton, BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
@@ -47,8 +50,8 @@ export function LegSheet({
   fromStopId: string;
   myMemberId: string | null;
   onClose: () => void;
-  /** Guarda el tramo. Devuelve un mensaje si falló. */
-  onSave: (draft: LegDraft, description: string) => Promise<string | null>;
+  /** Guarda el tramo (y después sube el pasaje elegido antes de guardarlo). Devuelve un mensaje si falló. */
+  onSave: (draft: LegDraft, description: string, ticket?: { file: File; memberId: string | null }) => Promise<string | null>;
   /** Adjunta un pasaje al tramo ya guardado; memberId es de quién es (null: del grupo). */
   onAddTicket: (legId: string, memberId: string | null, input: AttachmentInput) => Promise<string | null>;
   onRemoveTicket: (legId: string, ticket: LegAttachment) => Promise<string | null>;
@@ -100,6 +103,52 @@ export function LegSheet({
   const savedLegId = leg && !leg.id.startsWith("nuevo-") ? leg.id : null;
   const owners = trip.members.filter((m) => travellers.includes(m.id));
   const [owner, setOwner] = useState<string | null>(myMemberId && travellers.includes(myMemberId) ? myMemberId : null);
+  const [pendingTicket, setPendingTicket] = useState<File | null>(null);
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState("");
+  const ticketInput = useRef<HTMLInputElement>(null);
+
+  // Subir el pasaje completa lo que esté vacío: el medio, los horarios y el precio (decisión 069).
+  async function fillFromTicket(file: File) {
+    const info = await readDocumentLines(file).then(parseTicket).catch(() => null);
+    const found: string[] = [];
+    if (info?.mode && !mode) {
+      setMode(info.mode);
+      found.push("el medio de transporte");
+    }
+    if (info?.departs && !dep) {
+      setDep(info.departs);
+      found.push("la salida");
+    }
+    if (info?.arrives && !arr) {
+      setArr(info.arrives);
+      found.push("la llegada");
+    }
+    if (info?.priceCents && !totalCents) {
+      setPrice(formatAmountInput(info.priceCents));
+      found.push("el precio");
+    }
+    setReadNote(found.length ? `Sacamos del pasaje ${namesList(found)}. Revisá que esté bien.` : "No pudimos leer los datos del pasaje: completalos a mano.");
+  }
+
+  /** Un pasaje nuevo: lo lee y, si el tramo ya está guardado, lo adjunta; si no, se sube al guardar. */
+  async function addTicket(input: AttachmentInput): Promise<string | null> {
+    if ("file" in input) {
+      setReading(true);
+      await fillFromTicket(input.file);
+      setReading(false);
+    }
+    if (savedLegId) return onAddTicket(savedLegId, owner, input);
+    if ("file" in input) setPendingTicket(input.file);
+    return null;
+  }
+
+  function pickTicket(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    addTicket({ file }).then((message) => message && setError(message));
+  }
 
   function save(close: () => void) {
     if (!mode) {
@@ -128,6 +177,7 @@ export function LegSheet({
           split: totalCents ? splits : [],
         },
         description,
+        pendingTicket ? { file: pendingTicket, memberId: owner } : undefined,
       );
       if (message) setError(message);
       else close();
@@ -186,6 +236,45 @@ export function LegSheet({
         ) : (
         <div className="flex-1 overflow-y-auto px-5 pt-1 pb-6 [scrollbar-width:none]">
           <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
+          {/* El pasaje primero: completa el medio, los horarios y el precio (decisión 069). */}
+          {!readOnly && tickets.length === 0 && (
+            <div className="mt-3">
+              {pendingTicket ? (
+                <div className="flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
+                  <FileText size={18} className="shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold">{pendingTicket.name}</div>
+                    <div className="text-xs text-ink-2">Se sube al guardar</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingTicket(null);
+                      setReadNote("");
+                    }}
+                    aria-label="Sacar el pasaje"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input ref={ticketInput} type="file" accept="application/pdf,.pdf,image/*" hidden onChange={pickTicket} />
+                  <button
+                    type="button"
+                    disabled={reading}
+                    onClick={() => ticketInput.current?.click()}
+                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold disabled:opacity-60"
+                  >
+                    <Upload size={17} /> {reading ? "Leyendo el pasaje…" : "Subir el pasaje · PDF o imagen"}
+                  </button>
+                  <p className="mt-1.5 text-xs text-ink-2">Completamos el medio, los horarios y el precio. Con el PDF sale mejor que con una captura.</p>
+                </>
+              )}
+              {readNote && <p className="mt-2 text-[13px] text-ink-2">{readNote}</p>}
+            </div>
+          )}
           <div className={label}>Medio de transporte</div>
           <div className="grid grid-cols-5 gap-2">
             {MODES.map(({ mode: m, label: l, Icon, on }) => (
@@ -320,10 +409,11 @@ export function LegSheet({
                     </button>
                   ))}
                 </div>
-                <AddAttachmentButtons onAdd={(input) => onAddTicket(savedLegId, owner, input)} />
+                <AddAttachmentButtons onAdd={addTicket} />
+                {tickets.length > 0 && readNote && <p className="mt-2 text-[13px] text-ink-2">{readNote}</p>}
               </>
             ) : (
-              <p className="mt-2.5 text-[13px] text-ink-2">Guardá el tramo para adjuntar los pasajes.</p>
+              <p className="mt-2.5 text-[13px] text-ink-2">{pendingTicket ? "El pasaje se sube al guardar el tramo." : "Guardá el tramo para adjuntar más pasajes."}</p>
             ))}
         </div>
         )}
