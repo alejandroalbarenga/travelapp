@@ -465,3 +465,8 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 **Fecha:** 2026-10-09
 **Decisión:** "Desde" y "Hasta" muestran la fecha escrita ("sáb 17 oct", con el año si no es el actual) con un ícono de calendario, y "Elegir" si están vacías. Encima va el campo de fecha nativo transparente, que abre el selector del teléfono (en la compu, el calendario).
 **Por qué:** pedido de Ale; en el iPhone el campo de fecha nativo quedaba desalineado.
+
+### 071 · Tus estadísticas en el inicio
+**Fecha:** 2026-10-09
+**Decisión:** arriba de "Próximos viajes" va una tarjeta con tus **países visitados**, **viajes hechos** y **noches afuera**, y abajo las banderas superpuestas (hasta seis) con la lista de países. Cuenta solo lo que ya pasó: los países de las ciudades de tu parte del viaje donde dormiste al menos una noche (las escalas no cuentan), los viajes terminados y las noches desde que empezó tu parte hasta hoy. Mientras no empezó ningún viaje, la tarjeta no aparece. La regla está en `travelStats()` (`src/lib/home.ts`).
+**Por qué:** estaba en el diseño y había quedado para después (041).
