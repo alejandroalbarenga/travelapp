@@ -10,8 +10,9 @@ import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Attachment, BookingSource, Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
 import { BOOKING_LABEL } from "@/lib/trip-view";
+import { readBookingImage } from "@/lib/read-booking-image";
 import { readBookingPdf } from "@/lib/read-booking-pdf";
-import { BottomSheet } from "../bottom-sheet";
+import { BackButton, BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 import { AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
@@ -168,8 +169,8 @@ export function CitySheet({
     .filter(Boolean)
     .join(" · ");
 
-  // Subir la reserva: si es un PDF, completa lo que esté vacío (nombre, dónde se reservó, horarios y
-  // precio). Una imagen se adjunta, pero no se lee.
+  // Subir la reserva: completa lo que esté vacío (nombre, dónde se reservó, horarios y precio). El PDF
+  // se lee con pdf.js y la imagen con OCR (decisión 067), las dos en el teléfono.
   async function pickReceipt(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -184,9 +185,9 @@ export function CitySheet({
     if ("file" in input && !input.file.type.startsWith("image/") && input.file.type !== "application/pdf" && !input.file.name.toLowerCase().endsWith(".pdf")) {
       return "Tiene que ser un PDF o una imagen.";
     }
-    if ("file" in input && input.file.type.startsWith("image/")) setReadNote("La imagen queda adjunta. Los datos completalos a mano.");
-    if ("file" in input && (input.file.type === "application/pdf" || input.file.name.toLowerCase().endsWith(".pdf"))) {
-      const info = await readBookingPdf(input.file).catch(() => null);
+    if ("file" in input) {
+      const file = input.file;
+      const info = await (file.type.startsWith("image/") ? readBookingImage(file) : readBookingPdf(file)).catch(() => null);
       const found: string[] = [];
       if (info?.name && !stayName.trim()) {
         setStayName(info.name);
@@ -293,12 +294,12 @@ export function CitySheet({
           <div className="relative flex-1 overflow-y-auto px-4 pb-8 [scrollbar-width:none]">
             {/* Foto grande de la ciudad con el país, el nombre y la frase encima; volver y cambiar la ciudad. */}
             <div
-              className="relative -mx-4 h-[280px] bg-cover bg-center"
+              className="relative -mx-4 h-[calc(280px+var(--safe-top))] bg-cover bg-center"
               style={{ backgroundColor: "#5E6B78", backgroundImage: photo ? `url("${photo}")` : undefined }}
             >
               {/* El único degradé de la app (decisión 050): la foto se funde en el blanco de la ficha. */}
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(15_16_18/0.3)_0%,rgb(15_16_18/0.3)_55%,#fff_100%)]" />
-              <div className="relative flex h-full flex-col items-center justify-center px-6 pt-4 text-center text-white">
+              <div className="relative flex h-full flex-col items-center justify-center px-6 pt-[calc(var(--safe-top)+16px)] text-center text-white">
                 <div className="flex items-center gap-2 text-[15px] font-bold [text-shadow:0_1px_6px_rgb(0_0_0/0.35)]">
                   {stop.country_code && (
                     <span
@@ -311,11 +312,11 @@ export function CitySheet({
                 <div className="mt-1.5 w-full truncate text-[42px] leading-[1.1] font-extrabold tracking-[-0.03em] [text-shadow:0_2px_16px_rgb(0_0_0/0.35)]">{stop.city}</div>
                 {stop.tagline && <div className="font-hand mt-1 text-[26px] leading-[1.05] text-balance [text-shadow:0_1px_10px_rgb(0_0_0/0.45)]">{stop.tagline}</div>}
               </div>
-              <button type="button" onClick={close} aria-label="Cerrar" className="absolute top-4 left-4 flex size-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_4px_14px_rgb(0_0_0/0.18)]">
-                <X size={20} />
-              </button>
+              <div className="absolute top-[calc(var(--safe-top)+12px)] left-4">
+                <BackButton onClick={close} className="rounded-full bg-white text-ink shadow-[0_4px_14px_rgb(0_0_0/0.18)]" />
+              </div>
               {!readOnly && onChangePlace && (
-                <button type="button" onClick={onChangePlace} aria-label="Cambiar ciudad" className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_4px_14px_rgb(0_0_0/0.18)]">
+                <button type="button" onClick={onChangePlace} aria-label="Cambiar ciudad" className="absolute top-[calc(var(--safe-top)+12px)] right-4 flex size-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_4px_14px_rgb(0_0_0/0.18)]">
                   <Pencil size={18} />
                 </button>
               )}
@@ -436,7 +437,7 @@ export function CitySheet({
                       >
                         <Upload size={17} /> {reading ? "Leyendo la reserva…" : "Subir la reserva · PDF o imagen"}
                       </button>
-                      <p className="mt-1.5 text-xs text-ink-2">Con el PDF completamos el nombre, los horarios y el precio.</p>
+                      <p className="mt-1.5 text-xs text-ink-2">Completamos el nombre, los horarios y el precio. Con el PDF sale mejor que con una captura.</p>
                     </>
                   )}
                   {readNote && <p className="mt-2 text-[13px] text-ink-2">{readNote}</p>}

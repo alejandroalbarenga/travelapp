@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { SaveExpenseInput } from "@/app/viaje/[id]/actions";
 import { defaultStopId } from "@/lib/expense-form";
@@ -8,7 +8,7 @@ import { formatAmountInput, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Expense, ExpenseCategory, Trip } from "@/lib/trip-types";
 import { AmountField } from "../amount-field";
-import { BottomSheet } from "../bottom-sheet";
+import { BackButton, BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 
 // Pantalla 05 · Nuevo gasto (docs/diseño.md), también para editar un gasto suelto.
@@ -103,9 +103,7 @@ export function ExpenseSheet({
       {(close) => (
         <>
           <div className="flex h-[52px] shrink-0 items-center justify-between px-3">
-            <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 items-center justify-center">
-              <X size={20} />
-            </button>
+            <BackButton onClick={close} className="" />
             <span className="text-base font-bold">{expense ? "Editar gasto" : "Nuevo gasto"}</span>
             <button type="button" onClick={() => save(close)} disabled={pending} className="flex h-11 items-center disabled:opacity-50">
               <span className="bg-pink flex h-9 items-center rounded-full px-4 text-sm font-bold text-white">{pending ? "…" : "Guardar"}</span>

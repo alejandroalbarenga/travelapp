@@ -442,3 +442,16 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 **Fecha:** 2026-10-09
 **Decisión:** el fondo del logo y del ícono de la app pasa del navy `#032F45` al rosado `#FF385C` de la paleta de la 050, con "Vamo" en blanco. Cambia en `public/logo.svg` (de ahí salen todos los íconos) y en la pantalla de carga. En el iPhone, para ver el ícono nuevo hay que borrar la app de la pantalla de inicio y volver a agregarla.
 **Por qué:** pedido de Ale; el navy ya no está en la paleta de la app.
+
+### 067 · La captura de la reserva también se lee
+**Fecha:** 2026-10-09
+**Decisión:** si la reserva que se sube es una imagen (captura o foto), se lee en el teléfono con OCR (Tesseract, `src/lib/read-booking-image.ts`) y se completa lo que esté vacío con las mismas reglas que el PDF (057): el nombre (el renglón más alto), dónde se reservó, los horarios y el precio. La imagen no sale del teléfono; la primera vez se bajan Tesseract y el español y el inglés (unos megas, de la CDN jsDelivr) y tarda unos segundos. Con el PDF sigue saliendo mejor. Reemplaza lo de la 057 y la 064 de que una imagen se adjunta sin leerse.
+**Por qué:** pedido de Ale; muchas reservas están como captura del mail o de la app. Gratis, en vez de leerlas con un modelo de IA.
+
+### 068 · Pantallas completas en vez de sheets
+**Fecha:** 2026-10-09
+**Decisión:**
+- En el celular ya no hay sheets: la ciudad, el tramo, el gasto, la transferencia, el calendario, los integrantes, agregar ciudad y nuevo viaje son pantallas completas que entran desde la derecha, sin fondo oscuro ni handle. Arriba a la izquierda tienen la flecha de volver (en la web sigue la cruz). Se vuelve con la flecha, deslizando desde el borde izquierdo hacia la derecha, con el "atrás" del teléfono o del navegador (cada pantalla abierta es una entrada del historial, con la misma URL) o con Escape. La foto de la ciudad llega hasta arriba, debajo de la barra de estado. El único panel que se arrastra es el del viaje sobre el mapa. En la web no cambia nada.
+- "Agregar ciudad" desde el chip "Agregar" propone ponerla después de la última ciudad (antes era antes de la última).
+- El logo de la pantalla de carga va sin sombra.
+**Por qué:** pedido de Ale; los sheets ya ocupaban casi toda la pantalla y con el teclado se rompían.

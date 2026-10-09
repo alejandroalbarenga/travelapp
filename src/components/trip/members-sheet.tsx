@@ -1,10 +1,10 @@
 "use client";
 
-import { Link2, Trash2, UserPlus, X } from "lucide-react";
+import { Link2, Trash2, UserPlus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { formatEuros } from "@/lib/money";
 import type { Member, MemberRole, Trip } from "@/lib/trip-types";
-import { BottomSheet } from "../bottom-sheet";
+import { BackButton, BottomSheet } from "../bottom-sheet";
 
 // Pantalla 09 · Integrantes (docs/diseño.md) con los permisos de la decisión 034.
 // El organizador elige para cada uno "Puede editar" o "Solo ver"; el resto solo ve la lista.
@@ -93,16 +93,14 @@ export function MembersSheet({
     <BottomSheet onClose={onClose} label="Integrantes" top="auto" scrim={0.4}>
       {(close) => (
         <>
-          <div className="flex items-center justify-between px-5 pt-2">
-            <div>
+          <div className="flex items-center gap-3 px-3 pt-2">
+            <BackButton onClick={close} />
+            <div className="min-w-0 flex-1">
               <div className="text-2xl font-extrabold tracking-[-0.02em]">Integrantes</div>
               <div className="mt-0.5 text-[13px] text-ink-2">
                 {trip.members.length} {trip.members.length === 1 ? "viajero" : "viajeros"} · {trip.name}
               </div>
             </div>
-            <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 items-center justify-center rounded-full bg-surface">
-              <X size={20} />
-            </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 [scrollbar-width:none]">
