@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useIsWeb } from "@/lib/use-is-web";
 
 // Sheet desde abajo (docs/diseño.md): entra deslizándose, el fondo oscuro aparece con un fundido,
@@ -15,20 +15,25 @@ export const SheetPanelContext = createContext<SheetPanel | null>(null);
 const DURATION = 320;
 
 /**
- * Cuánto corrió Safari la pantalla al abrir el teclado. En el iPhone, con el teclado abierto,
- * Safari corre la página para mostrar el campo y un sheet `position: fixed` se va para arriba.
- * Corriendo el sheet lo mismo, queda en su lugar, del mismo tamaño, y el teclado le pasa por
- * arriba (decisión 060). 0 sin teclado (o en navegadores sin visualViewport).
+ * El teclado del iPhone. `shift`: cuánto corrió Safari la pantalla al abrirlo; con el teclado
+ * abierto, Safari corre la página para mostrar el campo y un sheet `position: fixed` se va para
+ * arriba. Corriendo el sheet lo mismo, queda en su lugar, del mismo tamaño, y el teclado le pasa
+ * por arriba (decisión 060). `height`: cuánto tapa el teclado de abajo del sheet. Los dos en 0 sin
+ * teclado (o en navegadores sin visualViewport).
  */
-function useKeyboardShift() {
-  const [shift, setShift] = useState(0);
+function useKeyboard() {
+  const [keyboard, setKeyboard] = useState({ shift: 0, height: 0 });
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
       // Contra el alto del layout: en el iPhone window.innerHeight también se achica con el teclado.
-      const keyboard = document.documentElement.clientHeight - vv.height > 80;
-      setShift(keyboard ? vv.offsetTop : 0);
+      const height = document.documentElement.clientHeight - vv.height;
+      const open = height > 80;
+      setKeyboard((k) => {
+        const next = { shift: open ? vv.offsetTop : 0, height: open ? Math.round(height) : 0 };
+        return k.shift === next.shift && k.height === next.height ? k : next;
+      });
     };
     update();
     vv.addEventListener("resize", update);
@@ -38,7 +43,61 @@ function useKeyboardShift() {
       vv.removeEventListener("scroll", update);
     };
   }, []);
-  return shift;
+  return keyboard;
+}
+
+/** La lista que scrollea y contiene al campo, sin salir del sheet. */
+function scrollerOf(el: HTMLElement, sheet: HTMLElement): HTMLElement | null {
+  for (let node = el.parentElement; node && node !== sheet; node = node.parentElement) {
+    const overflow = getComputedStyle(node).overflowY;
+    if ((overflow === "auto" || overflow === "scroll") && node.scrollHeight > node.clientHeight) return node;
+  }
+  return null;
+}
+
+/**
+ * Con el teclado abierto, el campo donde se escribe tiene que quedar arriba del teclado: el sheet
+ * no se achica (decisión 060), así que se scrollea su lista hasta que el campo se vea. Para que
+ * los campos de abajo de todo también puedan subir, las listas suman abajo un espacio del alto del
+ * teclado (`--keyboard`, en globals.css).
+ */
+function revealField(root: HTMLElement | null) {
+  const vv = window.visualViewport;
+  const field = document.activeElement;
+  if (!root || !vv || !(field instanceof HTMLElement) || !root.contains(field)) return;
+  if (!field.matches("input, textarea, select, [contenteditable]")) return;
+  const scroller = scrollerOf(field, root);
+  if (!scroller) return;
+  const rect = field.getBoundingClientRect();
+  const visibleTop = Math.max(scroller.getBoundingClientRect().top, vv.offsetTop) + 12;
+  const visibleBottom = vv.offsetTop + vv.height - 20;
+  if (rect.bottom > visibleBottom) scroller.scrollTop += rect.bottom - visibleBottom;
+  else if (rect.top < visibleTop) scroller.scrollTop -= visibleTop - rect.top;
+}
+
+function useFieldAboveKeyboard(sheet: RefObject<HTMLDivElement | null>, keyboard: { shift: number; height: number }) {
+  // Cuando abre el teclado (o Safari corre la pantalla) y cuando se pasa a otro campo.
+  useEffect(() => {
+    if (!keyboard.height) return;
+    const frame = requestAnimationFrame(() => revealField(sheet.current));
+    return () => cancelAnimationFrame(frame);
+  }, [keyboard.height, keyboard.shift, sheet]);
+
+  useEffect(() => {
+    const root = sheet.current;
+    if (!root) return;
+    let timer: ReturnType<typeof setTimeout>;
+    // Espera a que termine de subir el teclado.
+    const onFocus = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => revealField(root), 320);
+    };
+    root.addEventListener("focusin", onFocus);
+    return () => {
+      clearTimeout(timer);
+      root.removeEventListener("focusin", onFocus);
+    };
+  }, [sheet]);
 }
 
 export function BottomSheet({
@@ -65,7 +124,10 @@ export function BottomSheet({
   const start = useRef<number | null>(null);
   const web = useIsWeb();
   const panel = useContext(SheetPanelContext);
-  const shift = useKeyboardShift();
+  const keyboard = useKeyboard();
+  const shift = keyboard.shift;
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useFieldAboveKeyboard(sheetRef, keyboard);
 
   // Entra en el próximo cuadro; si el navegador no da cuadros (pestaña en segundo plano), igual entra.
   useEffect(() => {
@@ -150,8 +212,11 @@ export function BottomSheet({
         </div>
       ) : (
       <div
+        ref={sheetRef}
+        data-sheet
         className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[560px] flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-10px_40px_rgb(0_0_0/0.18)]"
         style={{
+          ["--keyboard" as string]: `${keyboard.height}px`,
           top: top === "auto" ? undefined : top,
           maxHeight: top === "auto" ? "calc(100% - var(--safe-top) - 52px)" : undefined,
           transform: shown ? `translateY(${drag}px)` : "translateY(calc(100% + 40px))",

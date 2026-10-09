@@ -432,3 +432,9 @@ También: con el teclado abierto en el iPhone, los sheets se acomodan a la parte
 - **Edición:** la misma tarjeta pasa a ser el formulario, con un solo botón "Subir la reserva · PDF o imagen", el nombre, check-in y checkout, "Reservado en", "Cuánto salió" (siempre a la vista; sin "Reservado en" cuenta como "Otro"), quién pagó, la división y "Quiénes están", que antes no se encontraba. "Listo" vuelve a la vista.
 Del PDF de la reserva ahora también sale el precio total, si está en euros. Una imagen se adjunta pero no se lee.
 **Por qué:** pedido de Ale; la tarjeta y el formulario separados confundían y no se veía dónde cambiar quiénes están.
+
+### 065 · El campo donde escribís queda arriba del teclado
+**Fecha:** 2026-10-09
+**Decisión:** el sheet sigue sin achicarse con el teclado (060), pero al tocar un campo la lista del sheet se scrollea sola hasta que el campo quede arriba del teclado. Para que los últimos campos también puedan subir, mientras el teclado está abierto las listas del sheet suman abajo un espacio del alto del teclado.
+**Por qué:** pedido de Ale; el teclado tapaba el campo que se estaba editando.
+
