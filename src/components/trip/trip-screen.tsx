@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Share, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
@@ -757,14 +757,6 @@ export function TripScreen({
             <span className="absolute -top-[3px] -right-[3px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-pink px-[5px] text-[10px] font-extrabold text-white">
               {travellers}
             </span>
-          </button>
-          <button
-            type="button"
-            aria-label="Compartir viaje"
-            className={`glass flex size-11 items-center justify-center rounded-full ${headerOpacity > 0.5 ? "pointer-events-none" : "pointer-events-auto"}`}
-            style={{ opacity: 1 - headerOpacity }}
-          >
-            <Share size={20} />
           </button>
         </div>
       </div>

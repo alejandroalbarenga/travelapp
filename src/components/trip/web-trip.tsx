@@ -1,6 +1,6 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, Share, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
+import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { LegMode, Member } from "@/lib/trip-types";
@@ -129,9 +129,6 @@ export function WebTrip({
             )}
             <button type="button" onClick={onCalendar} aria-label="Calendario" className={iconButton}>
               <Calendar size={18} />
-            </button>
-            <button type="button" aria-label="Compartir" className={iconButton}>
-              <Share size={18} />
             </button>
             {canEdit && (
               <button
