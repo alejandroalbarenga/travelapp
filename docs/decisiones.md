@@ -438,3 +438,7 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 **Decisión:** el sheet sigue sin achicarse con el teclado (060), pero al tocar un campo la lista del sheet se scrollea sola hasta que el campo quede arriba del teclado. Para que los últimos campos también puedan subir, mientras el teclado está abierto las listas del sheet suman abajo un espacio del alto del teclado.
 **Por qué:** pedido de Ale; el teclado tapaba el campo que se estaba editando.
 
+### 066 · El ícono pasa a rosado
+**Fecha:** 2026-10-09
+**Decisión:** el fondo del logo y del ícono de la app pasa del navy `#032F45` al rosado `#FF385C` de la paleta de la 050, con "Vamo" en blanco. Cambia en `public/logo.svg` (de ahí salen todos los íconos) y en la pantalla de carga. En el iPhone, para ver el ícono nuevo hay que borrar la app de la pantalla de inicio y volver a agregarla.
+**Por qué:** pedido de Ale; el navy ya no está en la paleta de la app.
