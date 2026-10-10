@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { findCityPhoto } from "@/lib/city-photo";
 import { formatRange } from "@/lib/dates";
-import { countdown, splitTrips, todayInUruguay, travelStats, tripSubtitle, type TravelStats } from "@/lib/home";
+import { countdown, coverStopIndex, splitTrips, todayInUruguay, travelStats, tripSubtitle, type TravelStats } from "@/lib/home";
 import { myPart, type MyPart } from "@/lib/my-part";
 import { createClient } from "@/lib/supabase/server";
 import { NewTripButton } from "./new-trip";
@@ -79,11 +79,10 @@ async function Trips() {
     today,
   );
 
-  // Foto de cada viaje: la de su primera ciudad de verdad (no la escala de salida si es la misma que la vuelta).
+  // Foto de cada viaje (decisión 073): la ciudad donde estás hoy o, si no, donde pasás más noches.
   const photos = await Promise.all(
     trips.map(async (t) => {
-      // Si te sumás más tarde, la foto es la de tu primera ciudad.
-      const stop = t.part ? t.stops[t.part.first] : (t.stops.find((s, i) => i > 0 || t.stops.length === 1) ?? t.stops[0]);
+      const stop = t.stops[coverStopIndex(t.stops.map((s) => s.nights), t.trip_start, today, t.part)];
       return [t.id, stop ? (stop.photo_url ?? (await findCityPhoto(stop.city))) : null] as const;
     }),
   );

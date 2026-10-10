@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countdown, splitTrips, todayInUruguay, travelStats, tripSubtitle, validateNewTrip } from "./home";
+import { countdown, coverStopIndex, splitTrips, todayInUruguay, travelStats, tripSubtitle, validateNewTrip } from "./home";
 
 describe("validateNewTrip", () => {
   it("los mensajes del diseño", () => {
@@ -67,5 +67,22 @@ describe("travelStats", () => {
 
   it("terminado: cuenta el viaje y todas sus noches", () => {
     expect(travelStats([europa], "2026-12-01")).toEqual({ countries: [{ code: "es", name: "España" }, { code: "pt", name: "Portugal" }], tripsDone: 1, nightsAway: 10 });
+  });
+});
+
+describe("coverStopIndex", () => {
+  const nights = [0, 3, 5, 2];
+  it("antes del viaje, la ciudad con más noches", () => {
+    expect(coverStopIndex(nights, "2026-10-17", "2026-10-10", null)).toBe(2);
+  });
+  it("en curso, la ciudad de hoy", () => {
+    expect(coverStopIndex(nights, "2026-10-17", "2026-10-18", null)).toBe(1);
+    expect(coverStopIndex(nights, "2026-10-17", "2026-10-25", null)).toBe(3);
+  });
+  it("solo dentro de tu parte", () => {
+    expect(coverStopIndex(nights, "2026-10-17", "2026-10-10", { first: 0, last: 1 })).toBe(1);
+  });
+  it("sin ciudades", () => {
+    expect(coverStopIndex([], "2026-10-17", "2026-10-10", null)).toBe(-1);
   });
 });

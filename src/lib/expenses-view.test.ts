@@ -18,9 +18,9 @@ describe("buildExpensesView", () => {
     ]);
   });
 
-  it("cada fila: quién pagó, entre cuántos y tu parte", () => {
+  it("cada fila: la fecha, quién pagó y tu parte", () => {
     const vuelo = view.groups[0].rows[0];
-    expect(vuelo).toMatchObject({ description: "Vuelo Madrid → Bruselas", amount: "€480", sub: "17 oct · Pagó Ale · entre 3", myShare: "tu parte €160", legMode: "plane" });
+    expect(vuelo).toMatchObject({ description: "Vuelo Madrid → Bruselas", amount: "€480", sub: "17 oct · Pagaste vos", myShare: "tu parte €160", legMode: "plane" });
     expect(vuelo.editTarget).toEqual({ kind: "leg", fromStopId: "s0" });
     const museo = view.groups[2].rows.find((r) => r.description === "Museo Van Gogh")!;
     expect(museo.myShare).toBe("tu parte €29,34");
@@ -55,25 +55,16 @@ describe("buildExpensesView", () => {
     expect(v.allSettled).toBe(false);
   });
 
-  it("montos distintos se marcan", () => {
-    const trip = {
-      ...DEMO_TRIP,
-      expenses: [
-        {
-          ...DEMO_TRIP.expenses[5],
-          splits: [
-            { member_id: "m-al", amount_cents: 6000 },
-            { member_id: "m-ro", amount_cents: 2800 },
-          ],
-        },
-      ],
-    };
-    const v = buildExpensesView(trip, DEMO_MY_MEMBER_ID);
-    expect(v.groups[0].rows[0].sub).toBe("23 oct · Pagó Rodrigo · entre 2 · montos distintos");
+  it("lo tuyo arriba y las cuentas contadas desde vos", () => {
+    expect(view.me).toEqual({ spent: "€529,34", paid: "€900", cents: 37066, status: "Te deben €370,66" });
+    expect(view.pending.map((t) => t.text)).toEqual(["Josué te debe €193,33", "Rodrigo te debe €177,33"]);
+    const v = buildExpensesView(DEMO_TRIP, "m-ro");
+    expect(v.pending.map((t) => t.text)).toEqual(["Le debés €177,33 a Ale", "Josué le debe €193,33 a Ale"]);
+    expect(v.groups[0].rows[0].sub).toBe("17 oct · Pagó Ale");
   });
 });
 
-describe("fechas, burbujas e historial", () => {
+describe("fechas, cada uno e historial", () => {
   it("cada gasto con su fecha: el pasaje el día que sale, el alojamiento el día que llegan", () => {
     const rows = view.groups.flatMap((g) => g.rows);
     const sub = (d: string) => rows.find((r) => r.description === d)!.sub;
@@ -82,13 +73,8 @@ describe("fechas, burbujas e historial", () => {
     expect(sub("Museo Van Gogh")).toMatch(/^23 oct · /);
   });
 
-  it("una burbuja por integrante", () => {
-    expect(view.bubbles.map((b) => `${b.name} ${b.label} ${b.amount}`)).toEqual([
-      "Vos le deben €370,66",
-      "Rodrigo debe €177,33",
-      "Josué debe €193,33",
-      "Agustín a mano €0",
-    ]);
+  it("cómo está cada uno: vos primero y los que deben al final", () => {
+    expect(view.people.map((p) => `${p.name} ${p.text}`)).toEqual(["Vos te deben €370,66", "Agustín a mano", "Rodrigo debe €177,33", "Josué debe €193,33"]);
   });
 
   it("historial del más nuevo al más viejo, con lo que cambió", () => {

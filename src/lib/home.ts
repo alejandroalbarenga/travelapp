@@ -76,3 +76,21 @@ export function travelStats(trips: StatsTrip[], today: string): TravelStats | nu
     nightsAway,
   };
 }
+
+/**
+ * La ciudad de la foto de cada viaje en el inicio (decisión 073), dentro de tu parte del viaje: si
+ * está en curso, donde estás hoy; si no, donde pasás más noches (el destino principal, no la salida).
+ * -1 si no tiene ciudades.
+ */
+export function coverStopIndex(nights: number[], tripStart: string, today: string, part: { first: number; last: number } | null): number {
+  if (!nights.length) return -1;
+  const first = part?.first ?? 0;
+  const last = part?.last ?? nights.length - 1;
+  const dates = stopDates(tripStart, nights);
+  for (let i = first; i <= last; i++) {
+    if (nights[i] > 0 && dates[i].arrival <= today && today < dates[i].departure) return i;
+  }
+  let best = first;
+  for (let i = first; i <= last; i++) if (nights[i] > nights[best]) best = i;
+  return best;
+}

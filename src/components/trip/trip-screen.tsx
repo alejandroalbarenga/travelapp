@@ -21,7 +21,9 @@ import { CitySheet } from "./city-sheet";
 import { CitySearchSheet, type CitySearchMode } from "./city-search-sheet";
 import { LegSheet, type LegDraft } from "./leg-sheet";
 import { ExpenseSheet } from "./expense-sheet";
+import type { PersonalData } from "@/lib/personal";
 import { ExpensesScreen } from "./expenses-screen";
+import type { PersonalActions } from "./personal-expenses";
 import { MembersSheet } from "./members-sheet";
 import { TransferSheet, type TransferInput } from "./transfer-sheet";
 import type { AttachmentInput } from "./attachment-controls";
@@ -69,6 +71,8 @@ export function TripScreen({
   deleteTrip,
   setStopLocked,
   addMember,
+  personal = null,
+  personalActions,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -89,6 +93,9 @@ export function TripScreen({
   settleDebt?: (tripId: string, from: string, to: string, amountCents: number, note?: string | null) => Promise<{ id: string } | { error: string }>;
   undoSettlement?: (settlementId: string) => Promise<{ error: string } | null>;
   deleteTrip?: (tripId: string) => Promise<{ error: string } | null>;
+  /** Tus gastos personales (decisión 076); null si la base no tiene la migración 0010. */
+  personal?: PersonalData | null;
+  personalActions?: PersonalActions;
 }) {
   const router = useRouter();
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
@@ -609,6 +616,7 @@ export function TripScreen({
               onUndo={undoSettle}
               onTransfer={() => setOpenTransfer(true)}
               foldStopIds={foldStopIds}
+              personal={{ tripId: trip.id, initial: personal, actions: personalActions }}
               embedded
             />
           }
@@ -766,6 +774,7 @@ export function TripScreen({
           onUndo={undoSettle}
           onTransfer={() => setOpenTransfer(true)}
           foldStopIds={foldStopIds}
+          personal={{ tripId: trip.id, initial: personal, actions: personalActions }}
           onBack={() => {
             setTab("trip");
             setFabOpen(false);

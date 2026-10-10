@@ -1,5 +1,6 @@
 import { zonedToInstant } from "./legs";
 import type { Activity, Expense, Leg, LegMode, Stop, Trip } from "./trip-types";
+import type { PersonalData } from "./personal";
 
 // El viaje de ejemplo de docs/diseño.md, igual que supabase/seed.sql.
 // Se usa en las pruebas y en la ruta /demo (solo en desarrollo).
@@ -171,4 +172,17 @@ export const DEMO_TRIP: Trip = {
   expenses,
   settlements: [],
   activity,
+};
+
+/** Tus gastos personales de ejemplo (decisión 076): presupuesto de ropa y de regalos. */
+export const DEMO_PERSONAL: PersonalData = {
+  categories: [
+    { id: "pc1", name: "Ropa", budget_cents: 20000, position: 0 },
+    { id: "pc2", name: "Regalos", budget_cents: 8000, position: 2 },
+  ],
+  expenses: [
+    { id: "pe1", category: "Ropa", description: "Campera en Zara", amount_cents: 7995, spent_on: "2026-10-19", created_at: "2026-10-19T17:20:00Z" },
+    { id: "pe2", category: "Regalos", description: "Chocolates para mamá", amount_cents: 2450, spent_on: "2026-10-20", created_at: "2026-10-20T11:05:00Z" },
+    { id: "pe3", category: "Comida", description: "Gofre", amount_cents: 650, spent_on: "2026-10-18", created_at: "2026-10-18T16:40:00Z" },
+  ],
 };

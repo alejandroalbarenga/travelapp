@@ -4,7 +4,6 @@ import { Bed, BedDouble, Bus, Calendar, Car, ChevronRight, DoorClosed, DoorOpen,
 import { useRef, useState, useTransition } from "react";
 import type { SaveStopInput } from "@/app/viaje/[id]/actions";
 import { formatDay, formatRange, stopDates } from "@/lib/dates";
-import { largePhoto } from "@/lib/photo-url";
 import { localTime } from "@/lib/legs";
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
@@ -280,7 +279,6 @@ export function CitySheet({
     });
   }
 
-  const photo = stop.photo_url ? largePhoto(stop.photo_url) : null;
   const legIn = prev ? (trip.legs.find((l) => l.from_stop_id === prev.id) ?? null) : null;
   const legOut = trip.legs.find((l) => l.from_stop_id === stopId) ?? null;
 
@@ -289,34 +287,28 @@ export function CitySheet({
       {(close) => (
         <>
           <div className="relative flex-1 overflow-y-auto px-4 pb-8 [scrollbar-width:none]">
-            {/* Foto grande de la ciudad con el país, el nombre y la frase encima; volver y cambiar la ciudad. */}
-            <div
-              className="relative -mx-4 h-[calc(280px+var(--safe-top))] bg-cover bg-center"
-              style={{ backgroundColor: "#5E6B78", backgroundImage: photo ? `url("${photo}")` : undefined }}
-            >
-              {/* El único degradé de la app (decisión 050): la foto se funde en el blanco de la ficha. */}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(15_16_18/0.3)_0%,rgb(15_16_18/0.3)_55%,#fff_100%)]" />
-              <div className="relative flex h-full flex-col items-center justify-center px-6 pt-[calc(var(--safe-top)+16px)] text-center text-white">
-                <div className="flex items-center gap-2 text-[15px] font-bold [text-shadow:0_1px_6px_rgb(0_0_0/0.35)]">
-                  {stop.country_code && (
-                    <span
-                      className="size-6 shrink-0 rounded-full bg-white/30 bg-cover bg-center shadow-[0_0_0_2px_rgb(255_255_255/0.6)]"
-                      style={{ backgroundImage: `url("https://flagcdn.com/w80/${stop.country_code}.png")` }}
-                    />
-                  )}
-                  {stop.country}
-                </div>
-                <div className="mt-1.5 w-full truncate text-[42px] leading-[1.1] font-extrabold tracking-[-0.03em] [text-shadow:0_2px_16px_rgb(0_0_0/0.35)]">{stop.city}</div>
-                {stop.tagline && <div className="font-hand mt-1 text-[26px] leading-[1.05] text-balance [text-shadow:0_1px_10px_rgb(0_0_0/0.45)]">{stop.tagline}</div>}
-              </div>
-              <div className="absolute top-[calc(var(--safe-top)+12px)] left-4">
-                <BackButton onClick={close} className="rounded-full bg-white text-ink shadow-[0_4px_14px_rgb(0_0_0/0.18)]" />
-              </div>
+            {/* Sin foto (decisión 072; la foto queda en la lista): volver, el país con su bandera, el
+                nombre y la frase; a la derecha, cambiar la ciudad. */}
+            <div className="flex items-center justify-between pt-[calc(var(--safe-top)+8px)]">
+              <BackButton onClick={close} />
               {!readOnly && onChangePlace && (
-                <button type="button" onClick={onChangePlace} aria-label="Cambiar ciudad" className="absolute top-[calc(var(--safe-top)+12px)] right-4 flex size-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_4px_14px_rgb(0_0_0/0.18)]">
+                <button type="button" onClick={onChangePlace} aria-label="Cambiar ciudad" className="flex size-11 items-center justify-center rounded-full bg-surface">
                   <Pencil size={18} />
                 </button>
               )}
+            </div>
+            <div className="mt-3 px-1">
+              <div className="flex items-center gap-2 text-[15px] font-bold text-ink-2">
+                {stop.country_code && (
+                  <span
+                    className="size-6 shrink-0 rounded-full bg-surface bg-cover bg-center shadow-[0_0_0_1px_rgb(0_0_0/0.08)]"
+                    style={{ backgroundImage: `url("https://flagcdn.com/w80/${stop.country_code}.png")` }}
+                  />
+                )}
+                {stop.country}
+              </div>
+              <h2 className="mt-1 truncate text-[38px] leading-[1.1] font-extrabold tracking-[-0.03em]">{stop.city}</h2>
+              {stop.tagline && <div className="font-hand mt-0.5 text-[24px] leading-[1.1] text-ink-2">{stop.tagline}</div>}
             </div>
 
             {/* Planificación: fechas (abren el calendario) y noches. */}
