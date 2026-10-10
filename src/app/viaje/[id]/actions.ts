@@ -259,3 +259,56 @@ export async function undoSettlement(settlementId: string): Promise<{ error: str
   const { data, error } = await supabase.from("settlements").delete().eq("id", settlementId).select("id");
   return error || !data?.length ? { error: "No pudimos deshacerlo." } : null;
 }
+
+// ─── Gastos personales (decisión 076, migración 0010) ─────────────────────
+// RLS: cada uno ve y cambia solo los suyos, en viajes de los que es miembro.
+
+export type SavePersonalExpenseInput = {
+  id: string | null;
+  tripId: string;
+  category: string;
+  description: string;
+  amountCents: number;
+  spentOn: string;
+};
+
+export async function savePersonalExpense(input: SavePersonalExpenseInput): Promise<{ error: string } | { id: string }> {
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) return { error: "Ingresá un monto." };
+  const supabase = await createClient();
+  const row = {
+    trip_id: input.tripId,
+    category: input.category.trim(),
+    description: input.description.trim(),
+    amount_cents: input.amountCents,
+    spent_on: input.spentOn,
+  };
+  const { data, error } = input.id
+    ? await supabase.from("personal_expenses").update(row).eq("id", input.id).select("id").single()
+    : await supabase.from("personal_expenses").insert(row).select("id").single();
+  return error || !data ? { error: "No pudimos guardar el gasto." } : { id: data.id as string };
+}
+
+export async function deletePersonalExpense(id: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("personal_expenses").delete().eq("id", id);
+  return error ? { error: "No pudimos borrar el gasto." } : null;
+}
+
+/** Crea la categoría o le cambia el presupuesto (null: sin presupuesto). */
+export async function savePersonalCategory(tripId: string, name: string, budgetCents: number | null, position: number): Promise<{ error: string } | null> {
+  if (budgetCents !== null && (!Number.isInteger(budgetCents) || budgetCents < 0)) return { error: "Presupuesto inválido." };
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims.sub;
+  if (!userId) return { error: "Tenés que entrar de nuevo." };
+  const { error } = await supabase
+    .from("personal_categories")
+    .upsert({ trip_id: tripId, user_id: userId, name: name.trim(), budget_cents: budgetCents, position }, { onConflict: "trip_id,user_id,name" });
+  return error ? { error: "No pudimos guardar la categoría." } : null;
+}
+
+export async function deletePersonalCategory(tripId: string, name: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("personal_categories").delete().eq("trip_id", tripId).eq("name", name);
+  return error ? { error: "No pudimos borrar la categoría." } : null;
+}

@@ -50,7 +50,7 @@ Proyecto personal de Ale. **MVP usable el 16 de octubre de 2026** (el viaje arra
 - **Vercel** (free tier) para el deploy, conectado a GitHub.
 - **npm** como gestor de paquetes.
 - Fuentes: Plus Jakarta Sans, y Caveat solo para la frase de cada ciudad.
-- Logo e ícono: `public/logo.svg` ("Vamo" en Caveat Bold, blanco sobre navy; decisión 062). Los íconos de cada tamaño se dibujan desde ese archivo en `src/lib/app-icon.tsx`.
+- Logo e ícono: `public/logo.svg` ("Vamo" en Caveat Bold, blanco sobre rosado; decisiones 062 y 066). Los íconos de cada tamaño se dibujan desde ese archivo en `src/lib/app-icon.tsx`.
 - **Mapa**: OpenStreetMap con Leaflet; ubicación de las ciudades con Nominatim (decisión 030).
 
 ## Comandos
@@ -87,6 +87,8 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - `expenses`: id, trip_id, stop_id (opcional), leg_id (opcional), stay_id (opcional), description, category, amount_cents, paid_by_member_id, created_by, created_at
 - `expense_splits`: expense_id, member_id, amount_cents
 - `settlements`: id, trip_id, from_member_id, to_member_id, amount_cents, settled_at, note
+- `personal_categories`: id, trip_id, user_id, name, budget_cents (nullable), position — presupuestos personales (decisión 076)
+- `personal_expenses`: id, trip_id, user_id, category (nombre), description, amount_cents, spent_on, created_at — gastos personales, solo los ve quien los carga
 - `activity`: id, trip_id, actor_member_id, actor_name, action, description, from_name, to_name, amount_cents, previous_amount_cents, changes, created_at (historial, solo lectura)
 
 ### Base de datos en la práctica
@@ -104,6 +106,8 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - Ciudades bloqueadas (decisión 042, migración 0008): `stops.locked`; triggers rechazan cambiar la ciudad, su gente, alojamiento y comprobante, y correr sus fechas. Las reglas para avisar antes están en `src/lib/stop-lock.ts`.
 - Agregar ciudad: `add_stop()` (migración 0005) inserta después de otra, copia quién está y borra el tramo que salía de la anterior. La búsqueda es con Nominatim desde el servidor (`src/lib/places.ts`) y la zona horaria sale de las coordenadas con `@photostructure/tz-lookup`.
 - La reserva del alojamiento y el pasaje del tramo se leen en el teléfono para completar los campos vacíos: `src/lib/read-document.ts` saca los renglones (PDF con pdf.js, imagen con OCR de tesseract.js) y las reglas están en `src/lib/booking-pdf.ts` y `src/lib/ticket-pdf.ts` (decisiones 057, 067 y 069).
+- Gastos personales (migración 0010, decisión 076): pestaña "Míos" de Gastos (`src/components/trip/personal-expenses.tsx`), con la lógica en `src/lib/personal.ts`. RLS: solo el dueño. No entran en el balance. Si la base no tiene la migración, la pestaña lo avisa.
+- La foto del ticket completa el gasto (`src/lib/receipt.ts`, decisión 074).
 - Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento. Se suben desde el navegador (`src/lib/supabase/attachments.ts`) y se abren con URL firmada en `TicketViewer`, que dibuja los PDF con pdf.js (decisión 040).
 - Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.
 

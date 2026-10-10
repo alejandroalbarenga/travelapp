@@ -1,14 +1,16 @@
 "use client";
 
-import { ArrowLeftRight, ArrowRight, Bed, Bus, Car, Check, ChevronLeft, ChevronRight, Ellipsis, Landmark, Plane, Receipt, TrainFront, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Bed, Bus, Car, Check, ChevronLeft, Ellipsis, Landmark, Plane, Receipt, TrainFront, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { ActivityView, ExpenseRowView, ExpensesView, TransferView } from "@/lib/expenses-view";
+import type { PersonalData } from "@/lib/personal";
 import type { ExpenseCategory, LegMode, Member } from "@/lib/trip-types";
-import { BalanceBubbles } from "./balance-bubbles";
+import { PersonalExpenses, type PersonalActions } from "./personal-expenses";
 
-// Pantalla 04 · Gastos (docs/diseño.md), con las burbujas del balance arriba, las transferencias
-// y el historial de movimientos abajo del todo.
+// Pantalla 04 · Gastos (docs/diseño.md), reordenada para que se lea fácil (decisión 075): arriba lo
+// tuyo, después las cuentas para quedar a mano, cómo está cada uno, los gastos por ciudad, lo ya
+// saldado y el historial de movimientos.
 
 const ACTIVITY_PREVIEW = 5;
 
@@ -32,7 +34,6 @@ export function ExpensesScreen({
   tripName,
   view,
   members,
-  myMemberId,
   canEdit,
   onEdit,
   onSettle,
@@ -41,6 +42,7 @@ export function ExpensesScreen({
   embedded = false,
   onBack,
   foldStopIds = [],
+  personal,
 }: {
   tripName: string;
   view: ExpensesView;
@@ -57,13 +59,14 @@ export function ExpensesScreen({
   onBack?: () => void;
   /** Ciudades fuera de tu parte del viaje: sus gastos van plegados al final (decisión 054). */
   foldStopIds?: string[];
+  /** Tus gastos personales (decisión 076), en la pestaña "Míos". */
+  personal?: { tripId: string; initial: PersonalData | null; actions?: PersonalActions };
 }) {
+  const [section, setSection] = useState<"group" | "mine">("group");
   const [showAllActivity, setShowAllActivity] = useState(false);
-  const balanceRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const member = (id: string) => members.find((m) => m.id === id);
-  const me = myMemberId ? member(myMemberId) : undefined;
 
   const [showOthers, setShowOthers] = useState(false);
   const mineGroups = view.groups.filter((g) => !foldStopIds.includes(g.key));
@@ -91,7 +94,7 @@ export function ExpensesScreen({
                   <Icon size={20} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[15px] leading-[1.3] font-semibold">{r.description}</div>
+                  <div className="truncate text-[15px] leading-[1.3] font-semibold">{r.description}</div>
                   <div className="mt-0.5 text-[13px] text-ink-2">{r.sub}</div>
                 </div>
                 <div className="shrink-0 text-right">
@@ -140,129 +143,159 @@ export function ExpensesScreen({
         style={{ paddingBottom: embedded ? 48 : "calc(var(--safe-bottom) + 120px)" }}
       >
 
-      {view.groups.length > 0 && (
-        <section className="mt-1.5 rounded-card-lg bg-navy px-3 pt-4 pb-3">
-          <div className="px-2 text-[13px] font-bold text-white/75">Cómo está cada uno</div>
-          <div className="mt-2">
-            <BalanceBubbles bubbles={view.bubbles} />
+      {/* Del grupo o tus gastos personales (decisión 076). */}
+      {personal && (
+        <div className="mt-1.5 mb-3 grid grid-cols-2 rounded-full bg-surface p-1" role="tablist">
+          {(
+            [
+              ["group", "Del grupo"],
+              ["mine", "Míos"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={section === key}
+              onClick={() => setSection(key)}
+              className={`h-10 rounded-full text-sm font-bold ${section === key ? "bg-white text-ink shadow-[0_1px_3px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {personal && section === "mine" ? (
+        <PersonalExpenses tripId={personal.tripId} initial={personal.initial} actions={personal.actions} />
+      ) : (
+      <>
+      {/* Lo tuyo: cuánto te tocó, cuánto pusiste y cómo quedás. */}
+      {view.me && (
+        <section className="mt-1.5 rounded-card bg-surface p-4">
+          <div className="text-[13px] font-bold text-ink-2">Te tocó gastar</div>
+          <div className="mt-0.5 text-[36px] leading-[1.1] font-extrabold tracking-[-0.02em]">{view.me.spent}</div>
+          <div className="mt-1 text-[13px] text-ink-2">Pusiste {view.me.paid} de tu bolsillo</div>
+          <div
+            className={`mt-3 inline-flex h-9 items-center rounded-full px-3.5 text-sm font-bold ${
+              view.me.cents > 0 ? "bg-settled-bg text-settled" : view.me.cents < 0 ? "bg-delete/10 text-danger" : "bg-white text-ink"
+            }`}
+          >
+            {view.me.status}
           </div>
         </section>
       )}
 
-      <section className="mt-6 px-1">
-        <div className="text-[13px] font-bold text-ink-2">Total del viaje</div>
-        <div className="mt-1 text-[40px] leading-[1.1] font-extrabold tracking-[-0.02em]">{view.total}</div>
-        <div className="mt-1 text-[13px] text-ink-2">{view.summary}</div>
-        <div className="my-3.5 h-px bg-divider" />
-        <div className="flex items-center gap-3">
-          {me && (
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: me.color }}>
-              {me.initials}
+      {/* Para quedar a mano: las deudas simplificadas, las tuyas primero. */}
+      {(view.pending.length > 0 || canEdit) && view.groups.length > 0 && (
+        <section className="mt-7">
+          <SectionTitle title="Para quedar a mano" sub={view.pending.length ? "Con estos pagos quedan todos a mano." : "Están todos a mano."} />
+          {view.pending.length > 0 && (
+            <div className="mt-2 border-y border-divider">
+              {view.pending.map((t, i) => (
+                <div key={`p-${t.from}-${t.to}`} className={`flex items-center gap-3 py-3 ${i ? "border-t border-divider" : ""}`}>
+                  <Pair from={member(t.from)} to={member(t.to)} />
+                  <div className={`min-w-0 flex-1 text-[15px] leading-[1.35] ${t.mine ? "font-bold" : ""}`}>{t.text}</div>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => run(() => onSettle(t))}
+                      className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 text-[13px] font-bold disabled:opacity-50"
+                    >
+                      <Check size={15} /> Saldado
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
-          <div className="min-w-0 flex-1">
-            <div className="text-xs font-bold text-ink-2">Tu balance</div>
-            <div className="text-[15px] font-bold">{view.myBalance}</div>
+          {canEdit && (
+            <button type="button" onClick={onTransfer} className="mt-2 flex h-11 items-center gap-2 px-1 text-sm font-bold text-navy">
+              <ArrowLeftRight size={16} /> Registrar una transferencia
+            </button>
+          )}
+          {error && <p className="mx-1 mt-1 text-[13px] font-bold text-danger">{error}</p>}
+        </section>
+      )}
+
+      {/* Cómo está cada uno, en palabras (reemplaza las burbujas). */}
+      {view.groups.length > 0 && (
+        <section className="mt-7">
+          <SectionTitle title="Cómo está cada uno" />
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {view.people.map((p) => (
+              <div key={p.memberId} className="flex items-center gap-2.5 rounded-[16px] border border-line px-3 py-2.5">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: p.color }}>
+                  {p.initials}
+                </span>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-bold">{p.name}</div>
+                  <div className={`text-[13px] leading-[1.3] font-semibold ${p.cents > 0 ? "text-settled" : p.cents < 0 ? "text-danger" : "text-ink-2"}`}>{p.text}</div>
+                </div>
+              </div>
+            ))}
           </div>
-          <button
-            type="button"
-            onClick={() => balanceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            className="flex h-11 items-center gap-0.5 text-[13px] font-bold text-navy"
-          >
-            Ver balance <ChevronRight size={16} />
-          </button>
-        </div>
+        </section>
+      )}
+
+      {/* Los gastos, por ciudad. */}
+      <section className="mt-7">
+        <SectionTitle title="Gastos" sub={view.groups.length ? `${view.total} en total · ${view.summary}` : undefined} />
+        {view.groups.length === 0 && (
+          <p className="mt-6 text-center text-[15px] text-ink-2">Todavía no hay gastos. {canEdit ? "Cargá el primero con Agregar." : ""}</p>
+        )}
+        {mineGroups.map(renderGroup)}
+
+        {/* Tu parte del viaje (decisión 054): los gastos de las ciudades donde no estuviste, plegados. */}
+        {otherGroups.length > 0 && (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setShowOthers((o) => !o)}
+              aria-expanded={showOthers}
+              className="flex w-full items-center gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-4 py-3 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-bold">Gastos del resto del viaje</span>
+                <span className="block text-[13px] text-ink-2">
+                  {otherCount} {otherCount === 1 ? "gasto" : "gastos"} de ciudades donde no estuviste
+                </span>
+              </span>
+              <span className="text-[13px] font-bold">{showOthers ? "Ocultar" : "Ver"}</span>
+            </button>
+            {showOthers && otherGroups.map(renderGroup)}
+          </div>
+        )}
       </section>
 
-      {view.groups.length === 0 && (
-        <p className="mt-8 text-center text-[15px] text-ink-2">Todavía no hay gastos. {canEdit ? "Cargá el primero con el +." : ""}</p>
-      )}
-
-      {mineGroups.map(renderGroup)}
-
-      {/* Tu parte del viaje (decisión 054): los gastos de las ciudades donde no estuviste, plegados. */}
-      {otherGroups.length > 0 && (
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={() => setShowOthers((o) => !o)}
-            aria-expanded={showOthers}
-            className="flex w-full items-center gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-4 py-3 text-left"
-          >
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-bold">Gastos del resto del viaje</span>
-              <span className="block text-[13px] text-ink-2">
-                {otherCount} {otherCount === 1 ? "gasto" : "gastos"} de ciudades donde no estuviste
-              </span>
-            </span>
-            <span className="text-[13px] font-bold">{showOthers ? "Ocultar" : "Ver"}</span>
-          </button>
-          {showOthers && otherGroups.map(renderGroup)}
-        </div>
-      )}
-
-      <div ref={balanceRef} className="mt-8 scroll-mt-4">
-        <div className="px-1">
-          <div className="text-xl font-extrabold tracking-[-0.01em]">Balance</div>
-          <div className="mt-1 text-[13px] text-ink-2">
-            {view.allSettled
-              ? "Todo saldado. Quedan todos a mano."
-              : view.pending.length
-                ? "Con estos pagos quedan todos a mano."
-                : "Por ahora están todos a mano."}
-          </div>
-        </div>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={onTransfer}
-            className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-line bg-white text-sm font-bold"
-          >
-            <ArrowLeftRight size={16} /> Registrar una transferencia
-          </button>
-        )}
-        {(view.pending.length > 0 || view.settled.length > 0) && (
-          <div className="mt-3 border-y border-divider">
-            {view.pending.map((t, i) => (
-              <div key={`p-${t.from}-${t.to}`} className={`flex flex-col gap-3 p-3.5 ${i ? "border-t border-divider" : ""}`}>
-                <TransferLine t={t} member={member} verb="le debe" />
+      {/* Lo ya saldado, con "Deshacer". */}
+      {view.settled.length > 0 && (
+        <section className="mt-8">
+          <SectionTitle title="Ya saldado" />
+          <div className="mt-2 border-y border-divider">
+            {view.settled.map((t, i) => (
+              <div key={t.id} className={`flex items-center gap-3 py-3 ${i ? "border-t border-divider" : ""}`}>
+                <Pair from={member(t.from)} to={member(t.to)} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[15px] leading-[1.35]">
+                    {t.fromName} le pagó {t.amount} a {t.toName}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1 truncate text-[13px] font-semibold text-settled">
+                    <Check size={14} className="shrink-0" /> {t.when}
+                    {t.note ? ` · ${t.note}` : ""}
+                  </div>
+                </div>
                 {canEdit && (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => run(() => onSettle(t))}
-                    className="flex h-11 items-center justify-center gap-2 rounded-field border-[1.5px] border-line text-sm font-bold disabled:opacity-50"
-                  >
-                    <Check size={16} /> Marcar como saldado
+                  <button type="button" disabled={pending} onClick={() => run(() => onUndo(t.id))} className="h-11 shrink-0 px-1 text-[13px] font-bold text-ink-2">
+                    Deshacer
                   </button>
                 )}
               </div>
             ))}
-            {view.settled.map((t, i) => (
-              <div key={t.id} className={`flex flex-col gap-3 p-3.5 ${i || view.pending.length ? "border-t border-divider" : ""}`}>
-                <div className="opacity-60">
-                  <TransferLine t={t} member={member} verb="le pagó" />
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex h-[30px] min-w-0 items-center gap-1.5 rounded-full bg-settled-bg px-3 text-[13px] font-bold text-settled">
-                    <Check size={16} className="shrink-0" />
-                    <span className="truncate">
-                      Pagado el {t.when}
-                      {t.note ? ` · ${t.note}` : ""}
-                    </span>
-                  </span>
-                  {canEdit && (
-                    <button type="button" disabled={pending} onClick={() => run(() => onUndo(t.id))} className="h-11 px-1 text-[13px] font-bold text-ink-2">
-                      Deshacer
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
-        )}
-        {error && <p className="mx-1 mt-2 text-[13px] font-bold text-danger">{error}</p>}
-      </div>
+        </section>
+      )}
 
       {view.activity.length > 0 && (
         <div className="mt-8">
@@ -285,6 +318,8 @@ export function ExpensesScreen({
             )}
           </div>
         </div>
+      )}
+      </>
       )}
       </div>
     </div>
@@ -311,23 +346,26 @@ function ActivityRow({ a, first }: { a: ActivityView; first: boolean }) {
   );
 }
 
-function TransferLine({ t, member, verb }: { t: TransferView; member: (id: string) => Member | undefined; verb: string }) {
-  const from = member(t.from);
-  const to = member(t.to);
+function SectionTitle({ title, sub }: { title: string; sub?: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex shrink-0 items-center gap-1">
-        <span className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: from?.color }}>
-          {from?.initials}
-        </span>
-        <ArrowRight size={16} className="text-ink-2" />
-        <span className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: to?.color }}>
-          {to?.initials}
-        </span>
-      </div>
-      <div className="min-w-0 flex-1 text-[15px] leading-[1.35]">
-        <strong>{t.fromName}</strong> {verb} <strong>{t.amount}</strong> a <strong>{t.toName}</strong>
-      </div>
+    <div className="px-1">
+      <h2 className="text-xl font-extrabold tracking-[-0.01em]">{title}</h2>
+      {sub && <div className="mt-0.5 text-[13px] text-ink-2">{sub}</div>}
+    </div>
+  );
+}
+
+/** Quién le paga a quién: las dos bolitas con una flecha. */
+function Pair({ from, to }: { from?: Member; to?: Member }) {
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <span className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: from?.color }}>
+        {from?.initials}
+      </span>
+      <ArrowRight size={14} className="text-ink-3" />
+      <span className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: to?.color }}>
+        {to?.initials}
+      </span>
     </div>
   );
 }

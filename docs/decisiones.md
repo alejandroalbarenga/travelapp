@@ -470,3 +470,28 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 **Fecha:** 2026-10-09
 **Decisión:** arriba de "Próximos viajes" va una tarjeta con tus **países visitados**, **viajes hechos** y **noches afuera**, y abajo las banderas superpuestas (hasta seis) con la lista de países. Cuenta solo lo que ya pasó: los países de las ciudades de tu parte del viaje donde dormiste al menos una noche (las escalas no cuentan), los viajes terminados y las noches desde que empezó tu parte hasta hoy. Mientras no empezó ningún viaje, la tarjeta no aparece. La regla está en `travelStats()` (`src/lib/home.ts`).
 **Por qué:** estaba en el diseño y había quedado para después (041).
+
+### 072 · La ficha de la ciudad sin foto
+**Fecha:** 2026-10-10
+**Decisión:** la pantalla de la ciudad ya no abre con la foto grande: arriba van volver y cambiar la ciudad, y abajo el país con su bandera, el nombre y la frase sobre blanco. La foto sigue en la lista de ciudades del viaje.
+**Por qué:** pedido de Ale, para ver cómo queda más limpia.
+
+### 073 · La foto de cada viaje en el inicio
+**Fecha:** 2026-10-10
+**Decisión:** la tarjeta de cada viaje usa la foto de la ciudad donde estás hoy (si el viaje está en curso) o, si no, la de la ciudad de tu parte del viaje donde pasás más noches. Antes era siempre la primera ciudad. Un viaje sin ciudades sigue sin foto. La regla está en `coverStopIndex()` (`src/lib/home.ts`).
+**Por qué:** pedido de Ale; todas las tarjetas mostraban la ciudad de salida.
+
+### 074 · El gasto se completa desde la foto del ticket
+**Fecha:** 2026-10-10
+**Decisión:** en "Nuevo gasto" (y en el gasto personal) va "Escanear el ticket": la foto (o PDF) se lee en el teléfono con OCR, como la reserva (067), y completa lo vacío: el monto (el más alto de los renglones con "total", sin subtotal ni IVA; si no hay, el más alto del ticket), el concepto (el nombre del comercio, el renglón más grande de arriba) y una categoría probable (restaurante o súper → Comida, museo o entrada → Actividades, taxi o metro → Transporte). Las reglas están en `src/lib/receipt.ts`. La foto no se guarda.
+**Por qué:** pedido de Ale.
+
+### 075 · Gastos más fáciles de leer
+**Fecha:** 2026-10-10
+**Decisión:** la pantalla de Gastos se reordena: arriba **lo tuyo** (cuánto te tocó gastar, cuánto pusiste y "Te deben €X" / "Debés €X" en verde o rojo); después **Para quedar a mano**, contado desde vos ("Josué te debe €193,33", "Le debés €50 a Ale"; las tuyas primero) con un botón chico "Saldado"; **Cómo está cada uno** en una grilla de tarjetas con palabras en vez de las burbujas (037); los **gastos** por ciudad con una sola línea de concepto y abajo la fecha y quién pagó ("Pagaste vos"); y al final **Ya saldado** y los movimientos. El total del grupo pasa a ser el subtítulo de "Gastos".
+**Por qué:** pedido de Ale; costaba leerla. Las burbujas con signos (−€177) no dejaban claro quién le debía a quién.
+
+### 076 · Gastos personales con presupuesto
+**Fecha:** 2026-10-10
+**Decisión:** en Gastos hay dos pestañas, **Del grupo** y **Míos**. En "Míos" cada uno carga sus gastos personales del viaje (monto o foto del ticket, concepto, categoría y día) y les pone un presupuesto por categoría, que se va descontando ("Te quedan €80 de €200", en rojo si te pasaste). Arranca con Ropa, Comida, Regalos, Salidas y Otros, y se pueden crear más. Solo los ve quien los carga (ni el organizador) y no entran en el balance del grupo. Tablas `personal_categories` y `personal_expenses` (migración 0010), con RLS por usuario y miembro del viaje.
+**Por qué:** pedido de Ale, para llevar lo que gasta cada uno aparte de las cuentas del grupo.
