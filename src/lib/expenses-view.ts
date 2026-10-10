@@ -17,6 +17,7 @@ export type ExpenseRowView = {
   amount: string;
   sub: string;
   myShare: string;
+  createdAt: string;
 };
 
 export type ExpenseGroupView = { key: string; name: string; dates: string; rows: ExpenseRowView[] };
@@ -36,8 +37,8 @@ export type TransferView = {
 
 export type SettledView = TransferView & { id: string; when: string; note: string | null };
 
-/** Cómo está cada uno: cuánto le deben (+) o debe (−), en palabras. */
-export type PersonView = { memberId: string; name: string; initials: string; color: string; cents: number; text: string; isMe: boolean };
+/** Una burbuja de arriba (decisión 081): cuánto le deben (+) o debe (−) cada uno; el tamaño va según el monto. */
+export type BubbleView = { memberId: string; name: string; color: string; cents: number; amount: string; label: string; isMe: boolean };
 
 /** Lo tuyo, arriba de todo (decisión 075): lo que te tocó, lo que pusiste y cómo quedás. */
 export type MySummaryView = { spent: string; paid: string; cents: number; status: string };
@@ -67,7 +68,10 @@ export type ExpensesView = {
   allSettled: boolean;
   /** Neto de cada integrante en centavos (positivo: le deben). */
   balances: Record<string, number>;
-  people: PersonView[];
+  bubbles: BubbleView[];
+  /** Los últimos gastos cargados, del más nuevo (decisión 081). */
+  recent: ExpenseRowView[];
+  count: number;
   activity: ActivityView[];
 };
 
@@ -201,6 +205,7 @@ export function buildExpensesView(trip: Trip, myMemberId: string | null): Expens
       amount: formatEuros(e.amount_cents),
       sub: `${day} · ${e.paid_by_member_id === myMemberId ? "Pagaste vos" : `Pagó ${name(e.paid_by_member_id)}`}`,
       myShare: mine ? `tu parte ${formatEuros(mine.amount_cents)}` : "no participás",
+      createdAt: e.created_at,
     });
   }
 
@@ -226,23 +231,24 @@ export function buildExpensesView(trip: Trip, myMemberId: string | null): Expens
     settled,
     allSettled: pending.length === 0 && settled.length > 0,
     balances: net,
-    // Vos primero; después los que más ponen, y los que deben al final.
-    people: [...trip.members]
-      .sort((a, b) => Number(b.id === myMemberId) - Number(a.id === myMemberId) || (net[b.id] ?? 0) - (net[a.id] ?? 0))
-      .map((m) => {
-        const cents = net[m.id] ?? 0;
-        const isMe = m.id === myMemberId;
-        const amount = formatEuros(Math.abs(cents));
-        return {
-          memberId: m.id,
-          name: isMe ? "Vos" : m.display_name,
-          initials: m.initials,
-          color: m.color,
-          cents,
-          text: cents > 0 ? `${isMe ? "te deben" : "le deben"} ${amount}` : cents < 0 ? `${isMe ? "debés" : "debe"} ${amount}` : isMe ? "estás a mano" : "a mano",
-          isMe,
-        };
-      }),
+    bubbles: trip.members.map((m) => {
+      const cents = net[m.id] ?? 0;
+      const isMe = m.id === myMemberId;
+      return {
+        memberId: m.id,
+        name: isMe ? "Vos" : m.display_name,
+        color: m.color,
+        cents,
+        amount: formatEuros(Math.abs(cents)),
+        label: cents > 0 ? (isMe ? "te deben" : "le deben") : cents < 0 ? (isMe ? "debés" : "debe") : "a mano",
+        isMe,
+      };
+    }),
+    recent: groups
+      .flatMap((g) => g.rows)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 4),
+    count: trip.expenses.length,
     activity: buildActivityView(trip),
   };
 }

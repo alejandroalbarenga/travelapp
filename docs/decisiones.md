@@ -515,3 +515,14 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 **Fecha:** 2026-10-10
 **Decisión:** en "Nuevo gasto", el gasto personal y "Registrar transferencia", el botón de guardar ("Guardar gasto", "Guardar transferencia") pasa de arriba a la derecha a la barra de abajo, grande y rosado, como en la ciudad y el tramo. Arriba queda la flecha de volver y el título.
 **Por qué:** pedido de Ale, para que todas las pantallas sean iguales.
+
+### 081 · Gastos: las burbujas de vuelta arriba
+**Fecha:** 2026-10-10
+**Decisión:** reemplaza el orden de la 075. La pantalla de Gastos (pestaña "Del grupo") queda, como en Tricount:
+1. **Las burbujas** de cada uno arriba (las de la 037): el tamaño va según cuánto le deben o debe, y las grandes dicen abajo "te deben", "le deben", "debe", "debés" o "a mano". De un vistazo se ve quién está abajo y a quién le toca pagar.
+2. **Total gastado**, con cuántos gastos, tu parte y cuánto pusiste.
+3. **Últimos gastos**: los cuatro más nuevos; "Ver todos los gastos" abre la lista completa por ciudad.
+4. **Quién le debe a quién**, contado desde vos, con "Saldado" y "Registrar una transferencia"; abajo lo ya saldado.
+5. **Movimientos** (el historial).
+Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbujas ya lo dicen.
+**Por qué:** pedido de Ale; al entrar a Gastos lo que importa es cómo está cada uno, y las burbujas lo dejaban claro.
