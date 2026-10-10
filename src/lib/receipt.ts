@@ -43,7 +43,8 @@ export function parseReceipt(lines: PdfLine[]): ReceiptInfo {
   // El comercio: el renglón más grande entre los primeros, que no sea un dato del ticket.
   const head = rows.slice(0, 6).filter((l) => l.text.length >= 3 && l.text.length <= 40 && /[a-zA-ZÀ-ÿ]{3}/.test(l.text) && !NOT_A_MERCHANT.test(l.text));
   const merchant = head.reduce<(typeof head)[number] | null>((best, l) => (!best || l.size > best.size + 0.5 ? l : best), null);
-  if (merchant) info.merchant = merchant.text.replace(/[*#|]+/g, "").trim();
+  // Sin símbolos ni letras sueltas al principio (ruido del OCR: "r NN CIEL" → "NN CIEL").
+  if (merchant) info.merchant = merchant.text.replace(/[*#|]+/g, "").trim().replace(/^(\S\s+)+/, "");
 
   const text = rows.map((l) => l.text).join("\n");
   info.category = CATEGORY_WORDS.find(([, words]) => words.test(text))?.[0];

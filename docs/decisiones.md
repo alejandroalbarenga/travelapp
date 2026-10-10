@@ -510,3 +510,8 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 **Fecha:** 2026-10-10
 **Decisión:** el header del panel izquierdo ya no tiene alto fijo (128 px): crece con lo que tiene y la lista o los gastos empiezan abajo. Con otra fuente o con el zoom del navegador, los botones quedan siempre adentro de la línea.
 **Por qué:** pedido de Ale; los botones se salían por abajo del header.
+
+### 080 · Guardar abajo en todas las pantallas
+**Fecha:** 2026-10-10
+**Decisión:** en "Nuevo gasto", el gasto personal y "Registrar transferencia", el botón de guardar ("Guardar gasto", "Guardar transferencia") pasa de arriba a la derecha a la barra de abajo, grande y rosado, como en la ciudad y el tramo. Arriba queda la flecha de volver y el título.
+**Por qué:** pedido de Ale, para que todas las pantallas sean iguales.

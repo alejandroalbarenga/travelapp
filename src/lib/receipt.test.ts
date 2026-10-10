@@ -35,6 +35,10 @@ describe("parseReceipt", () => {
     });
   });
 
+  it("saca las letras sueltas que deja el OCR al principio", () => {
+    expect(parseReceipt(lines([["r NN CIEL CLINICAS", 40], ["TOTAL 24,00", 30]])).merchant).toBe("NN CIEL CLINICAS");
+  });
+
   it("lo que no encuentra queda vacío", () => {
     expect(parseReceipt(lines([["Gracias por su visita", 30]]))).toEqual({});
   });
