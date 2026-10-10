@@ -1,4 +1,4 @@
-// Service worker de Vamo y vamo (decisión 047): que la app abra rápido con mala conexión y que
+// Service worker de Vamo (decisión 047): que la app abra rápido con mala conexión y que
 // el viaje y los pasajes ya vistos se puedan ver sin señal. No hay modo offline real: cargar o
 // cambiar cosas necesita conexión (las acciones esperan y se reintentan solas, ver useOffline).
 //

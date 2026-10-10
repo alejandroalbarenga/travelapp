@@ -21,7 +21,7 @@ El nombre de la rama describe lo que se está haciendo, con un prefijo por tipo:
 
 ## El producto
 
-**Vamo y vamo** (decisión 035): web app mobile para organizar y seguir un viaje en grupo, instalable en la pantalla de inicio del iPhone (PWA). Referencia: la simplicidad de Polarsteps. El repo y el proyecto de Vercel se siguen llamando `travelapp`.
+**Vamo** (decisiones 035 y 078): web app mobile para organizar y seguir un viaje en grupo, instalable en la pantalla de inicio del iPhone (PWA). Referencia: la simplicidad de Polarsteps. El repo y el proyecto de Vercel se siguen llamando `travelapp`.
 
 - Ciudades en orden con sus noches; las fechas se calculan solas.
 - Tramos de transporte entre ciudades con su costo y el pasaje adjunto (PDF, captura o link).

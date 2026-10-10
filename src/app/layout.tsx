@@ -15,11 +15,11 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "Vamo y vamo",
+  title: "Vamo",
   description: "Organizá y seguí un viaje en grupo: ciudades, tramos, pasajes y gastos compartidos.",
   appleWebApp: {
     capable: true,
-    title: "Vamo y vamo",
+    title: "Vamo",
     statusBarStyle: "default",
   },
 };

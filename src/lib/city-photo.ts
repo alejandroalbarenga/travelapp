@@ -6,7 +6,7 @@ import { NOT_A_PHOTO, pickPhoto, type MediaList, type Summary } from "./photo-ur
 // y se busca la primera foto de verdad del artículo.
 // La frase de la ciudad sale sola de la descripción corta del mismo artículo (decisión 058).
 
-const HEADERS = { "User-Agent": "VamoYVamo/0.1 (https://travelapp-two-cyan.vercel.app)" };
+const HEADERS = { "User-Agent": "Vamo/0.1 (https://travelapp-two-cyan.vercel.app)" };
 
 async function getJson<T>(url: string): Promise<T | null> {
   try {

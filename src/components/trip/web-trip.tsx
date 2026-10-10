@@ -16,7 +16,6 @@ import { TripMap, type MapPoint } from "./trip-map";
 // la línea punteada con el número de la ciudad y el chip del tramo que sale; al final de cada fila
 // la línea baja por el costado a la siguiente. Los sheets suben dentro del panel (BottomSheet).
 
-export const WEB_HEADER_HEIGHT = 128;
 
 const MODE_ICON: Record<LegMode, LucideIcon> = { plane: Plane, train: TrainFront, bus: Bus, car: Car, other: Ellipsis };
 const MODE_CLASS: Record<LegMode, string> = {
@@ -88,8 +87,9 @@ export function WebTrip({
 
   return (
     <div className="absolute inset-0 bg-white">
-      <div className="absolute inset-y-0 left-0 w-[58%] overflow-hidden bg-white">
-        <header className="absolute inset-x-0 top-0 z-[2] border-b border-divider bg-white px-8 pt-[18px]" style={{ height: WEB_HEADER_HEIGHT }}>
+      {/* El header crece con lo que tiene (antes tenía alto fijo y los botones se salían por abajo). */}
+      <div className="absolute inset-y-0 left-0 flex w-[58%] flex-col overflow-hidden bg-white">
+        <header className="relative z-[2] shrink-0 border-b border-divider bg-white px-8 pt-[18px] pb-3.5">
           <div className="flex items-center gap-3.5">
             {/* En Gastos, la flecha vuelve al viaje (Viaje y Gastos van separados, como en el celular: decisión 049). */}
             {tab === "expenses" ? (
@@ -149,7 +149,7 @@ export function WebTrip({
           </div>
         </header>
 
-        <div className="absolute inset-x-0 bottom-0" style={{ top: WEB_HEADER_HEIGHT }}>
+        <div className="relative min-h-0 flex-1">
           {tab === "expenses" ? (
             expenses
           ) : (
