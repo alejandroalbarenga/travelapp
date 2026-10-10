@@ -495,3 +495,8 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 **Fecha:** 2026-10-10
 **Decisión:** en Gastos hay dos pestañas, **Del grupo** y **Míos**. En "Míos" cada uno carga sus gastos personales del viaje (monto o foto del ticket, concepto, categoría y día) y les pone un presupuesto por categoría, que se va descontando ("Te quedan €80 de €200", en rojo si te pasaste). Arranca con Ropa, Comida, Regalos, Salidas y Otros, y se pueden crear más. Solo los ve quien los carga (ni el organizador) y no entran en el balance del grupo. Tablas `personal_categories` y `personal_expenses` (migración 0010), con RLS por usuario y miembro del viaje.
 **Por qué:** pedido de Ale, para llevar lo que gasta cada uno aparte de las cuentas del grupo.
+
+### 077 · En la web también son pantallas nuevas
+**Fecha:** 2026-10-10
+**Decisión:** en la web (desde 1100 px), agregar ciudad, la ciudad, el tramo, los gastos, el calendario, los integrantes, etc. dejan de subir como panel desde abajo: son una pantalla nueva que entra desde la derecha y ocupa todo el panel izquierdo (con su header), con el mapa a la vista. "Nuevo viaje", afuera del viaje, ocupa toda la ventana con el contenido centrado. Tienen la flecha de volver (ya no la cruz), funcionan con el "atrás" del navegador y con Escape, igual que en el celular (068). En el header del viaje, las bolitas de los integrantes ya no se pisan y dicen cuántos son.
+**Por qué:** pedido de Ale; en la web los paneles se veían rotos.

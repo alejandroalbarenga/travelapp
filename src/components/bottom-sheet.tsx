@@ -1,18 +1,18 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { ChevronLeft, X } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useIsWeb } from "@/lib/use-is-web";
 
 // En el celular es una pantalla completa que entra desde la derecha (decisión 068: ya no hay sheets,
 // salvo el panel del viaje sobre el mapa). Se vuelve con la flecha, deslizando desde el borde
 // izquierdo, con el "atrás" del teléfono o del navegador (cada pantalla abierta es una entrada del
 // historial) o con Escape.
-// En la web (desde 1100 px), dentro del viaje sube dentro del panel izquierdo, debajo del header, y el
-// mapa queda a la vista (como en el diseño); fuera del viaje (ej. "Nuevo viaje") es una ventana centrada.
+// En la web (desde 1100 px) también es una pantalla nueva (decisión 077): dentro del viaje ocupa todo
+// el panel izquierdo y el mapa queda a la vista; fuera del viaje (ej. "Nuevo viaje"), toda la ventana.
 
-/** Zona donde suben los sheets en la web: el panel izquierdo del viaje, debajo de su header. */
-export type SheetPanel = { left: string; width: string; top: string };
+/** Dónde se abren las pantallas en la web: el panel izquierdo del viaje. */
+export type SheetPanel = { left: string; width: string };
 export const SheetPanelContext = createContext<SheetPanel | null>(null);
 
 const DURATION = 320;
@@ -166,12 +166,11 @@ function useHistoryEntry(active: boolean, onBack: () => void) {
   }, [active]);
 }
 
-/** Volver (en el celular, flecha) o cerrar (en la web, cruz): va arriba a la izquierda de cada pantalla. */
+/** Volver: la flecha arriba a la izquierda de cada pantalla. */
 export function BackButton({ onClick, className = "rounded-full bg-surface" }: { onClick: () => void; className?: string }) {
-  const web = useIsWeb();
   return (
-    <button type="button" onClick={onClick} aria-label={web ? "Cerrar" : "Volver"} className={`flex size-11 shrink-0 items-center justify-center ${className}`}>
-      {web ? <X size={20} /> : <ChevronLeft size={24} />}
+    <button type="button" onClick={onClick} aria-label="Volver" className={`flex size-11 shrink-0 items-center justify-center ${className}`}>
+      <ChevronLeft size={24} />
     </button>
   );
 }
@@ -179,16 +178,11 @@ export function BackButton({ onClick, className = "rounded-full bg-surface" }: {
 export function BottomSheet({
   onClose,
   label,
-  top = "calc(var(--safe-top) + 52px)",
-  scrim = 0.45,
   overlayHandle = false,
   children,
 }: {
   onClose: () => void;
   label: string;
-  /** Hasta dónde sube el sheet. "auto" = lo que ocupe el contenido. */
-  top?: string;
-  scrim?: number;
   /** El contenido empieza arriba de todo, debajo de la barra de estado (por ejemplo, una foto). */
   overlayHandle?: boolean;
   /** Recibe `close`, que anima la salida y después llama a onClose. */
@@ -220,7 +214,7 @@ export function BottomSheet({
     setTimeout(onClose, DURATION);
   }, [onClose]);
 
-  useHistoryEntry(!web, close);
+  useHistoryEntry(true, close);
 
   // Deslizar desde el borde izquierdo hacia la derecha vuelve atrás, como en el iPhone.
   const swipe = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
@@ -250,85 +244,29 @@ export function BottomSheet({
   }, [close]);
 
 
-  if (web && panel) {
-    return (
-      <div className="fixed bottom-0 z-[5] overflow-hidden" style={{ left: panel.left, width: panel.width, top: panel.top }} role="dialog" aria-modal="true" aria-label={label}>
-        <button
-          type="button"
-          aria-label="Cerrar"
-          tabIndex={-1}
-          onClick={close}
-          className="absolute inset-0 transition-opacity duration-[250ms]"
-          style={{ background: `rgb(15 16 18 / ${scrim * 0.6})`, opacity: shown ? 1 : 0 }}
-        />
-        <div
-          className="absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-10px_40px_rgb(0_0_0/0.18)]"
-          style={{
-            top: top === "auto" ? undefined : 12,
-            maxHeight: top === "auto" ? "calc(100% - 12px)" : undefined,
-            transform: shown ? "translateY(0)" : "translateY(calc(100% + 40px))",
-            transition: `transform ${DURATION}ms cubic-bezier(.2,.8,.2,1)`,
-          }}
-        >
-          {overlayHandle ? null : <div className="h-3 shrink-0" />}
-          {children(close)}
-        </div>
-      </div>
-    );
-  }
-
+  // En la web, dentro del viaje ocupa todo el panel izquierdo (el mapa queda a la derecha); fuera del
+  // viaje (ej. "Nuevo viaje"), toda la pantalla con el contenido centrado.
+  const area = web && panel ? { left: panel.left, width: panel.width, top: 0, bottom: 0 } : { left: 0, right: 0, top: web ? 0 : shift, bottom: web ? 0 : -shift };
   return (
-    <div
-      className="fixed inset-x-0 z-[5]"
-      style={{ top: web ? 0 : shift, bottom: web ? 0 : -shift }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={label}
-    >
-      {web ? (
-        <>
-          <button
-            type="button"
-            aria-label="Cerrar"
-            tabIndex={-1}
-            onClick={close}
-            className="absolute inset-0 transition-opacity duration-[250ms]"
-            style={{ background: `rgb(15 16 18 / ${scrim})`, opacity: shown ? 1 : 0 }}
-          />
-          <div
-            className="absolute top-1/2 left-1/2 flex w-[min(560px,calc(100vw-48px))] flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_20px_60px_rgb(0_0_0/0.25)]"
-            style={{
-              height: top === "auto" ? undefined : "min(860px, calc(100dvh - 64px))",
-              maxHeight: "calc(100dvh - 64px)",
-              transform: `translate(-50%, -50%) scale(${shown ? 1 : 0.96})`,
-              opacity: shown ? 1 : 0,
-              transition: `transform ${DURATION}ms cubic-bezier(.2,.8,.2,1), opacity 200ms`,
-            }}
-          >
-            {overlayHandle ? null : <div className="h-3 shrink-0" />}
-            {children(close)}
-          </div>
-        </>
-      ) : (
-        <div
-          ref={sheetRef}
-          data-sheet
-          className="absolute inset-0 flex flex-col overflow-hidden bg-white shadow-[-8px_0_24px_rgb(0_0_0/0.08)]"
-          style={{
-            ["--keyboard" as string]: `${keyboard.height}px`,
-            // La foto de la ciudad va debajo de la barra de estado; el resto empieza abajo de ella.
-            paddingTop: overlayHandle ? 0 : "calc(var(--safe-top) + 8px)",
-            transform: shown ? `translateX(${drag ?? 0}px)` : "translateX(100%)",
-            transition: drag !== null && shown ? "none" : `transform ${DURATION}ms cubic-bezier(.2,.8,.2,1)`,
-          }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          onTouchCancel={onTouchEnd}
-        >
-          {children(close)}
-        </div>
-      )}
+    <div className="fixed z-[5] overflow-hidden" style={area} role="dialog" aria-modal="true" aria-label={label}>
+      <div
+        ref={sheetRef}
+        data-sheet
+        className="absolute inset-0 flex flex-col overflow-hidden bg-white shadow-[-8px_0_24px_rgb(0_0_0/0.08)]"
+        style={{
+          ["--keyboard" as string]: `${keyboard.height}px`,
+          // La foto de la ciudad va debajo de la barra de estado; el resto empieza abajo de ella.
+          paddingTop: overlayHandle ? 0 : web ? 16 : "calc(var(--safe-top) + 8px)",
+          transform: shown ? `translateX(${drag ?? 0}px)` : "translateX(100%)",
+          transition: drag !== null && shown ? "none" : `transform ${DURATION}ms cubic-bezier(.2,.8,.2,1)`,
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+      >
+        {web && !panel ? <div className="mx-auto flex min-h-0 w-full max-w-[560px] flex-1 flex-col">{children(close)}</div> : children(close)}
+      </div>
     </div>
   );
 }

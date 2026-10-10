@@ -47,7 +47,7 @@ export function TransferSheet({
   }
 
   return (
-    <BottomSheet onClose={onClose} label="Registrar transferencia" top="calc(var(--safe-top) + 12px)">
+    <BottomSheet onClose={onClose} label="Registrar transferencia">
       {(close) => (
         <>
           <div className="flex h-[52px] shrink-0 items-center justify-between px-3">

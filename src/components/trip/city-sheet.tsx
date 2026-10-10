@@ -283,7 +283,7 @@ export function CitySheet({
   const legOut = trip.legs.find((l) => l.from_stop_id === stopId) ?? null;
 
   return (
-    <BottomSheet onClose={onClose} label={stop.city} top="calc(var(--safe-top) + 12px)" overlayHandle>
+    <BottomSheet onClose={onClose} label={stop.city} overlayHandle>
       {(close) => (
         <>
           <div className="relative flex-1 overflow-y-auto px-4 pb-8 [scrollbar-width:none]">
