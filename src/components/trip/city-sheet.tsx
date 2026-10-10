@@ -282,6 +282,29 @@ export function CitySheet({
   const legIn = prev ? (trip.legs.find((l) => l.from_stop_id === prev.id) ?? null) : null;
   const legOut = trip.legs.find((l) => l.from_stop_id === stopId) ?? null;
 
+  // Quiénes están en esta ciudad: en el formulario del alojamiento, o solo esto si es de paso.
+  const peoplePicker = (
+    <div className="flex flex-wrap gap-2">
+      {trip.members.map((m) => {
+        const on = people.includes(m.id);
+        return (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => togglePerson(m.id)}
+            aria-pressed={on}
+            className={`flex h-11 items-center gap-2 rounded-full border pr-3.5 pl-[5px] text-sm font-bold ${on ? "border-ink bg-white" : "border-line bg-white text-ink-3"}`}
+          >
+            <span className="flex size-[34px] items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: m.color, opacity: on ? 1 : 0.45 }}>
+              {m.initials}
+            </span>
+            {m.display_name}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     <BottomSheet onClose={onClose} label={stop.city} overlayHandle>
       {(close) => (
@@ -499,28 +522,19 @@ export function CitySheet({
 
                   {/* Quiénes están en esta ciudad. */}
                   <div className="mt-4 mb-2 text-xs font-bold text-ink-2">Quiénes están</div>
-                  <div className="flex flex-wrap gap-2">
-                    {trip.members.map((m) => {
-                      const on = people.includes(m.id);
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => togglePerson(m.id)}
-                          aria-pressed={on}
-                          className={`flex h-11 items-center gap-2 rounded-full border pr-3.5 pl-[5px] text-sm font-bold ${on ? "border-ink bg-white" : "border-line bg-white text-ink-3"}`}
-                        >
-                          <span className="flex size-[34px] items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: m.color, opacity: on ? 1 : 0.45 }}>
-                            {m.initials}
-                          </span>
-                          {m.display_name}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {peoplePicker}
                   {peopleNote && <p className="mx-1 mt-2 text-[13px] text-ink-2">{peopleNote}</p>}
                 </div>
-              ) : hasStay || stop.nights > 0 ? (
+              ) : stop.nights === 0 && !hasStay ? (
+                // De paso (0 noches): no se pide alojamiento (decisión 082), solo quiénes pasan.
+                <div className="mt-5 rounded-[22px] border border-line bg-white p-4">
+                  <div className="text-[17px] font-bold">De paso</div>
+                  <div className="mt-0.5 text-[13px] text-ink-2">Sin noche acá, no hace falta alojamiento.</div>
+                  <div className="mt-4 mb-2 text-xs font-bold text-ink-2">Quiénes pasan</div>
+                  {peoplePicker}
+                  {peopleNote && <p className="mx-1 mt-2 text-[13px] text-ink-2">{peopleNote}</p>}
+                </div>
+              ) : (
                 <div className="mt-5 overflow-hidden rounded-[22px] border border-line bg-white shadow-card">
                   <div className="flex gap-3.5 p-3">
                     <StayIcon via={via} />
@@ -564,16 +578,6 @@ export function CitySheet({
                     )}
                   </div>
                 </div>
-              ) : readOnly ? null : (
-                <button
-                  type="button"
-                  onClick={() => setEditingStay(true)}
-                  className="mt-5 flex h-14 w-full items-center gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-4 text-left text-sm"
-                >
-                  <Bed size={18} className="shrink-0 text-ink-3" />
-                  <span className="min-w-0 flex-1 text-ink-2">De paso, sin noche acá</span>
-                  <span className="font-bold">Agregar alojamiento</span>
-                </button>
               )}
 
               {/* Línea de tiempo: el día que llegás y el día que te vas. */}
