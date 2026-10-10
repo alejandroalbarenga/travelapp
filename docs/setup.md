@@ -45,7 +45,7 @@ El mail que trae Supabase solo manda a los miembros del equipo del proyecto y ti
 3. [ ] En Supabase → SMTP Settings → **Enable custom SMTP**:
    - Host: `smtp.gmail.com` · Port: `465`
    - Username: tu Gmail · Password: la contraseña de aplicación (16 letras, sin espacios)
-   - Sender email: tu Gmail · Sender name: `Vamo y vamo`
+   - Sender email: tu Gmail · Sender name: `Vamo`
 4. [ ] En **Authentication → Rate Limits**, subí el límite de mails por hora (por ejemplo a 30).
 
 **Opción B · Resend (si tenés un dominio propio)**

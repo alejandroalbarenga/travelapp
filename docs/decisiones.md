@@ -500,3 +500,13 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 **Fecha:** 2026-10-10
 **Decisión:** en la web (desde 1100 px), agregar ciudad, la ciudad, el tramo, los gastos, el calendario, los integrantes, etc. dejan de subir como panel desde abajo: son una pantalla nueva que entra desde la derecha y ocupa todo el panel izquierdo (con su header), con el mapa a la vista. "Nuevo viaje", afuera del viaje, ocupa toda la ventana con el contenido centrado. Tienen la flecha de volver (ya no la cruz), funcionan con el "atrás" del navegador y con Escape, igual que en el celular (068). En el header del viaje, las bolitas de los integrantes ya no se pisan y dicen cuántos son.
 **Por qué:** pedido de Ale; en la web los paneles se veían rotos.
+
+### 078 · La app se llama Vamo
+**Fecha:** 2026-10-10
+**Decisión:** el nombre pasa de "Vamo y vamo" a **Vamo**, como dice el logo (062): en el ícono de la pantalla de inicio, la pestaña del navegador, el login y el mail del código. Reemplaza el nombre de la 035. El repo y el proyecto de Vercel siguen siendo `travelapp`.
+**Por qué:** pedido de Ale.
+
+### 079 · El header del viaje en la web crece con su contenido
+**Fecha:** 2026-10-10
+**Decisión:** el header del panel izquierdo ya no tiene alto fijo (128 px): crece con lo que tiene y la lista o los gastos empiezan abajo. Con otra fuente o con el zoom del navegador, los botones quedan siempre adentro de la línea.
+**Por qué:** pedido de Ale; los botones se salían por abajo del header.
