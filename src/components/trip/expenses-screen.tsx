@@ -6,11 +6,12 @@ import { useState, useTransition } from "react";
 import type { ActivityView, ExpenseRowView, ExpensesView, TransferView } from "@/lib/expenses-view";
 import type { PersonalData } from "@/lib/personal";
 import type { ExpenseCategory, LegMode, Member } from "@/lib/trip-types";
+import { BalanceBubbles } from "./balance-bubbles";
 import { PersonalExpenses, type PersonalActions } from "./personal-expenses";
 
-// Pantalla 04 · Gastos (docs/diseño.md), reordenada para que se lea fácil (decisión 075): arriba lo
-// tuyo, después las cuentas para quedar a mano, cómo está cada uno, los gastos por ciudad, lo ya
-// saldado y el historial de movimientos.
+// Pantalla 04 · Gastos (docs/diseño.md, decisión 081): arriba las burbujas de cada uno, el total
+// gastado, los últimos gastos (con "Ver todos" por ciudad), quién le debe a quién, lo ya saldado y
+// el historial de movimientos.
 
 const ACTIVITY_PREVIEW = 5;
 
@@ -69,9 +70,29 @@ export function ExpensesScreen({
   const member = (id: string) => members.find((m) => m.id === id);
 
   const [showOthers, setShowOthers] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const mineGroups = view.groups.filter((g) => !foldStopIds.includes(g.key));
   const otherGroups = view.groups.filter((g) => foldStopIds.includes(g.key));
   const otherCount = otherGroups.reduce((n, g) => n + g.rows.length, 0);
+
+  function renderRow(r: ExpenseRowView, i: number) {
+    const Icon = r.legMode ? MODE_ICON[r.legMode] : CATEGORY_ICON[r.category];
+    return (
+      <button key={r.id} type="button" onClick={() => onEdit(r)} className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${i ? "border-t border-divider" : ""}`}>
+        <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${r.legMode ? MODE_CLASS[r.legMode] : "bg-surface text-ink"}`}>
+          <Icon size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] leading-[1.3] font-semibold">{r.description}</div>
+          <div className="mt-0.5 text-[13px] text-ink-2">{r.sub}</div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-[15px] font-bold">{r.amount}</div>
+          <div className="mt-0.5 text-xs text-ink-2">{r.myShare}</div>
+        </div>
+      </button>
+    );
+  }
 
   function renderGroup(g: ExpensesView["groups"][number]) {
     return (
@@ -80,31 +101,7 @@ export function ExpensesScreen({
           <span className="text-[17px] font-bold">{g.name}</span>
           <span className="text-[13px] text-ink-2">{g.dates}</span>
         </div>
-        <div className="border-y border-divider">
-          {g.rows.map((r, i) => {
-            const Icon = r.legMode ? MODE_ICON[r.legMode] : CATEGORY_ICON[r.category];
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => onEdit(r)}
-                className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${i ? "border-t border-divider" : ""}`}
-              >
-                <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${r.legMode ? MODE_CLASS[r.legMode] : "bg-surface text-ink"}`}>
-                  <Icon size={20} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[15px] leading-[1.3] font-semibold">{r.description}</div>
-                  <div className="mt-0.5 text-[13px] text-ink-2">{r.sub}</div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[15px] font-bold">{r.amount}</div>
-                  <div className="mt-0.5 text-xs text-ink-2">{r.myShare}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <div className="border-y border-divider">{g.rows.map((r, i) => renderRow(r, i))}</div>
       </div>
     );
   }
@@ -170,26 +167,78 @@ export function ExpensesScreen({
         <PersonalExpenses tripId={personal.tripId} initial={personal.initial} actions={personal.actions} />
       ) : (
       <>
-      {/* Lo tuyo: cuánto te tocó, cuánto pusiste y cómo quedás. */}
-      {view.me && (
-        <section className="mt-1.5 rounded-card bg-surface p-4">
-          <div className="text-[13px] font-bold text-ink-2">Te tocó gastar</div>
-          <div className="mt-0.5 text-[36px] leading-[1.1] font-extrabold tracking-[-0.02em]">{view.me.spent}</div>
-          <div className="mt-1 text-[13px] text-ink-2">Pusiste {view.me.paid} de tu bolsillo</div>
-          <div
-            className={`mt-3 inline-flex h-9 items-center rounded-full px-3.5 text-sm font-bold ${
-              view.me.cents > 0 ? "bg-settled-bg text-settled" : view.me.cents < 0 ? "bg-delete/10 text-danger" : "bg-white text-ink"
-            }`}
-          >
-            {view.me.status}
+      {/* Arriba, las burbujas (decisión 081): de un vistazo, quién está abajo y a quién le toca pagar. */}
+      {view.groups.length > 0 && (
+        <section className="mt-1.5 rounded-card-lg bg-navy px-3 pt-4 pb-3">
+          <div className="px-2 text-[13px] font-bold text-white/75">Cómo está cada uno</div>
+          <div className="mt-2">
+            <BalanceBubbles bubbles={view.bubbles} />
           </div>
         </section>
       )}
 
+      {/* Total gastado y tu parte. */}
+      {view.groups.length > 0 && (
+        <section className="mt-4 flex items-center gap-3 rounded-card border border-line px-4 py-3.5">
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-bold">Total gastado</div>
+            <div className="mt-0.5 text-[13px] text-ink-2">
+              {view.count} {view.count === 1 ? "gasto" : "gastos"}
+              {view.me ? ` · tu parte ${view.me.spent} · pusiste ${view.me.paid}` : ""}
+            </div>
+          </div>
+          <div className="text-xl font-extrabold">{view.total}</div>
+        </section>
+      )}
+
+      {/* Los últimos gastos; "Ver todos" abre la lista completa por ciudad. */}
+      <section className="mt-7">
+        <SectionTitle title={showAll ? "Todos los gastos" : "Últimos gastos"} />
+        {view.groups.length === 0 && (
+          <p className="mt-6 text-center text-[15px] text-ink-2">Todavía no hay gastos. {canEdit ? "Cargá el primero con Agregar." : ""}</p>
+        )}
+        {!showAll && view.recent.length > 0 && <div className="mt-2 border-y border-divider">{view.recent.map((r, i) => renderRow(r, i))}</div>}
+        {showAll && (
+          <>
+            {mineGroups.map(renderGroup)}
+
+            {/* Tu parte del viaje (decisión 054): los gastos de las ciudades donde no estuviste, plegados. */}
+            {otherGroups.length > 0 && (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowOthers((o) => !o)}
+                  aria-expanded={showOthers}
+                  className="flex w-full items-center gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-4 py-3 text-left"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-bold">Gastos del resto del viaje</span>
+                    <span className="block text-[13px] text-ink-2">
+                      {otherCount} {otherCount === 1 ? "gasto" : "gastos"} de ciudades donde no estuviste
+                    </span>
+                  </span>
+                  <span className="text-[13px] font-bold">{showOthers ? "Ocultar" : "Ver"}</span>
+                </button>
+                {showOthers && otherGroups.map(renderGroup)}
+              </div>
+            )}
+          </>
+        )}
+        {view.count > view.recent.length && (
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className="mt-2 flex h-12 w-full items-center justify-center rounded-field border border-line text-sm font-bold"
+          >
+            {showAll ? "Ver solo los últimos" : `Ver todos los gastos (${view.count})`}
+          </button>
+        )}
+      </section>
+
       {/* Para quedar a mano: las deudas simplificadas, las tuyas primero. */}
       {(view.pending.length > 0 || canEdit) && view.groups.length > 0 && (
         <section className="mt-7">
-          <SectionTitle title="Para quedar a mano" sub={view.pending.length ? "Con estos pagos quedan todos a mano." : "Están todos a mano."} />
+          <SectionTitle title="Quién le debe a quién" sub={view.pending.length ? "Con estos pagos quedan todos a mano." : "Están todos a mano."} />
           {view.pending.length > 0 && (
             <div className="mt-2 border-y border-divider">
               {view.pending.map((t, i) => (
@@ -218,56 +267,6 @@ export function ExpensesScreen({
           {error && <p className="mx-1 mt-1 text-[13px] font-bold text-danger">{error}</p>}
         </section>
       )}
-
-      {/* Cómo está cada uno, en palabras (reemplaza las burbujas). */}
-      {view.groups.length > 0 && (
-        <section className="mt-7">
-          <SectionTitle title="Cómo está cada uno" />
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {view.people.map((p) => (
-              <div key={p.memberId} className="flex items-center gap-2.5 rounded-[16px] border border-line px-3 py-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: p.color }}>
-                  {p.initials}
-                </span>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-bold">{p.name}</div>
-                  <div className={`text-[13px] leading-[1.3] font-semibold ${p.cents > 0 ? "text-settled" : p.cents < 0 ? "text-danger" : "text-ink-2"}`}>{p.text}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Los gastos, por ciudad. */}
-      <section className="mt-7">
-        <SectionTitle title="Gastos" sub={view.groups.length ? `${view.total} en total · ${view.summary}` : undefined} />
-        {view.groups.length === 0 && (
-          <p className="mt-6 text-center text-[15px] text-ink-2">Todavía no hay gastos. {canEdit ? "Cargá el primero con Agregar." : ""}</p>
-        )}
-        {mineGroups.map(renderGroup)}
-
-        {/* Tu parte del viaje (decisión 054): los gastos de las ciudades donde no estuviste, plegados. */}
-        {otherGroups.length > 0 && (
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={() => setShowOthers((o) => !o)}
-              aria-expanded={showOthers}
-              className="flex w-full items-center gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-4 py-3 text-left"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-bold">Gastos del resto del viaje</span>
-                <span className="block text-[13px] text-ink-2">
-                  {otherCount} {otherCount === 1 ? "gasto" : "gastos"} de ciudades donde no estuviste
-                </span>
-              </span>
-              <span className="text-[13px] font-bold">{showOthers ? "Ocultar" : "Ver"}</span>
-            </button>
-            {showOthers && otherGroups.map(renderGroup)}
-          </div>
-        )}
-      </section>
 
       {/* Lo ya saldado, con "Deshacer". */}
       {view.settled.length > 0 && (

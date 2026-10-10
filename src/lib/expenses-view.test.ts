@@ -64,7 +64,7 @@ describe("buildExpensesView", () => {
   });
 });
 
-describe("fechas, cada uno e historial", () => {
+describe("fechas, burbujas e historial", () => {
   it("cada gasto con su fecha: el pasaje el día que sale, el alojamiento el día que llegan", () => {
     const rows = view.groups.flatMap((g) => g.rows);
     const sub = (d: string) => rows.find((r) => r.description === d)!.sub;
@@ -73,8 +73,18 @@ describe("fechas, cada uno e historial", () => {
     expect(sub("Museo Van Gogh")).toMatch(/^23 oct · /);
   });
 
-  it("cómo está cada uno: vos primero y los que deben al final", () => {
-    expect(view.people.map((p) => `${p.name} ${p.text}`)).toEqual(["Vos te deben €370,66", "Agustín a mano", "Rodrigo debe €177,33", "Josué debe €193,33"]);
+  it("una burbuja por integrante, con lo que le deben o debe", () => {
+    expect(view.bubbles.map((b) => `${b.name} ${b.label} ${b.amount}`)).toEqual([
+      "Vos te deben €370,66",
+      "Rodrigo debe €177,33",
+      "Josué debe €193,33",
+      "Agustín a mano €0",
+    ]);
+  });
+
+  it("los últimos gastos, del más nuevo", () => {
+    expect(view.recent.map((r) => r.description)).toHaveLength(4);
+    expect(view.recent[0].createdAt >= view.recent[1].createdAt).toBe(true);
   });
 
   it("historial del más nuevo al más viejo, con lo que cambió", () => {
