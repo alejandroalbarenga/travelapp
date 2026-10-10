@@ -30,7 +30,7 @@ import type { AttachmentInput } from "./attachment-controls";
 import { TicketViewer, type ViewerItem } from "./ticket-viewer";
 import { SwipeRow, type SwipeSide } from "./swipe-row";
 import { NightsRing } from "./nights-ring";
-import { WEB_HEADER_HEIGHT, WebTrip } from "./web-trip";
+import { WebTrip } from "./web-trip";
 import { SheetPanelContext } from "../bottom-sheet";
 import { useIsWeb } from "@/lib/use-is-web";
 import { CalendarSheet, type CalendarMode } from "./calendar-sheet";
@@ -40,7 +40,7 @@ import { useDragSheet } from "./use-drag-sheet";
 
 // Pantalla 01 · Viaje (docs/diseño.md): mapa de fondo y la lista de ciudades encima como sheet.
 
-const WEB_SHEET_PANEL = { left: "0px", width: "58%", top: `${WEB_HEADER_HEIGHT}px` };
+const WEB_SHEET_PANEL = { left: "0px", width: "58%" };
 const LIST_TOP = 340; // donde arranca la lista; el resto de arriba es mapa
 const PEEK = 170; // lo que se ve de la lista abajo del todo (rayita + "Empieza el viaje" + aire para los botones de abajo)
 

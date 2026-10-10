@@ -90,7 +90,7 @@ export function MembersSheet({
   }
 
   return (
-    <BottomSheet onClose={onClose} label="Integrantes" top="auto" scrim={0.4}>
+    <BottomSheet onClose={onClose} label="Integrantes">
       {(close) => (
         <>
           <div className="flex items-center gap-3 px-3 pt-2">

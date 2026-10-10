@@ -81,7 +81,7 @@ export function CitySearchSheet({
   }
 
   return (
-    <BottomSheet onClose={onClose} label={mode.kind === "add" ? "Agregar ciudad" : "Cambiar ciudad"} top="calc(var(--safe-top) + 12px)" scrim={0.4}>
+    <BottomSheet onClose={onClose} label={mode.kind === "add" ? "Agregar ciudad" : "Cambiar ciudad"}>
       {(close) => (
         <>
           <div className="flex items-start gap-3 px-3 pt-2">

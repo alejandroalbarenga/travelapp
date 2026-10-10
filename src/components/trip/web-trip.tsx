@@ -119,16 +119,14 @@ export function WebTrip({
             {tab === "trip" && <NightsRing view={view} label="noches planeadas" />}
           </div>
           <div className="mt-3.5 flex min-w-0 items-center gap-2">
-            <button type="button" onClick={onMembers} aria-label="Integrantes" className="flex h-11 shrink-0 items-center rounded-full border border-line bg-white px-1.5">
-              {members.slice(0, 5).map((m, i) => (
-                <span
-                  key={m.id}
-                  className="flex size-[30px] items-center justify-center rounded-full border-2 border-white text-[10px] font-extrabold text-white"
-                  style={{ background: m.color, marginLeft: i ? -9 : 0 }}
-                >
+            {/* Las bolitas sin pisarse (antes se tapaban las iniciales) y cuántos son. */}
+            <button type="button" onClick={onMembers} aria-label="Integrantes" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-line bg-white pr-3.5 pl-1.5">
+              {members.slice(0, 5).map((m) => (
+                <span key={m.id} className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: m.color }}>
                   {m.initials}
                 </span>
               ))}
+              <span className="ml-1 text-sm font-bold">{members.length > 5 ? `+${members.length - 5}` : members.length === 1 ? "1 viajero" : `${members.length} viajeros`}</span>
             </button>
             <div className="min-w-0 flex-1" />
             {tab === "trip" && (

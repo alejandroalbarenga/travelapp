@@ -130,7 +130,7 @@ export function ExpenseSheet({
   }
 
   return (
-    <BottomSheet onClose={onClose} label={expense ? "Editar gasto" : "Nuevo gasto"} top="calc(var(--safe-top) + 12px)">
+    <BottomSheet onClose={onClose} label={expense ? "Editar gasto" : "Nuevo gasto"}>
       {(close) => (
         <>
           <div className="flex h-[52px] shrink-0 items-center justify-between px-3">
