@@ -526,3 +526,8 @@ Del PDF de la reserva ahora también sale el precio total, si está en euros. Un
 5. **Movimientos** (el historial).
 Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbujas ya lo dicen.
 **Por qué:** pedido de Ale; al entrar a Gastos lo que importa es cómo está cada uno, y las burbujas lo dejaban claro.
+
+### 082 · De paso, sin alojamiento
+**Fecha:** 2026-10-10
+**Decisión:** una ciudad con 0 noches (de paso) no pide alojamiento: en vez de la tarjeta del alojamiento o "Agregar alojamiento", muestra "De paso · Sin noche acá, no hace falta alojamiento" con **Quiénes pasan** para elegir quién está. Si ya tenía un alojamiento cargado (de antes de pasarla a 0 noches), se sigue viendo para poder editarlo o borrarlo.
+**Por qué:** pedido de Ale.
