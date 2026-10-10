@@ -53,14 +53,12 @@ export function TransferSheet({
           <div className="flex h-[52px] shrink-0 items-center justify-between px-3">
             <BackButton onClick={close} className="" />
             <span className="text-base font-bold">Transferencia</span>
-            <button type="button" onClick={() => save(close)} disabled={pending} className="flex h-11 items-center disabled:opacity-50">
-              <span className="bg-pink flex h-9 items-center rounded-full px-4 text-sm font-bold text-white">{pending ? "…" : "Guardar"}</span>
-            </button>
+            <span className="size-11 shrink-0" />
           </div>
 
           <AmountField value={amount} onChange={setAmount} label="Monto de la transferencia" />
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: "calc(var(--safe-bottom) + 24px)" }}>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: 24 }}>
             <MemberPicker title="Pagó" members={members} value={from} onChange={pickFrom} />
             <MemberPicker title="A quién" members={members.filter((m) => m.id !== from)} value={to} onChange={setTo} />
 
@@ -75,6 +73,13 @@ export function TransferSheet({
             </label>
             <p className="mt-3 text-[13px] leading-[1.4] text-ink-2">Cuenta para el balance como un pago y queda en los movimientos.</p>
             {error && <p className="mt-3 text-[13px] font-bold text-danger">{error}</p>}
+          </div>
+
+          {/* Guardar abajo, como en el resto de las pantallas. */}
+          <div className="shrink-0 border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
+            <button type="button" onClick={() => save(close)} disabled={pending} className="bg-pink h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
+              {pending ? "Guardando…" : "Guardar transferencia"}
+            </button>
           </div>
         </>
       )}
