@@ -143,8 +143,8 @@ export function TripScreen({
   const openness = 1 - sheetTop / LIST_TOP; // 0 abajo, 1 arriba del todo
   const [, startTransition] = useTransition();
 
-  /** Con `receipt`, después de guardar le sube la reserva que se eligió antes de que existiera el alojamiento. */
-  async function storeStop(input: SaveStopInput, stay: Stay | null, receipt?: File): Promise<string | null> {
+  /** Con `receipts`, después de guardar le sube las reservas que se eligieron antes de que existiera el alojamiento. */
+  async function storeStop(input: SaveStopInput, stay: Stay | null, receipts: File[] = []): Promise<string | null> {
     let stayId = stay?.id ?? null;
     if (saveStop) {
       const result = await saveStop(input);
@@ -157,7 +157,12 @@ export function TripScreen({
       stops: t.stops.map((s) => (s.id === input.stopId ? { ...s, member_ids: input.memberIds, notes: input.notes || null } : s)),
       stays: [...t.stays.filter((s) => s.stop_id !== input.stopId), ...(stay && stayId ? [{ ...stay, id: stayId }] : [])],
     }));
-    if (receipt && stayId) return addAttachment({ kind: "stay", tripId: trip.id, stayId }, { file: receipt });
+    if (stayId) {
+      for (const file of receipts) {
+        const message = await addAttachment({ kind: "stay", tripId: trip.id, stayId }, { file });
+        if (message) return message;
+      }
+    }
     return null;
   }
 

@@ -531,3 +531,10 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-10
 **Decisión:** una ciudad con 0 noches (de paso) no pide alojamiento: en vez de la tarjeta del alojamiento o "Agregar alojamiento", muestra "De paso · Sin noche acá, no hace falta alojamiento" con **Quiénes pasan** para elegir quién está. Si ya tenía un alojamiento cargado (de antes de pasarla a 0 noches), se sigue viendo para poder editarlo o borrarlo.
 **Por qué:** pedido de Ale.
+
+### 083 · Ver la reserva en una ciudad bloqueada y varios archivos por alojamiento
+**Fecha:** 2026-10-11
+**Decisión:**
+- En una ciudad bloqueada (042), o para quien solo ve (034), se puede abrir la reserva y los tramos de la línea de tiempo. Antes la ficha entera quedaba deshabilitada en modo lectura y "Ver reserva" no andaba; ahora solo se ocultan los controles para editar.
+- El alojamiento acepta varios archivos (varios PDF o capturas de la reserva): se pueden elegir varios a la vez y agregar más después con "Agregar otro archivo". Los datos se completan con el primero. En la tarjeta dice "Ver reservas (3)" y el visor pasa de uno a otro.
+**Por qué:** pedido de Ale.
