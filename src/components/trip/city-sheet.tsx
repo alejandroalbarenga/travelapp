@@ -74,7 +74,7 @@ export function CitySheet({
   onNights: (delta: number) => void;
   onOpenLeg: (fromStopId: string) => void;
   /** Con `receipt`: la reserva elegida antes de que el alojamiento existiera, para subirla al guardar. */
-  onSave: (input: SaveStopInput, stay: Stay | null, receipt?: File) => Promise<string | null>;
+  onSave: (input: SaveStopInput, stay: Stay | null, receipts?: File[]) => Promise<string | null>;
   onDelete: (stopId: string) => Promise<string | null>;
   /** Solo ver (decisión 034): todo deshabilitado, sin guardar ni borrar. */
   readOnly?: boolean;
@@ -121,7 +121,7 @@ export function CitySheet({
   const receiptInput = useRef<HTMLInputElement>(null);
   const [reading, setReading] = useState(false);
   // La reserva elegida antes de guardar el alojamiento: se sube al guardar (decisión 057).
-  const [pendingReceipt, setPendingReceipt] = useState<File | null>(null);
+  const [pendingReceipts, setPendingReceipts] = useState<File[]>([]);
   const [readNote, setReadNote] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -144,7 +144,7 @@ export function CitySheet({
     split !== null ||
     checkIn !== (stay?.check_in_time ?? "") ||
     checkOut !== (stay?.check_out_time ?? "") ||
-    pendingReceipt !== null;
+    pendingReceipts.length > 0;
 
   const joined = prev ? people.filter((id) => !prev.member_ids.includes(id)) : [];
   const left = prev ? prev.member_ids.filter((id) => !people.includes(id)) : [];
@@ -167,21 +167,28 @@ export function CitySheet({
 
   // Subir la reserva: completa lo que esté vacío (nombre, dónde se reservó, horarios y precio). El PDF
   // se lee con pdf.js y la imagen con OCR (decisión 067), las dos en el teléfono.
+  // Se pueden elegir varios archivos a la vez (decisión 083): se leen los datos del primero y se
+  // adjuntan todos.
   async function pickReceipt(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
+    if (!files.length) return;
     setReading(true);
-    const message = await addReceipt({ file });
+    for (const [k, file] of files.entries()) {
+      const message = await addReceipt({ file }, k === 0);
+      if (message) {
+        setError(message);
+        break;
+      }
+    }
     setReading(false);
-    if (message) setError(message);
   }
 
-  async function addReceipt(input: AttachmentInput): Promise<string | null> {
+  async function addReceipt(input: AttachmentInput, read = true): Promise<string | null> {
     if ("file" in input && !input.file.type.startsWith("image/") && input.file.type !== "application/pdf" && !input.file.name.toLowerCase().endsWith(".pdf")) {
       return "Tiene que ser un PDF o una imagen.";
     }
-    if ("file" in input) {
+    if ("file" in input && read) {
       const file = input.file;
       const info = await readDocumentLines(file).then(parseBooking).catch(() => null);
       const found: string[] = [];
@@ -208,11 +215,12 @@ export function CitySheet({
       setReadNote(found.length ? `Sacamos de la reserva ${namesList(found)}. Revisá que esté bien.` : "No pudimos leer los datos de la reserva: completalos a mano.");
     }
     if (savedStayId) return onAddReceipt(savedStayId, input);
-    if ("file" in input) setPendingReceipt(input.file);
+    if ("file" in input) setPendingReceipts((list) => [...list, input.file]);
     return null;
   }
 
   function togglePerson(id: string) {
+    if (readOnly) return;
     const on = people.includes(id);
     if (on && people.length === 1) return;
     setPeople(order.filter((m) => (m === id ? !on : people.includes(m))));
@@ -223,7 +231,7 @@ export function CitySheet({
       close();
       return;
     }
-    if (pendingReceipt && !hasStay) {
+    if (pendingReceipts.length && !hasStay) {
       setError("Poné el nombre del alojamiento para guardar la reserva.");
       return;
     }
@@ -265,7 +273,7 @@ export function CitySheet({
       : null;
     setError("");
     startTransition(async () => {
-      const message = await onSave(input, newStay, pendingReceipt ?? undefined);
+      const message = await onSave(input, newStay, pendingReceipts);
       if (message) setError(message);
       else close();
     });
@@ -393,7 +401,7 @@ export function CitySheet({
               </div>
             )}
 
-            <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
+            <div>
               {/* El alojamiento (decisión 064): en vista es una tarjeta con todo lo de la estadía; al editar,
                   la misma tarjeta se convierte en el formulario, con quiénes están adentro. */}
               {editingStay ? (
@@ -405,52 +413,54 @@ export function CitySheet({
                     </button>
                   </div>
 
-                  {/* La reserva primero: un solo botón, PDF o imagen; el PDF completa el resto (decisión 057). */}
-                  {stay && stay.attachments.length > 0 ? (
-                    <div className="overflow-hidden rounded-[16px] border border-line">
+                  {/* La reserva primero (decisión 057): uno o varios archivos, PDF o imagen (decisión 083); el
+                      primero completa el resto. */}
+                  {stay && stay.attachments.length > 0 && (
+                    <div className="mb-2 overflow-hidden rounded-[16px] border border-line">
                       {stay.attachments.map((a, k) => (
                         <AttachmentRow
                           key={a.id}
                           attachment={a}
-                          title="Reserva"
+                          title={stay.attachments.length > 1 ? `Reserva ${k + 1}` : "Reserva"}
                           first={k === 0}
                           onOpen={() => onViewReceipt(stay.id, a.id)}
                           onRemove={readOnly ? undefined : () => onRemoveReceipt(stay.id, a)}
                         />
                       ))}
                     </div>
-                  ) : pendingReceipt ? (
-                    <div className="flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
+                  )}
+                  {pendingReceipts.map((file, k) => (
+                    <div key={`${file.name}-${k}`} className="mb-2 flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
                       <FileText size={18} className="shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-bold">{pendingReceipt.name}</div>
+                        <div className="truncate text-sm font-bold">{file.name}</div>
                         <div className="text-xs text-ink-2">Se sube al guardar</div>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
-                          setPendingReceipt(null);
-                          setReadNote("");
+                          setPendingReceipts((list) => list.filter((_, n) => n !== k));
+                          if (pendingReceipts.length === 1) setReadNote("");
                         }}
-                        aria-label="Sacar la reserva"
+                        aria-label={`Sacar ${file.name}`}
                         className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface"
                       >
                         <X size={16} />
                       </button>
                     </div>
-                  ) : (
-                    <>
-                      <input ref={receiptInput} type="file" accept="application/pdf,.pdf,image/*" hidden onChange={pickReceipt} />
-                      <button
-                        type="button"
-                        disabled={reading}
-                        onClick={() => receiptInput.current?.click()}
-                        className="flex h-[52px] w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold disabled:opacity-60"
-                      >
-                        <Upload size={17} /> {reading ? "Leyendo la reserva…" : "Subir la reserva · PDF o imagen"}
-                      </button>
-                      <p className="mt-1.5 text-xs text-ink-2">Completamos el nombre, los horarios y el precio. Con el PDF sale mejor que con una captura.</p>
-                    </>
+                  ))}
+                  <input ref={receiptInput} type="file" accept="application/pdf,.pdf,image/*" multiple hidden onChange={pickReceipt} />
+                  <button
+                    type="button"
+                    disabled={reading}
+                    onClick={() => receiptInput.current?.click()}
+                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold disabled:opacity-60"
+                  >
+                    <Upload size={17} />{" "}
+                    {reading ? "Leyendo la reserva…" : (stay?.attachments.length ?? 0) + pendingReceipts.length > 0 ? "Agregar otro archivo" : "Subir la reserva · PDF o imagen"}
+                  </button>
+                  {(stay?.attachments.length ?? 0) + pendingReceipts.length === 0 && (
+                    <p className="mt-1.5 text-xs text-ink-2">Podés subir varios. Completamos el nombre, los horarios y el precio; con el PDF sale mejor que con una captura.</p>
                   )}
                   {readNote && <p className="mt-2 text-[13px] text-ink-2">{readNote}</p>}
 
@@ -568,7 +578,7 @@ export function CitySheet({
                     </button>
                     {stay && stay.attachments.length > 0 && (
                       <button type="button" onClick={() => onViewReceipt(stay.id, stay.attachments[0].id)} className="h-10 shrink-0 rounded-full bg-surface px-4 text-sm font-bold">
-                        Ver reserva
+                        {stay.attachments.length > 1 ? `Ver reservas (${stay.attachments.length})` : "Ver reserva"}
                       </button>
                     )}
                     {!readOnly && (
@@ -646,6 +656,7 @@ export function CitySheet({
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  readOnly={readOnly}
                   rows={notes ? 4 : 1}
                   placeholder="Agregá tus notas"
                   aria-label="Notas"
@@ -661,7 +672,7 @@ export function CitySheet({
                   <Trash2 size={16} /> Borrar {stop.city}
                 </button>
               )}
-            </fieldset>
+            </div>
           </div>
 
           <div className="shrink-0 border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
