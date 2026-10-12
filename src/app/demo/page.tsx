@@ -24,7 +24,7 @@ async function DemoTrip({ searchParams }: { searchParams: PageProps<"/demo">["se
   const me = typeof como === "string" && DEMO_TRIP.members.some((m) => m.id === `m-${como}`) ? `m-${como}` : DEMO_MY_MEMBER_ID;
   const trip =
     vacio !== undefined
-      ? { ...DEMO_TRIP, name: "Viaje nuevo", stops: [], legs: [], stays: [], expenses: [], settlements: [], activity: [] }
+      ? { ...DEMO_TRIP, name: "Viaje nuevo", stops: [], legs: [], stays: [], expenses: [], settlements: [], activity: [], planned: [] }
       : { ...DEMO_TRIP, stops: await withCityPhotos(DEMO_TRIP.stops) };
   return <TripScreen trip={trip} chipDisplay="time" myMemberId={me} findPlaces={findPlaces} personal={vacio !== undefined ? { categories: [], expenses: [] } : DEMO_PERSONAL} />;
 }

@@ -7,14 +7,17 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { deleteLock, lockMessage, nightsLock } from "@/lib/stop-lock";
 import { foldLabel, myPart } from "@/lib/my-part";
 import { formatWeekday } from "@/lib/dates";
-import type { SaveExpenseInput, SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
+import type { SaveExpenseInput, SaveLegInput, SavePlannedInput, SaveStopInput } from "@/app/viaje/[id]/actions";
+import { buildPlanView, type PlannedRowView } from "@/lib/planning";
+
+type PlanTarget = PlannedRowView["target"];
 import { buildExpensesView, type ExpenseRowView, type TransferView } from "@/lib/expenses-view";
 import type { ChipDisplay } from "@/lib/legs";
 import type { Place } from "@/lib/places";
 import { fileKind, sortTickets, ticketTitle } from "@/lib/attachments";
 import { addLinkAttachment, deleteAttachment, signedUrl, uploadAttachment, type AttachmentTarget } from "@/lib/supabase/attachments";
 import { initialsFor, pickColor } from "@/lib/members";
-import type { Activity, Attachment, Expense, Leg, LegAttachment, LegMode, Member, MemberRole, Stay, Trip } from "@/lib/trip-types";
+import type { Activity, Attachment, Expense, Leg, LegAttachment, LegMode, Member, MemberRole, PlannedItem, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import type { TripTab } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
@@ -23,6 +26,7 @@ import { LegSheet, type LegDraft } from "./leg-sheet";
 import { ExpenseSheet } from "./expense-sheet";
 import type { PersonalData } from "@/lib/personal";
 import { ExpensesScreen } from "./expenses-screen";
+import { PlannedSheet } from "./planned-sheet";
 import type { PersonalActions } from "./personal-expenses";
 import { MembersSheet } from "./members-sheet";
 import { TransferSheet, type TransferInput } from "./transfer-sheet";
@@ -73,6 +77,8 @@ export function TripScreen({
   addMember,
   personal = null,
   personalActions,
+  savePlanned,
+  deletePlanned,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -96,6 +102,9 @@ export function TripScreen({
   /** Tus gastos personales (decisión 076); null si la base no tiene la migración 0010. */
   personal?: PersonalData | null;
   personalActions?: PersonalActions;
+  /** Planificado (decisión 084). Sin esto (en /demo) los estimados quedan solo en pantalla. */
+  savePlanned?: (input: SavePlannedInput) => Promise<{ error: string } | { id: string }>;
+  deletePlanned?: (target: { id: string } | { legId: string } | { stayStopId: string }) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
@@ -114,6 +123,7 @@ export function TripScreen({
   // Gasto abierto: "new" para uno nuevo, o el id del que se edita.
   const [openExpense, setOpenExpense] = useState<string | null>(null);
   const [openTransfer, setOpenTransfer] = useState(false);
+  const [openPlanned, setOpenPlanned] = useState<PlannedItem | "new" | null>(null);
   const [calendar, setCalendar] = useState<CalendarMode | null>(null);
   // Tu parte del viaje (decisión 054): lo de antes de que llegues y después de que te vas, plegado.
   const [showBefore, setShowBefore] = useState(false);
@@ -144,7 +154,12 @@ export function TripScreen({
   const [, startTransition] = useTransition();
 
   /** Con `receipts`, después de guardar le sube las reservas que se eligieron antes de que existiera el alojamiento. */
-  async function storeStop(input: SaveStopInput, stay: Stay | null, receipts: File[] = []): Promise<string | null> {
+  async function storeStop(
+    input: SaveStopInput,
+    stay: Stay | null,
+    receipts: File[] = [],
+    estimate?: { amountCents: number; memberIds: string[] } | null,
+  ): Promise<string | null> {
     let stayId = stay?.id ?? null;
     if (saveStop) {
       const result = await saveStop(input);
@@ -157,6 +172,20 @@ export function TripScreen({
       stops: t.stops.map((s) => (s.id === input.stopId ? { ...s, member_ids: input.memberIds, notes: input.notes || null } : s)),
       stays: [...t.stays.filter((s) => s.stop_id !== input.stopId), ...(stay && stayId ? [{ ...stay, id: stayId }] : [])],
     }));
+    // El estimado del alojamiento (decisión 084), aparte; o se borra si ya está pagado.
+    const planned = estimate
+      ? await storePlanned({
+          id: null,
+          tripId: trip.id,
+          stayStopId: input.stopId,
+          stopId: input.stopId,
+          description: input.stayDescription,
+          category: "lodging",
+          amountCents: estimate.amountCents,
+          memberIds: estimate.memberIds,
+        })
+      : await removePlanned({ stayStopId: input.stopId });
+    if (planned) return planned;
     if (stayId) {
       for (const file of receipts) {
         const message = await addAttachment({ kind: "stay", tripId: trip.id, stayId }, { file });
@@ -505,7 +534,51 @@ export function TripScreen({
   }
 
   /** Con `ticket`, después de guardar le sube el pasaje que se eligió antes de que existiera el tramo. */
-  async function storeLeg(draft: LegDraft, description: string, ticket?: { file: File; memberId: string | null }): Promise<string | null> {
+  /** Guarda un estimado (decisión 084): suelto, de un tramo o del alojamiento de una ciudad. */
+  async function storePlanned(input: SavePlannedInput): Promise<string | null> {
+    const previous = current.planned.find(
+      (p) => p.id === input.id || (!!input.legId && p.leg_id === input.legId) || (!!input.stayStopId && p.stay_stop_id === input.stayStopId),
+    );
+    let id = previous?.id ?? `estimado-${Date.now()}`;
+    if (savePlanned) {
+      const result = await savePlanned({ ...input, id: previous && !previous.id.startsWith("estimado-") ? previous.id : input.id });
+      if ("error" in result) return result.error;
+      id = result.id;
+      router.refresh();
+    }
+    const item: PlannedItem = {
+      id,
+      leg_id: input.legId ?? null,
+      stay_stop_id: input.stayStopId ?? null,
+      stop_id: input.stopId,
+      description: input.description,
+      category: input.category,
+      amount_cents: input.amountCents,
+      member_ids: input.memberIds,
+      created_at: previous?.created_at ?? new Date().toISOString(),
+    };
+    setCurrent((t) => ({ ...t, planned: [...t.planned.filter((p) => p.id !== previous?.id), item] }));
+    return null;
+  }
+
+  async function removePlanned(target: { id: string } | { legId: string } | { stayStopId: string }): Promise<string | null> {
+    const match = (p: PlannedItem) => ("id" in target ? p.id === target.id : "legId" in target ? p.leg_id === target.legId : p.stay_stop_id === target.stayStopId);
+    if (!current.planned.some(match)) return null;
+    if (deletePlanned) {
+      const result = await deletePlanned(target);
+      if (result) return result.error;
+      router.refresh();
+    }
+    setCurrent((t) => ({ ...t, planned: t.planned.filter((p) => !match(p)) }));
+    return null;
+  }
+
+  async function storeLeg(
+    draft: LegDraft,
+    description: string,
+    ticket?: { file: File; memberId: string | null },
+    estimate?: { amountCents: number; memberIds: string[] } | null,
+  ): Promise<string | null> {
     let legId = draft.id ?? `nuevo-${draft.from_stop_id}`;
     if (saveLeg) {
       const result = await saveLeg({
@@ -529,6 +602,11 @@ export function TripScreen({
       const leg: Leg = { ...draft, id: legId, attachments: previous?.attachments ?? [] };
       return { ...t, legs: [...t.legs.filter((l) => l.from_stop_id !== draft.from_stop_id), leg] };
     });
+    // El estimado del tramo (decisión 084): se guarda aparte, o se borra si ya está pagado.
+    const planned = estimate
+      ? await storePlanned({ id: null, tripId: trip.id, legId, stopId: draft.from_stop_id, description, category: "transport", amountCents: estimate.amountCents, memberIds: estimate.memberIds })
+      : await removePlanned({ legId });
+    if (planned) return planned;
     if (ticket) return addAttachment({ kind: "leg", tripId: trip.id, legId, memberId: ticket.memberId }, { file: ticket.file });
     return null;
   }
@@ -580,6 +658,12 @@ export function TripScreen({
   // "Agregar ciudad" desde el +: después de la última ciudad (decisión 068).
   const lastStop = ordered[ordered.length - 1]?.id ?? null;
   const expensesView = buildExpensesView(current, myMemberId);
+  const planView = buildPlanView(current, myMemberId);
+  function openPlanTarget(target: PlanTarget) {
+    if (target.kind === "leg") setOpenLeg(target.fromStopId);
+    else if (target.kind === "stay") setOpenCity(target.stopId);
+    else setOpenPlanned(current.planned.find((p) => p.id === target.id) ?? null);
+  }
   const firstMissingLeg = ordered.slice(0, -1).find((s) => !current.legs.some((l) => l.from_stop_id === s.id))?.id ?? null;
 
   const travellers = trip.members.length;
@@ -622,6 +706,7 @@ export function TripScreen({
               onTransfer={() => setOpenTransfer(true)}
               foldStopIds={foldStopIds}
               personal={{ tripId: trip.id, initial: personal, actions: personalActions }}
+              plan={{ view: planView, onOpen: openPlanTarget, onAdd: canEdit ? () => setOpenPlanned("new") : undefined }}
               embedded
             />
           }
@@ -780,6 +865,7 @@ export function TripScreen({
           onTransfer={() => setOpenTransfer(true)}
           foldStopIds={foldStopIds}
           personal={{ tripId: trip.id, initial: personal, actions: personalActions }}
+          plan={{ view: planView, onOpen: openPlanTarget, onAdd: canEdit ? () => setOpenPlanned("new") : undefined }}
           onBack={() => {
             setTab("trip");
             setFabOpen(false);
@@ -1017,6 +1103,16 @@ export function TripScreen({
           airlineUrl={viewer.airlineUrl}
           getUrl={attachmentUrl}
           onClose={() => setViewer(null)}
+        />
+      )}
+      {openPlanned && (
+        <PlannedSheet
+          trip={current}
+          item={openPlanned === "new" ? null : openPlanned}
+          readOnly={!canEdit}
+          onClose={() => setOpenPlanned(null)}
+          onSave={storePlanned}
+          onDelete={(id) => removePlanned({ id })}
         />
       )}
       {openTransfer && (

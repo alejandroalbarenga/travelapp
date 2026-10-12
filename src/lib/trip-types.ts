@@ -140,4 +140,19 @@ export type Trip = {
   settlements: Settlement[];
   /** Historial de movimientos, del más nuevo al más viejo. */
   activity: Activity[];
+  /** Lo planificado: estimados que todavía no son gastos (decisión 084). */
+  planned: PlannedItem[];
+};
+
+/** Un estimado (decisión 084): de un tramo, de un alojamiento o suelto. No entra en el balance. */
+export type PlannedItem = {
+  id: string;
+  leg_id: string | null;
+  stay_stop_id: string | null;
+  stop_id: string | null;
+  description: string;
+  category: ExpenseCategory;
+  amount_cents: number;
+  member_ids: string[];
+  created_at: string;
 };

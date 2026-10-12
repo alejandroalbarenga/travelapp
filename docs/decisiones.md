@@ -538,3 +538,11 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 - En una ciudad bloqueada (042), o para quien solo ve (034), se puede abrir la reserva y los tramos de la línea de tiempo. Antes la ficha entera quedaba deshabilitada en modo lectura y "Ver reserva" no andaba; ahora solo se ocultan los controles para editar.
 - El alojamiento acepta varios archivos (varios PDF o capturas de la reserva): se pueden elegir varios a la vez y agregar más después con "Agregar otro archivo". Los datos se completan con el primero. En la tarjeta dice "Ver reservas (3)" y el visor pasa de uno a otro.
 **Por qué:** pedido de Ale.
+
+### 084 · Planificado: estimados que no son gastos
+**Fecha:** 2026-10-12
+**Decisión:** para planificar cuánto sale el viaje sin mezclarlo con lo que ya se pagó:
+- En el **tramo** y en el **alojamiento**, el precio puede ser **Ya pagado** (como siempre: crea el gasto y entra en el balance) o **Estimado**: no crea gasto ni entra en el balance, se divide en partes iguales entre los que van y se guarda aparte. Cuando se paga, se pasa a "Ya pagado" y el estimado se borra. El alojamiento estimado no necesita nombre ni "Reservado en" (se guarda por ciudad).
+- En Gastos hay una pestaña **Planificado** (entre "Del grupo" y "Míos"): arriba **El viaje sale** = lo ya gastado + lo estimado, y **Tu parte** igual; abajo cada estimado (tramos, alojamientos y sueltos), con tu parte. "Agregar estimado" carga uno suelto (entradas, una excursión, una cena) con su ciudad, categoría y entre quiénes.
+- Son del grupo: los ven todos los del viaje y los cambian los que pueden editar. Tabla `planned_items` (migración 0011): un estimado por tramo (`leg_id`) y por alojamiento de cada ciudad (`stay_stop_id`), o suelto. La lógica está en `src/lib/planning.ts`.
+**Por qué:** pedido de Ale; antes lo hacía en un Excel, sumando el estimado de cada cosa para saber cuánto le iba a salir el viaje.

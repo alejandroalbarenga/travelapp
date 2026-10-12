@@ -89,6 +89,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - `settlements`: id, trip_id, from_member_id, to_member_id, amount_cents, settled_at, note
 - `personal_categories`: id, trip_id, user_id, name, budget_cents (nullable), position — presupuestos personales (decisión 076)
 - `personal_expenses`: id, trip_id, user_id, category (nombre), description, amount_cents, spent_on, created_at — gastos personales, solo los ve quien los carga
+- `planned_items`: id, trip_id, leg_id (unique, nullable), stay_stop_id (unique, nullable), stop_id, description, category, amount_cents, member_ids, created_by, created_at — estimados que no son gastos (decisión 084)
 - `activity`: id, trip_id, actor_member_id, actor_name, action, description, from_name, to_name, amount_cents, previous_amount_cents, changes, created_at (historial, solo lectura)
 
 ### Base de datos en la práctica
@@ -107,6 +108,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - Agregar ciudad: `add_stop()` (migración 0005) inserta después de otra, copia quién está y borra el tramo que salía de la anterior. La búsqueda es con Nominatim desde el servidor (`src/lib/places.ts`) y la zona horaria sale de las coordenadas con `@photostructure/tz-lookup`.
 - La reserva del alojamiento y el pasaje del tramo se leen en el teléfono para completar los campos vacíos: `src/lib/read-document.ts` saca los renglones (PDF con pdf.js, imagen con OCR de tesseract.js) y las reglas están en `src/lib/booking-pdf.ts` y `src/lib/ticket-pdf.ts` (decisiones 057, 067 y 069).
 - Gastos personales (migración 0010, decisión 076): pestaña "Míos" de Gastos (`src/components/trip/personal-expenses.tsx`), con la lógica en `src/lib/personal.ts`. RLS: solo el dueño. No entran en el balance. Si la base no tiene la migración, la pestaña lo avisa.
+- Planificado (migración 0011, decisión 084): el precio de un tramo o alojamiento puede ser "Estimado" (sin gasto, va a `planned_items`) y hay estimados sueltos; la pestaña "Planificado" de Gastos suma lo gastado más lo estimado (`src/lib/planning.ts`). Sin la migración, no hay estimados.
 - La foto del ticket completa el gasto (`src/lib/receipt.ts`, decisión 074).
 - Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento. Se suben desde el navegador (`src/lib/supabase/attachments.ts`) y se abren con URL firmada en `TicketViewer`, que dibuja los PDF con pdf.js (decisión 040).
 - Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.
