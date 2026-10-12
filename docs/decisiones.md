@@ -561,3 +561,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-12
 **Decisión:** los campos de hora (salida y llegada del tramo, check-in y checkout del alojamiento) dejan de ser el campo de hora del teléfono, que sigue el formato del iPhone (en 12 h pide AM/PM). Son un campo de texto con el teclado numérico que pone los dos puntos solo: "1110" queda "11:10", "930" queda "09:30" y "9" queda "09:00" al salir del campo; lo que no es una hora (24:00, 11:75) vuelve a lo que había. `src/components/time-input.tsx`, con las reglas en `src/lib/time-input.ts`.
 **Por qué:** pedido de Ale; toda la app es en 24 h.
+
+### 088 · Los estimados se distinguen en la lista del viaje
+**Fecha:** 2026-10-12
+**Decisión:** en la lista del viaje (celular y web), un tramo con precio estimado, todavía sin pagar (084), tiene el borde punteado naranja y una etiqueta con el monto ("~€180"). Un alojamiento estimado muestra abajo de la ciudad "~€300 estimado" en naranja (con el nombre adelante si lo tiene), en vez de "Booking · pagado" en verde.
+**Por qué:** pedido de Ale, para ver de un vistazo qué falta pagar.

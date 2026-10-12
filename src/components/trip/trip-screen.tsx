@@ -1216,7 +1216,7 @@ function StopCard({
         <span className="truncate text-[17px] font-bold">{stop.name}</span>
         <span className="text-[13px] text-ink-2">{stop.dates}</span>
         {stop.stay && (
-          <span className={`flex items-center gap-1 truncate text-[11px] font-bold ${stop.stay.paid ? "text-success" : "text-ink-2"}`}>
+          <span className={`flex items-center gap-1 truncate text-[11px] font-bold ${stop.stay.paid ? "text-success" : stop.stay.estimated ? "text-tz-text" : "text-ink-2"}`}>
             <Bed size={14} className="shrink-0" />
             <span className="truncate">{stop.stay.text}</span>
           </span>
@@ -1292,11 +1292,17 @@ function LegRow({
       )}
       {leg && Icon ? (
         <>
-          <button type="button" onClick={onOpen} className="relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full border border-line bg-white pr-3 pl-1.5">
+          {/* Un tramo con precio estimado, todavía sin pagar (decisión 088): borde punteado naranja y "~€90". */}
+          <button
+            type="button"
+            onClick={onOpen}
+            className={`relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full bg-white pr-3 pl-1.5 ${leg.estimate ? "border-[1.5px] border-dashed border-orange" : "border border-line"}`}
+          >
             <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${MODE_CLASS[leg.mode]}`}>
               <Icon size={16} />
             </span>
             <span className="min-w-0 truncate text-[13px] font-bold">{leg.text}</span>
+            {leg.estimate && <span className="shrink-0 rounded-full bg-tz-bg px-2 py-0.5 text-[11px] font-bold text-tz-text">{leg.estimate}</span>}
             {leg.timeZoneChange && (
               <span title={leg.timeZoneChange} className="flex size-5 shrink-0 items-center justify-center rounded-full bg-tz-icon-bg text-orange">
                 <Clock size={14} />

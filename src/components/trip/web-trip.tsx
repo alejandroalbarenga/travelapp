@@ -308,7 +308,7 @@ function WebStopCard({
           style={{ width: "calc(50% + 10px)", left: even ? "calc(50% + 24px)" : "auto", right: even ? "auto" : "calc(50% + 24px)", justifyContent: even ? "flex-start" : "flex-end" }}
         >
           <span
-            className={`flex h-9 max-w-full items-center gap-1.5 overflow-hidden rounded-full bg-white pr-2.5 pl-1 text-xs font-bold whitespace-nowrap shadow-[0_2px_8px_rgb(0_0_0/0.1)] ${leg ? "border border-line text-ink" : "border-[1.5px] border-dashed border-dots text-ink-2"}`}
+            className={`flex h-9 max-w-full items-center gap-1.5 overflow-hidden rounded-full bg-white pr-2.5 pl-1 text-xs font-bold whitespace-nowrap shadow-[0_2px_8px_rgb(0_0_0/0.1)] ${leg?.estimate ? "border-[1.5px] border-dashed border-orange text-ink" : leg ? "border border-line text-ink" : "border-[1.5px] border-dashed border-dots text-ink-2"}`}
           >
             <span className={`relative flex size-7 shrink-0 items-center justify-center rounded-full ${leg ? MODE_CLASS[leg.mode] : "bg-surface text-ink-2"}`}>
               <Icon size={14} />
@@ -317,6 +317,7 @@ function WebStopCard({
               )}
             </span>
             <span className="truncate">{leg ? leg.text : last ? "Vuelta" : "Agregar"}</span>
+            {leg?.estimate && <span className="shrink-0 rounded-full bg-tz-bg px-1.5 py-0.5 text-[10px] font-bold text-tz-text">{leg.estimate}</span>}
           </span>
         </button>
       )}
@@ -339,7 +340,7 @@ function WebStopCard({
           </span>
           {stop.stay && (
             <span
-              className={`absolute bottom-3 left-3 flex h-[30px] max-w-[calc(100%-24px)] items-center gap-1.5 overflow-hidden rounded-full bg-white/[.88] pr-3 pl-[9px] text-xs font-bold whitespace-nowrap backdrop-blur-[14px] ${stop.stay.paid ? "text-success" : "text-ink-2"}`}
+              className={`absolute bottom-3 left-3 flex h-[30px] max-w-[calc(100%-24px)] items-center gap-1.5 overflow-hidden rounded-full bg-white/[.88] pr-3 pl-[9px] text-xs font-bold whitespace-nowrap backdrop-blur-[14px] ${stop.stay.paid ? "text-success" : stop.stay.estimated ? "text-tz-text" : "text-ink-2"}`}
             >
               <Bed size={14} className="shrink-0" />
               <span className="truncate">{stop.stay.text}</span>
