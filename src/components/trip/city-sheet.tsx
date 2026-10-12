@@ -115,7 +115,12 @@ export function CitySheet({
   const estimate = trip.planned.find((p) => p.stay_stop_id === stopId);
   const [estimated, setEstimated] = useState(!stay?.total_price_cents && !!estimate);
   const [price, setPrice] = useState(
-    stay?.total_price_cents ? formatAmountInput(stay.total_price_cents) : estimate ? formatAmountInput(estimate.amount_cents) : "",
+    // El estimado se carga por persona y se multiplica por los que están (decisión 089).
+    stay?.total_price_cents
+      ? formatAmountInput(stay.total_price_cents)
+      : estimate
+        ? formatAmountInput(Math.round(estimate.amount_cents / Math.max(1, estimate.member_ids.length)))
+        : "",
   );
   const [paidBy, setPaidBy] = useState(stay?.paid_by_member_id ?? myMemberId ?? order[0]);
   const [split, setSplit] = useState<SplitState | null>(null); // null = todavía no se tocó: sigue a "quién está"
@@ -146,7 +151,7 @@ export function CitySheet({
     notes !== (stop.notes ?? "") ||
     stayName !== (stay?.name ?? "") ||
     via !== (stay?.booked_via ?? null) ||
-    priceCents !== (estimate && !stay?.total_price_cents ? estimate.amount_cents : (stay?.total_price_cents ?? 0)) ||
+    (estimated ? priceCents * people.length : priceCents) !== (estimate && !stay?.total_price_cents ? estimate.amount_cents : (stay?.total_price_cents ?? 0)) ||
     estimated !== (!stay?.total_price_cents && !!estimate) ||
     (!estimated && priceCents > 0 && paidBy !== (stay?.paid_by_member_id ?? paidBy)) ||
     split !== null ||
@@ -171,7 +176,7 @@ export function CitySheet({
   // Debajo del nombre del alojamiento: dónde se reservó y cuánto salió.
   const staySub = [
     via ? BOOKING_LABEL[via] : stayName ? "Sin confirmar" : "",
-    priceCents > 0 ? (estimated ? `${formatEuros(priceCents)} estimado` : `${formatEuros(priceCents)} · pagó ${name(paidBy)}`) : "",
+    priceCents > 0 ? (estimated ? `${formatEuros(priceCents * people.length)} estimado` : `${formatEuros(priceCents)} · pagó ${name(paidBy)}`) : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -286,7 +291,7 @@ export function CitySheet({
       : null;
     setError("");
     startTransition(async () => {
-      const message = await onSave(input, newStay, pendingReceipts, estimated && priceCents > 0 ? { amountCents: priceCents, memberIds: people } : null);
+      const message = await onSave(input, newStay, pendingReceipts, estimated && priceCents > 0 ? { amountCents: priceCents * people.length, memberIds: people } : null);
       if (message) setError(message);
       else close();
     });
@@ -506,7 +511,7 @@ export function CitySheet({
                   </div>
 
                   <div className="mt-4 mb-2 flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-ink-2">{estimated ? "Cuánto va a salir" : "Cuánto salió"}</span>
+                    <span className="text-xs font-bold text-ink-2">{estimated ? "Cuánto va a salir por persona" : "Cuánto salió"}</span>
                     {/* Ya pagado (es un gasto) o estimado (planificado, no entra en el balance). */}
                     <div className="grid grid-cols-2 rounded-full bg-surface p-0.5">
                       {(
@@ -518,7 +523,14 @@ export function CitySheet({
                         <button
                           key={text}
                           type="button"
-                          onClick={() => setEstimated(value)}
+                          onClick={() => {
+                            // Al cambiar, el monto pasa de total a por persona (y al revés).
+                            if (value !== estimated && priceCents) {
+                              const n = Math.max(1, people.length);
+                              setPrice(formatAmountInput(value ? Math.round(priceCents / n) : priceCents * n));
+                            }
+                            setEstimated(value);
+                          }}
                           aria-pressed={estimated === value}
                           className={`h-8 rounded-full px-3 text-xs font-bold ${estimated === value ? "bg-white text-ink shadow-[0_1px_3px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
                         >
@@ -540,7 +552,10 @@ export function CitySheet({
                     />
                   </div>
                   {estimated && (
-                    <p className="mt-1.5 text-[13px] leading-[1.4] text-ink-2">Es un estimado: no es un gasto ni entra en el balance. Se divide entre los que están; cuando lo paguen, pasalo a &quot;Pagado&quot;.</p>
+                    <p className="mt-1.5 text-[13px] leading-[1.4] text-ink-2">
+                      {priceCents > 0 && <strong className="text-ink">× {people.length} = {formatEuros(priceCents * people.length)}. </strong>}
+                      Es un estimado por persona, por los {people.length} que están. No es un gasto ni entra en el balance; cuando lo paguen, pasalo a &quot;Pagado&quot;.
+                    </p>
                   )}
                   {!estimated && priceCents > 0 && (
                     <>
