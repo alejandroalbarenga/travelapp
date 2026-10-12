@@ -74,7 +74,8 @@ export function CitySheet({
   onNights: (delta: number) => void;
   onOpenLeg: (fromStopId: string) => void;
   /** Con `receipt`: la reserva elegida antes de que el alojamiento existiera, para subirla al guardar. */
-  onSave: (input: SaveStopInput, stay: Stay | null, receipts?: File[]) => Promise<string | null>;
+  /** Con `estimate`, el precio del alojamiento es un estimado (decisión 084); con null se borra el que tuviera. */
+  onSave: (input: SaveStopInput, stay: Stay | null, receipts?: File[], estimate?: { amountCents: number; memberIds: string[] } | null) => Promise<string | null>;
   onDelete: (stopId: string) => Promise<string | null>;
   /** Solo ver (decisión 034): todo deshabilitado, sin guardar ni borrar. */
   readOnly?: boolean;
@@ -109,7 +110,12 @@ export function CitySheet({
   const [notes, setNotes] = useState(stop.notes ?? "");
   const [stayName, setStayName] = useState(stay?.name ?? "");
   const [via, setVia] = useState<BookingSource | null>(stay?.booked_via ?? null);
-  const [price, setPrice] = useState(stay?.total_price_cents ? formatAmountInput(stay.total_price_cents) : "");
+  // Estimado (decisión 084): mientras no está pagado, el precio puede ser un estimado, que no es gasto.
+  const estimate = trip.planned.find((p) => p.stay_stop_id === stopId);
+  const [estimated, setEstimated] = useState(!stay?.total_price_cents && !!estimate);
+  const [price, setPrice] = useState(
+    stay?.total_price_cents ? formatAmountInput(stay.total_price_cents) : estimate ? formatAmountInput(estimate.amount_cents) : "",
+  );
   const [paidBy, setPaidBy] = useState(stay?.paid_by_member_id ?? myMemberId ?? order[0]);
   const [split, setSplit] = useState<SplitState | null>(null); // null = todavía no se tocó: sigue a "quién está"
   const [checkIn, setCheckIn] = useState(stay?.check_in_time ?? "");
@@ -139,8 +145,9 @@ export function CitySheet({
     notes !== (stop.notes ?? "") ||
     stayName !== (stay?.name ?? "") ||
     via !== (stay?.booked_via ?? null) ||
-    priceCents !== (stay?.total_price_cents ?? 0) ||
-    (priceCents > 0 && paidBy !== (stay?.paid_by_member_id ?? paidBy)) ||
+    priceCents !== (estimate && !stay?.total_price_cents ? estimate.amount_cents : (stay?.total_price_cents ?? 0)) ||
+    estimated !== (!stay?.total_price_cents && !!estimate) ||
+    (!estimated && priceCents > 0 && paidBy !== (stay?.paid_by_member_id ?? paidBy)) ||
     split !== null ||
     checkIn !== (stay?.check_in_time ?? "") ||
     checkOut !== (stay?.check_out_time ?? "") ||
@@ -161,7 +168,10 @@ export function CitySheet({
       : `Los mismos que en ${prev.city}`;
 
   // Debajo del nombre del alojamiento: dónde se reservó y cuánto salió.
-  const staySub = [via ? BOOKING_LABEL[via] : stayName ? "Sin confirmar" : "", priceCents > 0 ? `${formatEuros(priceCents)} · pagó ${name(paidBy)}` : ""]
+  const staySub = [
+    via ? BOOKING_LABEL[via] : stayName ? "Sin confirmar" : "",
+    priceCents > 0 ? (estimated ? `${formatEuros(priceCents)} estimado` : `${formatEuros(priceCents)} · pagó ${name(paidBy)}`) : "",
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -231,13 +241,15 @@ export function CitySheet({
       close();
       return;
     }
-    if (pendingReceipts.length && !hasStay) {
+    if (pendingReceipts.length && !(stayName.trim() || via || (!estimated && priceCents > 0))) {
       setError("Poné el nombre del alojamiento para guardar la reserva.");
       return;
     }
-    // Con precio pero sin "Reservado en", cuenta como "Otro" para que se guarde con su gasto.
-    const bookedVia = via ?? (priceCents > 0 ? "other" : null);
-    const hasExpense = !!bookedVia && priceCents > 0;
+    // Con precio pero sin "Reservado en", cuenta como "Otro" para que se guarde con su gasto. Un
+    // estimado no crea el alojamiento ni su gasto: se guarda aparte (decisión 084).
+    const bookedVia = via ?? (!estimated && priceCents > 0 ? "other" : null);
+    const hasExpense = !estimated && !!bookedVia && priceCents > 0;
+    const stayRow = !!(stayName.trim() || bookedVia);
     const { splits, remainingCents } = computeSplits(priceCents, splitValue);
     if (hasExpense && remainingCents !== 0) {
       setError("La división del alojamiento no suma el total.");
@@ -250,14 +262,14 @@ export function CitySheet({
       notes,
       stayName,
       bookedVia,
-      stayPriceCents: bookedVia ? priceCents || null : null,
+      stayPriceCents: hasExpense ? priceCents : null,
       stayPaidByMemberId: hasExpense ? paidBy : null,
       stayDescription: `${stayName.trim() || "Alojamiento"} · ${nightsText}`,
       staySplits: hasExpense ? splits : [],
       checkIn: checkIn || null,
       checkOut: checkOut || null,
     };
-    const newStay: Stay | null = hasStay
+    const newStay: Stay | null = stayRow
       ? {
           id: stay?.id ?? `nuevo-${stopId}`,
           stop_id: stopId,
@@ -273,7 +285,7 @@ export function CitySheet({
       : null;
     setError("");
     startTransition(async () => {
-      const message = await onSave(input, newStay, pendingReceipts);
+      const message = await onSave(input, newStay, pendingReceipts, estimated && priceCents > 0 ? { amountCents: priceCents, memberIds: people } : null);
       if (message) setError(message);
       else close();
     });
@@ -492,7 +504,28 @@ export function CitySheet({
                     ))}
                   </div>
 
-                  <div className="mt-4 text-xs font-bold text-ink-2">Cuánto salió</div>
+                  <div className="mt-4 mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-ink-2">{estimated ? "Cuánto va a salir" : "Cuánto salió"}</span>
+                    {/* Ya pagado (es un gasto) o estimado (planificado, no entra en el balance). */}
+                    <div className="grid grid-cols-2 rounded-full bg-surface p-0.5">
+                      {(
+                        [
+                          [false, "Pagado"],
+                          [true, "Estimado"],
+                        ] as const
+                      ).map(([value, text]) => (
+                        <button
+                          key={text}
+                          type="button"
+                          onClick={() => setEstimated(value)}
+                          aria-pressed={estimated === value}
+                          className={`h-8 rounded-full px-3 text-xs font-bold ${estimated === value ? "bg-white text-ink shadow-[0_1px_3px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
+                        >
+                          {text}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="mt-0.5 flex items-baseline gap-1.5">
                     <span className="text-2xl font-extrabold">€</span>
                     <input
@@ -505,7 +538,10 @@ export function CitySheet({
                       className="h-10 min-w-0 flex-1 bg-transparent text-2xl font-extrabold outline-none placeholder:text-ink-5"
                     />
                   </div>
-                  {priceCents > 0 && (
+                  {estimated && (
+                    <p className="mt-1.5 text-[13px] leading-[1.4] text-ink-2">Es un estimado: no es un gasto ni entra en el balance. Se divide entre los que están; cuando lo paguen, pasalo a &quot;Pagado&quot;.</p>
+                  )}
+                  {!estimated && priceCents > 0 && (
                     <>
                       <div className="mt-3 mb-2 text-xs font-bold text-ink-2">Pagó</div>
                       <div className="flex flex-wrap gap-1.5">

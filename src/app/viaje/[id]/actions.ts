@@ -312,3 +312,58 @@ export async function deletePersonalCategory(tripId: string, name: string): Prom
   const { error } = await supabase.from("personal_categories").delete().eq("trip_id", tripId).eq("name", name);
   return error ? { error: "No pudimos borrar la categoría." } : null;
 }
+
+// ─── Planificado (decisión 084, migración 0011) ───────────────────────────
+// Estimados que no son gastos. RLS: los ven todos los del viaje, los cambian los que editan.
+
+export type SavePlannedInput = {
+  id: string | null;
+  tripId: string;
+  /** Si es el estimado de un tramo o del alojamiento de una ciudad (uno por cada uno). */
+  legId?: string | null;
+  stayStopId?: string | null;
+  stopId: string | null;
+  description: string;
+  category: "transport" | "lodging" | "food" | "activities" | "other";
+  amountCents: number;
+  memberIds: string[];
+};
+
+export async function savePlanned(input: SavePlannedInput): Promise<{ error: string } | { id: string }> {
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) return { error: "Ingresá un monto." };
+  if (!input.memberIds.length) return { error: "Elegí entre quiénes se divide." };
+  const supabase = await createClient();
+  const row = {
+    trip_id: input.tripId,
+    leg_id: input.legId ?? null,
+    stay_stop_id: input.stayStopId ?? null,
+    stop_id: input.stopId,
+    description: input.description.trim(),
+    category: input.category,
+    amount_cents: input.amountCents,
+    member_ids: input.memberIds,
+  };
+  // El de un tramo o un alojamiento se pisa: hay uno solo por cada uno.
+  let id = input.id;
+  if (!id && (row.leg_id || row.stay_stop_id)) {
+    const { data } = await supabase
+      .from("planned_items")
+      .select("id")
+      .eq(row.leg_id ? "leg_id" : "stay_stop_id", (row.leg_id ?? row.stay_stop_id)!)
+      .maybeSingle();
+    id = (data?.id as string | undefined) ?? null;
+  }
+  const { data, error } = id
+    ? await supabase.from("planned_items").update(row).eq("id", id).select("id").single()
+    : await supabase.from("planned_items").insert(row).select("id").single();
+  if (error || !data) return { error: error?.code === "42P01" ? "Falta aplicar la migración 0011 en Supabase." : "No pudimos guardar el estimado." };
+  return { id: data.id as string };
+}
+
+/** Borra un estimado; con `legId` o `stayStopId`, el de ese tramo o del alojamiento de esa ciudad (si tenía). */
+export async function deletePlanned(target: { id: string } | { legId: string } | { stayStopId: string }): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const query = supabase.from("planned_items").delete();
+  const { error } = "id" in target ? await query.eq("id", target.id) : "legId" in target ? await query.eq("leg_id", target.legId) : await query.eq("stay_stop_id", target.stayStopId);
+  return error && error.code !== "42P01" ? { error: "No pudimos borrar el estimado." } : null;
+}

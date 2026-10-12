@@ -172,6 +172,11 @@ export const DEMO_TRIP: Trip = {
   expenses,
   settlements: [],
   activity,
+  // Planificado (decisión 084): estimados que todavía no son gastos.
+  planned: [
+    { id: "pl1", leg_id: null, stay_stop_id: null, stop_id: "s11", description: "Excursión a Sintra", category: "activities", amount_cents: 12000, member_ids: [AL, RO, JO], created_at: "2026-10-05T10:00:00Z" },
+    { id: "pl2", leg_id: null, stay_stop_id: null, stop_id: "s12", description: "Cena de despedida", category: "food", amount_cents: 24000, member_ids: [AL, RO, JO, AG], created_at: "2026-10-05T10:05:00Z" },
+  ],
 };
 
 /** Tus gastos personales de ejemplo (decisión 076): presupuesto de ropa y de regalos. */

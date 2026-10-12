@@ -50,8 +50,17 @@ export function LegSheet({
   fromStopId: string;
   myMemberId: string | null;
   onClose: () => void;
-  /** Guarda el tramo (y después sube el pasaje elegido antes de guardarlo). Devuelve un mensaje si falló. */
-  onSave: (draft: LegDraft, description: string, ticket?: { file: File; memberId: string | null }) => Promise<string | null>;
+  /**
+   * Guarda el tramo (y después sube el pasaje elegido antes de guardarlo). Con `estimate`, el precio es
+   * un estimado (decisión 084): el tramo queda sin precio ni gasto y se guarda el estimado aparte;
+   * con null se borra el estimado que tuviera. Devuelve un mensaje si falló.
+   */
+  onSave: (
+    draft: LegDraft,
+    description: string,
+    ticket?: { file: File; memberId: string | null },
+    estimate?: { amountCents: number; memberIds: string[] } | null,
+  ) => Promise<string | null>;
   /** Adjunta un pasaje al tramo ya guardado; memberId es de quién es (null: del grupo). */
   onAddTicket: (legId: string, memberId: string | null, input: AttachmentInput) => Promise<string | null>;
   onRemoveTicket: (legId: string, ticket: LegAttachment) => Promise<string | null>;
@@ -74,7 +83,12 @@ export function LegSheet({
   const [mode, setMode] = useState<LegMode | null>(leg?.mode ?? null);
   const [dep, setDep] = useState(leg?.departs_at ? localTime(leg.departs_at, fromTz) : "");
   const [arr, setArr] = useState(leg?.arrives_at ? localTime(leg.arrives_at, toTz) : "");
-  const [price, setPrice] = useState(leg?.total_price_cents ? formatAmountInput(leg.total_price_cents) : "");
+  // Estimado (decisión 084): mientras no está pagado, el precio puede ser un estimado, que no es gasto.
+  const estimate = leg ? trip.planned.find((p) => p.leg_id === leg.id) : undefined;
+  const [estimated, setEstimated] = useState(!leg?.total_price_cents && !!estimate);
+  const [price, setPrice] = useState(
+    leg?.total_price_cents ? formatAmountInput(leg.total_price_cents) : estimate ? formatAmountInput(estimate.amount_cents) : "",
+  );
   const [paidBy, setPaidBy] = useState(leg?.paid_by_member_id ?? myMemberId ?? order[0]);
   const [split, setSplit] = useState<SplitState>(() =>
     leg && leg.split.length && leg.total_price_cents
@@ -156,7 +170,7 @@ export function LegSheet({
       return;
     }
     const { splits, remainingCents } = computeSplits(totalCents, split);
-    if (totalCents > 0 && remainingCents !== 0) {
+    if (!estimated && totalCents > 0 && remainingCents !== 0) {
       setError("La división no suma el total.");
       return;
     }
@@ -172,12 +186,13 @@ export function LegSheet({
           mode,
           departs_at: departsAt,
           arrives_at: arrivesAt,
-          total_price_cents: totalCents || null,
-          paid_by_member_id: totalCents ? paidBy : null,
-          split: totalCents ? splits : [],
+          total_price_cents: estimated ? null : totalCents || null,
+          paid_by_member_id: !estimated && totalCents ? paidBy : null,
+          split: !estimated && totalCents ? splits : [],
         },
         description,
         pendingTicket ? { file: pendingTicket, memberId: owner } : undefined,
+        estimated && totalCents ? { amountCents: totalCents, memberIds: split.memberIds.length ? split.memberIds : travellers } : null,
       );
       if (message) setError(message);
       else close();
@@ -212,6 +227,7 @@ export function LegSheet({
         {!editing && leg ? (
           <div className="flex-1 overflow-y-auto px-5 pt-2 pb-6 [scrollbar-width:none]">
             <LegView
+              estimateCents={estimate?.amount_cents ?? null}
               leg={leg}
               fromCity={from.city}
               toCity={to?.city ?? "casa"}
@@ -320,9 +336,28 @@ export function LegSheet({
           )}
 
           <div className={label}>Precio</div>
+          {/* Ya pagado (es un gasto) o estimado (planificado, no entra en el balance). */}
+          <div className="mb-2 grid grid-cols-2 rounded-full bg-surface p-1">
+            {(
+              [
+                [false, "Ya pagado"],
+                [true, "Estimado"],
+              ] as const
+            ).map(([value, text]) => (
+              <button
+                key={text}
+                type="button"
+                onClick={() => setEstimated(value)}
+                aria-pressed={estimated === value}
+                className={`h-9 rounded-full text-[13px] font-bold ${estimated === value ? "bg-white text-ink shadow-[0_1px_3px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
           <label className="flex items-center gap-3 rounded-field border border-line py-2.5 pr-2.5 pl-3.5">
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-ink-2">Total del grupo{perPerson}</div>
+              <div className="text-xs font-semibold text-ink-2">{estimated ? "Estimado del grupo" : "Total del grupo"}{perPerson}</div>
               <div className="mt-0.5 flex items-baseline gap-1.5">
                 <span className="text-xl font-extrabold">€</span>
                 <input
@@ -337,7 +372,13 @@ export function LegSheet({
             </div>
           </label>
 
-          {totalCents > 0 && (
+          {estimated && (
+            <p className="mt-2 text-[13px] leading-[1.4] text-ink-2">
+              Es un estimado: no es un gasto ni entra en el balance, pero suma en lo que sale el viaje. Cuando lo paguen, pasalo a &quot;Ya pagado&quot;.
+            </p>
+          )}
+
+          {!estimated && totalCents > 0 && (
             <>
               <div className={label}>Pagó</div>
               <div className="flex flex-wrap gap-1.5">
@@ -478,7 +519,9 @@ function LegView({
   tickets,
   withTicket,
   onOpenTicket,
+  estimateCents,
 }: {
+  estimateCents: number | null;
   leg: Leg;
   fromCity: string;
   toCity: string;
@@ -556,7 +599,9 @@ function LegView({
         <div className="min-w-0 text-sm text-ink-2">
           {leg.total_price_cents
             ? `${formatEuros(leg.total_price_cents)}${payer ? ` · pagó ${payer.display_name}` : ""}${mine ? ` · tu parte ${formatEuros(mine.amount_cents)}` : ""}`
-            : "Sin precio cargado"}
+            : estimateCents
+              ? `${formatEuros(estimateCents)} estimado · todavía sin pagar`
+              : "Sin precio cargado"}
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { ActivityView, ExpenseRowView, ExpensesView, TransferView } from "@/lib/expenses-view";
 import type { PersonalData } from "@/lib/personal";
+import type { PlannedRowView, PlanView } from "@/lib/planning";
 import type { ExpenseCategory, LegMode, Member } from "@/lib/trip-types";
 import { BalanceBubbles } from "./balance-bubbles";
 import { PersonalExpenses, type PersonalActions } from "./personal-expenses";
@@ -44,6 +45,7 @@ export function ExpensesScreen({
   onBack,
   foldStopIds = [],
   personal,
+  plan,
 }: {
   tripName: string;
   view: ExpensesView;
@@ -62,8 +64,10 @@ export function ExpensesScreen({
   foldStopIds?: string[];
   /** Tus gastos personales (decisión 076), en la pestaña "Míos". */
   personal?: { tripId: string; initial: PersonalData | null; actions?: PersonalActions };
+  /** Lo planificado (decisión 084): estimados que no son gastos. */
+  plan?: { view: PlanView; onOpen: (target: PlannedRowView["target"]) => void; onAdd?: () => void };
 }) {
-  const [section, setSection] = useState<"group" | "mine">("group");
+  const [section, setSection] = useState<"group" | "plan" | "mine">("group");
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -142,10 +146,11 @@ export function ExpensesScreen({
 
       {/* Del grupo o tus gastos personales (decisión 076). */}
       {personal && (
-        <div className="mt-1.5 mb-3 grid grid-cols-2 rounded-full bg-surface p-1" role="tablist">
+        <div className={`mt-1.5 mb-3 grid rounded-full bg-surface p-1 ${plan ? "grid-cols-3" : "grid-cols-2"}`} role="tablist">
           {(
             [
               ["group", "Del grupo"],
+              ...(plan ? ([["plan", "Planificado"]] as const) : []),
               ["mine", "Míos"],
             ] as const
           ).map(([key, label]) => (
@@ -165,6 +170,8 @@ export function ExpensesScreen({
 
       {personal && section === "mine" ? (
         <PersonalExpenses tripId={personal.tripId} initial={personal.initial} actions={personal.actions} />
+      ) : plan && section === "plan" ? (
+        <PlanSection plan={plan} />
       ) : (
       <>
       {/* Arriba, las burbujas (decisión 081): de un vistazo, quién está abajo y a quién le toca pagar. */}
@@ -366,5 +373,69 @@ function Pair({ from, to }: { from?: Member; to?: Member }) {
         {to?.initials}
       </span>
     </div>
+  );
+}
+
+/**
+ * Planificado (decisión 084): lo que se estima que sale el viaje. Arriba, cuánto sale todo (lo ya
+ * gastado más lo estimado) y tu parte; abajo, cada estimado (tramos, alojamientos y sueltos).
+ */
+function PlanSection({ plan }: { plan: NonNullable<Parameters<typeof ExpensesScreen>[0]["plan"]> }) {
+  const { view } = plan;
+  return (
+    <>
+      <section className="mt-1.5 rounded-card bg-surface p-4">
+        <div className="text-[13px] font-bold text-ink-2">El viaje sale</div>
+        <div className="mt-0.5 text-[36px] leading-[1.1] font-extrabold tracking-[-0.02em]">{view.tripTotal}</div>
+        <div className="mt-1 text-[13px] text-ink-2">
+          {view.spent} ya gastado + {view.planned} estimado
+        </div>
+        <div className="mt-3 border-t border-black/10 pt-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[15px] font-bold">Tu parte</span>
+            <span className="text-xl font-extrabold">{view.myTotal}</span>
+          </div>
+          <div className="mt-0.5 text-[13px] text-ink-2">
+            {view.mySpent} ya gastado + {view.myPlanned} estimado
+          </div>
+        </div>
+        {plan.onAdd && (
+          <button type="button" onClick={plan.onAdd} className="bg-pink mt-3.5 flex h-12 w-full items-center justify-center rounded-button text-[15px] font-bold text-white">
+            Agregar estimado
+          </button>
+        )}
+      </section>
+
+      <section className="mt-7">
+        <div className="px-1">
+          <h2 className="text-xl font-extrabold tracking-[-0.01em]">Estimados</h2>
+          <div className="mt-0.5 text-[13px] text-ink-2">No son gastos: no entran en el balance. En un tramo o alojamiento elegí &quot;Estimado&quot; hasta pagarlo.</div>
+        </div>
+        {view.rows.length === 0 ? (
+          <p className="mt-6 text-center text-[15px] text-ink-2">Todavía no hay estimados.</p>
+        ) : (
+          <div className="mt-2 border-y border-divider">
+            {view.rows.map((r, i) => {
+              const Icon = r.legMode ? MODE_ICON[r.legMode] : CATEGORY_ICON[r.category];
+              return (
+                <button key={r.id} type="button" onClick={() => plan.onOpen(r.target)} className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${i ? "border-t border-divider" : ""}`}>
+                  <span className={`flex size-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-dashed border-dash ${r.legMode ? MODE_CLASS[r.legMode] : "bg-white text-ink"}`}>
+                    <Icon size={20} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[15px] leading-[1.3] font-semibold">{r.title}</div>
+                    <div className="mt-0.5 truncate text-[13px] text-ink-2">{r.sub}</div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-[15px] font-bold">~{r.amount}</div>
+                    <div className="mt-0.5 text-xs text-ink-2">{r.myShare}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </>
   );
 }
