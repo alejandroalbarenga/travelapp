@@ -78,7 +78,8 @@ export function LegSheet({
   const toTz = to?.timezone ?? fromTz;
   const leg = trip.legs.find((l) => l.from_stop_id === fromStopId);
   const order = trip.members.map((m) => m.id);
-  const travellers = to ? to.member_ids : from.member_ids;
+  // Viajan los que están en la ciudad de la que se sale (decisión 085): de Bruselas a Brujas, los de Bruselas.
+  const travellers = from.member_ids;
 
   const [mode, setMode] = useState<LegMode | null>(leg?.mode ?? null);
   const [dep, setDep] = useState(leg?.departs_at ? localTime(leg.departs_at, fromTz) : "");
