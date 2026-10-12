@@ -91,8 +91,13 @@ export function LegSheet({
   // Estimado (decisión 084): mientras no está pagado, el precio puede ser un estimado, que no es gasto.
   const estimate = leg ? trip.planned.find((p) => p.leg_id === leg.id) : undefined;
   const [estimated, setEstimated] = useState(!leg?.total_price_cents && !!estimate);
+  // El estimado se carga por persona y se multiplica por los que viajan (decisión 089).
   const [price, setPrice] = useState(
-    leg?.total_price_cents ? formatAmountInput(leg.total_price_cents) : estimate ? formatAmountInput(estimate.amount_cents) : "",
+    leg?.total_price_cents
+      ? formatAmountInput(leg.total_price_cents)
+      : estimate
+        ? formatAmountInput(Math.round(estimate.amount_cents / Math.max(1, estimate.member_ids.length)))
+        : "",
   );
   const [paidBy, setPaidBy] = useState(leg?.paid_by_member_id ?? myMemberId ?? order[0]);
   const [split, setSplit] = useState<SplitState>(() =>
@@ -107,6 +112,7 @@ export function LegSheet({
   const [editing, setEditing] = useState(!readOnly && !leg);
 
   const totalCents = parseAmount(price);
+  const estimateMembers = split.memberIds.length ? split.memberIds : travellers;
   const departsAt = dep ? zonedToInstant(date, dep, fromTz) : null;
   let arrivesAt = arr ? zonedToInstant(date, arr, toTz) : null;
   if (departsAt && arrivesAt && arrivesAt <= departsAt) arrivesAt = zonedToInstant(addDays(date, 1), arr, toTz); // llega al día siguiente
@@ -198,7 +204,7 @@ export function LegSheet({
         },
         description,
         pendingTicket ? { file: pendingTicket, memberId: owner } : undefined,
-        estimated && totalCents ? { amountCents: totalCents, memberIds: split.memberIds.length ? split.memberIds : travellers } : null,
+        estimated && totalCents ? { amountCents: totalCents * estimateMembers.length, memberIds: estimateMembers } : null,
       );
       if (message) setError(message);
       else close();
@@ -362,7 +368,14 @@ export function LegSheet({
               <button
                 key={text}
                 type="button"
-                onClick={() => setEstimated(value)}
+                onClick={() => {
+                  // Al cambiar, el monto pasa de total a por persona (y al revés).
+                  if (value !== estimated && totalCents) {
+                    const n = Math.max(1, estimateMembers.length);
+                    setPrice(formatAmountInput(value ? Math.round(totalCents / n) : totalCents * n));
+                  }
+                  setEstimated(value);
+                }}
                 aria-pressed={estimated === value}
                 className={`h-9 rounded-full text-[13px] font-bold ${estimated === value ? "bg-white text-ink shadow-[0_1px_3px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
               >
@@ -372,7 +385,11 @@ export function LegSheet({
           </div>
           <label className="flex items-center gap-3 rounded-field border border-line py-2.5 pr-2.5 pl-3.5">
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-ink-2">{estimated ? "Estimado del grupo" : "Total del grupo"}{perPerson}</div>
+              <div className="text-xs font-semibold text-ink-2">
+                {estimated
+                  ? `Estimado por persona${totalCents ? ` · × ${estimateMembers.length} = ${formatEuros(totalCents * estimateMembers.length)}` : ""}`
+                  : `Total del grupo${perPerson}`}
+              </div>
               <div className="mt-0.5 flex items-baseline gap-1.5">
                 <span className="text-xl font-extrabold">€</span>
                 <input
@@ -389,7 +406,7 @@ export function LegSheet({
 
           {estimated && (
             <p className="mt-2 text-[13px] leading-[1.4] text-ink-2">
-              Es un estimado: no es un gasto ni entra en el balance, pero suma en lo que sale el viaje. Cuando lo paguen, pasalo a &quot;Ya pagado&quot;.
+              Es un estimado por persona: se multiplica por los {estimateMembers.length} que viajan. No es un gasto ni entra en el balance, pero suma en lo que sale el viaje. Cuando lo paguen, pasalo a &quot;Ya pagado&quot;.
             </p>
           )}
 

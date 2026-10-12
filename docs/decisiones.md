@@ -566,3 +566,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-12
 **Decisión:** en la lista del viaje (celular y web), un tramo con precio estimado, todavía sin pagar (084), tiene el borde punteado naranja y una etiqueta con el monto ("~€180"). Un alojamiento estimado muestra abajo de la ciudad "~€300 estimado" en naranja (con el nombre adelante si lo tiene), en vez de "Booking · pagado" en verde.
 **Por qué:** pedido de Ale, para ver de un vistazo qué falta pagar.
+
+### 089 · El estimado se carga por persona
+**Fecha:** 2026-10-12
+**Decisión:** los estimados (084) se escriben por persona y la app los multiplica por la cantidad de gente: en el tramo, por los que viajan (los de la ciudad de salida, 085); en el alojamiento, por los que están; en un estimado suelto, por los elegidos en "Se divide entre". Al lado se ve la cuenta ("× 3 = €90"). Se sigue guardando el total en `planned_items.amount_cents`; al abrirlo se muestra el total dividido por la cantidad de gente. Al pasar de "Ya pagado" a "Estimado" el monto se divide, y al volver se multiplica.
+**Por qué:** pedido de Ale; el precio de un pasaje o de una entrada se ve por persona y así no hay que hacer la cuenta cada vez.

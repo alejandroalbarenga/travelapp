@@ -37,7 +37,10 @@ export function PlannedSheet({
   onDelete: (id: string) => Promise<string | null>;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
-  const [amount, setAmount] = useState(item ? formatAmountInput(item.amount_cents).replace(/\./g, "").replace(/,00$/, "") : "");
+  // Se carga por persona y se multiplica por los que van (decisión 089).
+  const [amount, setAmount] = useState(
+    item ? formatAmountInput(Math.round(item.amount_cents / Math.max(1, item.member_ids.length))).replace(/\./g, "").replace(/,00$/, "") : "",
+  );
   const [description, setDescription] = useState(item?.description ?? "");
   const [stopId, setStopId] = useState<string | null>(item?.stop_id ?? null);
   const [category, setCategory] = useState<ExpenseCategory>(item?.category ?? "activities");
@@ -52,11 +55,11 @@ export function PlannedSheet({
   }
 
   function save(close: () => void) {
-    if (cents <= 0) return setError("Ingresá cuánto va a salir.");
+    if (cents <= 0) return setError("Ingresá cuánto va a salir por persona.");
     if (!description.trim()) return setError("Poné qué es.");
     setError("");
     startTransition(async () => {
-      const message = await onSave({ id: item?.id ?? null, tripId: trip.id, stopId, description, category, amountCents: cents, memberIds });
+      const message = await onSave({ id: item?.id ?? null, tripId: trip.id, stopId, description, category, amountCents: cents * memberIds.length, memberIds });
       if (message) setError(message);
       else close();
     });
@@ -81,9 +84,9 @@ export function PlannedSheet({
             <span className="size-11 shrink-0" />
           </div>
 
-          <AmountField value={amount} onChange={readOnly ? () => {} : setAmount} label="Cuánto va a salir" />
+          <AmountField value={amount} onChange={readOnly ? () => {} : setAmount} label="Cuánto va a salir por persona" />
           <p className="px-5 text-center text-[13px] text-ink-2">
-            {cents > 0 && memberIds.length ? `${formatEuros(Math.round(cents / memberIds.length))} por persona · ` : ""}No es un gasto: no entra en el balance.
+            Por persona{cents > 0 ? ` · × ${memberIds.length} = ${formatEuros(cents * memberIds.length)}` : ""}. No es un gasto: no entra en el balance.
           </p>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: 24 }}>
