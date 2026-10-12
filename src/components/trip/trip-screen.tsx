@@ -610,6 +610,8 @@ export function TripScreen({
         paidByMemberId: draft.paid_by_member_id,
         description,
         splits: draft.split,
+        linkUrl: draft.link_url ?? null,
+        notes: draft.notes ?? null,
       });
       if ("error" in result) return result.error;
       legId = result.legId;

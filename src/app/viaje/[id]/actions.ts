@@ -184,6 +184,9 @@ export type SaveLegInput = {
   paidByMemberId: string | null;
   description: string;
   splits: { member_id: string; amount_cents: number }[];
+  /** Link de dónde comprarlo o buscarlo y una nota libre (decisión 090). */
+  linkUrl?: string | null;
+  notes?: string | null;
 };
 
 // Guarda el tramo y crea, actualiza o borra su gasto (supabase/migrations/0002_legs.sql).
@@ -202,7 +205,18 @@ export async function saveLeg(input: SaveLegInput): Promise<{ error: string } | 
     p_splits: input.splits,
   });
   if (error) return { error: error.message.includes("no suma") ? "La división no suma el total." : "No pudimos guardar el tramo." };
-  return { legId: data as string };
+  const legId = data as string;
+  // El link y la nota van aparte (migración 0012); sin la migración, se avisa.
+  if (input.linkUrl !== undefined || input.notes !== undefined) {
+    const { error: extraError } = await supabase
+      .from("legs")
+      .update({ link_url: input.linkUrl || null, notes: input.notes?.trim() || null })
+      .eq("id", legId);
+    if (extraError && (input.linkUrl || input.notes?.trim())) {
+      return { error: extraError.code === "42703" ? "El tramo se guardó, pero falta aplicar la migración 0012 para el link y la nota." : "El tramo se guardó, pero no el link ni la nota." };
+    }
+  }
+  return { legId };
 }
 
 export type SaveExpenseInput = {
