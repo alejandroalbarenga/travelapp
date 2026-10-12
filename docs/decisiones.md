@@ -546,3 +546,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 - En Gastos hay una pestaña **Planificado** (entre "Del grupo" y "Míos"): arriba **El viaje sale** = lo ya gastado + lo estimado, y **Tu parte** igual; abajo cada estimado (tramos, alojamientos y sueltos), con tu parte. "Agregar estimado" carga uno suelto (entradas, una excursión, una cena) con su ciudad, categoría y entre quiénes.
 - Son del grupo: los ven todos los del viaje y los cambian los que pueden editar. Tabla `planned_items` (migración 0011): un estimado por tramo (`leg_id`) y por alojamiento de cada ciudad (`stay_stop_id`), o suelto. La lógica está en `src/lib/planning.ts`.
 **Por qué:** pedido de Ale; antes lo hacía en un Excel, sumando el estimado de cada cosa para saber cuánto le iba a salir el viaje.
+
+### 085 · En un tramo viajan los de la ciudad de salida
+**Fecha:** 2026-10-12
+**Decisión:** quiénes van en un tramo (los pasajeros, entre quiénes se divide su precio o su estimado y de quién son los pasajes) salen de la ciudad de la que se sale, no de la de destino: de Bruselas a Brujas, los que están en Bruselas. Cambia lo de la 032 para los tramos; los tramos ya guardados conservan su división.
+**Por qué:** pedido de Ale; el que se va de una ciudad es el que toma ese transporte.

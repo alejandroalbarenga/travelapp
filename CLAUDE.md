@@ -113,7 +113,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento. Se suben desde el navegador (`src/lib/supabase/attachments.ts`) y se abren con URL firmada en `TicketViewer`, que dibuja los PDF con pdf.js (decisión 040).
 - Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.
 
-Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en la parada (`stop_members`): la del alojamiento, o la de destino del tramo. Se puede pasar a montos distintos (decisión 032).
+Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en la parada (`stop_members`): la del alojamiento, o la de salida del tramo (decisión 085). Se puede pasar a montos distintos (decisión 032).
 
 ## Lógica clave
 
