@@ -551,3 +551,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-12
 **Decisión:** quiénes van en un tramo (los pasajeros, entre quiénes se divide su precio o su estimado y de quién son los pasajes) salen de la ciudad de la que se sale, no de la de destino: de Bruselas a Brujas, los que están en Bruselas. Cambia lo de la 032 para los tramos; los tramos ya guardados conservan su división.
 **Por qué:** pedido de Ale; el que se va de una ciudad es el que toma ese transporte.
+
+### 086 · Borrar un tramo
+**Fecha:** 2026-10-12
+**Decisión:** en el tramo, al editar, abajo de todo va "Borrar este tramo" con confirmación ("Se borra el tramo con su gasto, sus pasajes y su estimado. No se puede deshacer."). En la base, el gasto, los pasajes y el estimado se borran en cascada (queda en el historial como gasto borrado) y los archivos de los pasajes se sacan del bucket. Después, entre esas dos ciudades vuelve a aparecer "Agregar tramo". Si la ciudad de salida está bloqueada, la base lo rechaza con su aviso.
+**Por qué:** pedido de Ale; una vez cargado, un tramo no se podía borrar.
