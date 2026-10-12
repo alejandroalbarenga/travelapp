@@ -556,3 +556,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-12
 **Decisión:** en el tramo, al editar, abajo de todo va "Borrar este tramo" con confirmación ("Se borra el tramo con su gasto, sus pasajes y su estimado. No se puede deshacer."). En la base, el gasto, los pasajes y el estimado se borran en cascada (queda en el historial como gasto borrado) y los archivos de los pasajes se sacan del bucket. Después, entre esas dos ciudades vuelve a aparecer "Agregar tramo". Si la ciudad de salida está bloqueada, la base lo rechaza con su aviso.
 **Por qué:** pedido de Ale; una vez cargado, un tramo no se podía borrar.
+
+### 087 · Las horas siempre en 24 h
+**Fecha:** 2026-10-12
+**Decisión:** los campos de hora (salida y llegada del tramo, check-in y checkout del alojamiento) dejan de ser el campo de hora del teléfono, que sigue el formato del iPhone (en 12 h pide AM/PM). Son un campo de texto con el teclado numérico que pone los dos puntos solo: "1110" queda "11:10", "930" queda "09:30" y "9" queda "09:00" al salir del campo; lo que no es una hora (24:00, 11:75) vuelve a lo que había. `src/components/time-input.tsx`, con las reglas en `src/lib/time-input.ts`.
+**Por qué:** pedido de Ale; toda la app es en 24 h.
