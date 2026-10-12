@@ -571,3 +571,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-12
 **Decisión:** los estimados (084) se escriben por persona y la app los multiplica por la cantidad de gente: en el tramo, por los que viajan (los de la ciudad de salida, 085); en el alojamiento, por los que están; en un estimado suelto, por los elegidos en "Se divide entre". Al lado se ve la cuenta ("× 3 = €90"). Se sigue guardando el total en `planned_items.amount_cents`; al abrirlo se muestra el total dividido por la cantidad de gente. Al pasar de "Ya pagado" a "Estimado" el monto se divide, y al volver se multiplica.
 **Por qué:** pedido de Ale; el precio de un pasaje o de una entrada se ve por persona y así no hay que hacer la cuenta cada vez.
+
+### 090 · Link y notas en el tramo
+**Fecha:** 2026-10-12
+**Decisión:** el tramo tiene un **Link** (dónde comprarlo o buscarlo, ej. "omio.com/…"; si no tiene https:// se lo agrega) y **Notas** libres ("Lo compro en Omio"). Se cargan al editar el tramo, abajo del precio, y en la vista del tramo aparecen en una tarjeta: el link se abre en otra pestaña. Sirven sobre todo mientras el tramo está estimado (084), pero valen siempre. Columnas `legs.link_url` y `legs.notes` (migración 0012), guardadas con un update aparte después de `save_leg()`. Sin la migración, el tramo se guarda igual y avisa que falta.
+**Por qué:** pedido de Ale, para anotar dónde va a comprar cada pasaje mientras planifica.

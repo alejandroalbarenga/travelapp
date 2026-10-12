@@ -38,7 +38,7 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
   const userId = claims?.claims.sub;
   if (!userId) return null;
 
-  const [{ data }, { data: profile }, categories, expenses, planned] = await Promise.all([
+  const [{ data }, { data: profile }, categories, expenses, legExtras, planned] = await Promise.all([
     supabase
       .from("trips")
       .select(
@@ -66,6 +66,8 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
     supabase.from("personal_categories").select("id, name, budget_cents, position").eq("trip_id", tripId),
     supabase.from("personal_expenses").select("id, category, description, amount_cents, spent_on, created_at").eq("trip_id", tripId),
     // Lo planificado (decisión 084). Si la base no tiene la migración 0011, queda vacío.
+    // Link y notas de cada tramo (decisión 090), aparte: si la base no tiene la migración 0012, no hay.
+    supabase.from("legs").select("id, link_url, notes").eq("trip_id", tripId),
     supabase.from("planned_items").select("id, leg_id, stay_stop_id, stop_id, description, category, amount_cents, member_ids, created_at").eq("trip_id", tripId),
   ]);
   if (!data) return null;
@@ -97,6 +99,7 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
     })),
     legs: row.legs.map(({ leg_attachments, expense, ...l }) => ({
       ...l,
+      ...(legExtras.error ? {} : legExtras.data?.find((x) => x.id === l.id)),
       attachments: leg_attachments,
       split: expense?.expense_splits ?? [],
     })),

@@ -1,8 +1,8 @@
 "use client";
 
-import { Bus, Car, Clock, Ellipsis, FileText, Pencil, Plane, Ticket, TrainFront, Trash2, Upload, X, type LucideIcon } from "lucide-react";
+import { Bus, Car, Clock, Ellipsis, ExternalLink, FileText, Pencil, Plane, Ticket, TrainFront, Trash2, Upload, X, type LucideIcon } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
-import { sortTickets, ticketTitle } from "@/lib/attachments";
+import { normalizeUrl, sortTickets, ticketTitle } from "@/lib/attachments";
 import { addDays, formatWeekday, stopDates } from "@/lib/dates";
 import { namesList } from "@/lib/members";
 import { durationMinutes, formatDuration, localTime, timeZoneDiffHours, zonedToInstant } from "@/lib/legs";
@@ -105,6 +105,8 @@ export function LegSheet({
       ? splitStateFrom(leg.total_price_cents, leg.split, order)
       : { memberIds: order.filter((id) => travellers.includes(id)), mode: "equal", custom: {} },
   );
+  const [linkText, setLinkText] = useState(leg?.link_url ?? "");
+  const [notes, setNotes] = useState(leg?.notes ?? "");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   // Modo vista (decisión 055): un tramo ya cargado se abre para leerlo, como un itinerario; "Editar"
@@ -186,6 +188,11 @@ export function LegSheet({
       setError("La división no suma el total.");
       return;
     }
+    const link = linkText.trim() ? normalizeUrl(linkText) : null;
+    if (linkText.trim() && !link) {
+      setError("El link no parece una dirección web.");
+      return;
+    }
     const name = MODES.find((m) => m.mode === mode)!.name;
     const description = `${name} ${from.city} → ${to?.city ?? "casa"}`;
     setError("");
@@ -201,6 +208,8 @@ export function LegSheet({
           total_price_cents: estimated ? null : totalCents || null,
           paid_by_member_id: !estimated && totalCents ? paidBy : null,
           split: !estimated && totalCents ? splits : [],
+          link_url: link,
+          notes: notes.trim() || null,
         },
         description,
         pendingTicket ? { file: pendingTicket, memberId: owner } : undefined,
@@ -249,6 +258,8 @@ export function LegSheet({
           <div className="flex-1 overflow-y-auto px-5 pt-2 pb-6 [scrollbar-width:none]">
             <LegView
               estimateCents={estimate?.amount_cents ?? null}
+              link={leg.link_url ?? null}
+              notes={leg.notes ?? null}
               leg={leg}
               fromCity={from.city}
               toCity={to?.city ?? "casa"}
@@ -435,6 +446,25 @@ export function LegSheet({
             </>
           )}
 
+          {/* Dónde comprarlo o buscarlo, y una nota (decisión 090). */}
+          <div className={label}>Link</div>
+          <input
+            type="url"
+            inputMode="url"
+            autoComplete="off"
+            value={linkText}
+            onChange={(e) => setLinkText(e.target.value)}
+            placeholder="Dónde comprarlo o buscarlo (ej. omio.com)"
+            className="h-[50px] w-full rounded-field border border-line bg-white px-4 text-[16px] outline-none focus:border-navy"
+          />
+          <div className={label}>Notas</div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={notes ? 3 : 2}
+            placeholder="Ej. Lo compro en Omio, sale más barato a la mañana"
+            className="w-full resize-none rounded-field border border-line bg-white px-4 py-3 text-[16px] leading-[1.45] outline-none focus:border-navy"
+          />
           </fieldset>
 
           <div className="mt-[22px] mb-2.5 flex items-baseline justify-between">
@@ -575,8 +605,12 @@ function LegView({
   withTicket,
   onOpenTicket,
   estimateCents,
+  link,
+  notes,
 }: {
   estimateCents: number | null;
+  link: string | null;
+  notes: string | null;
   leg: Leg;
   fromCity: string;
   toCity: string;
@@ -659,6 +693,19 @@ function LegView({
               : "Sin precio cargado"}
         </div>
       </div>
+
+      {/* Link y notas (decisión 090). */}
+      {(link || notes) && (
+        <div className="mt-5 rounded-[18px] border border-line p-3.5">
+          {link && (
+            <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-[15px] font-bold text-navy">
+              <ExternalLink size={17} className="shrink-0" />
+              <span className="min-w-0 truncate">{link.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</span>
+            </a>
+          )}
+          {notes && <p className={`text-[15px] leading-[1.45] whitespace-pre-wrap ${link ? "mt-2.5 border-t border-divider pt-2.5" : ""}`}>{notes}</p>}
+        </div>
+      )}
 
       {/* Pasajes */}
       <div className="mt-6 mb-2.5 flex items-baseline justify-between">

@@ -65,6 +65,9 @@ export type Leg = {
   attachments: LegAttachment[];
   /** División del gasto del tramo; vacía si no tiene precio. */
   split: { member_id: string; amount_cents: number }[];
+  /** Dónde comprarlo o buscarlo, y una nota libre (decisión 090). */
+  link_url?: string | null;
+  notes?: string | null;
 };
 
 export type Stay = {
