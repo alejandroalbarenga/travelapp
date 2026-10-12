@@ -12,6 +12,7 @@ import { readDocumentLines } from "@/lib/read-document";
 import { parseTicket } from "@/lib/ticket-pdf";
 import type { Leg, LegAttachment, LegMode, Trip } from "@/lib/trip-types";
 import { BackButton, BottomSheet } from "../bottom-sheet";
+import { TimeInput } from "../time-input";
 import { SplitEditor } from "../split-editor";
 import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
@@ -329,11 +330,11 @@ export function LegSheet({
             </div>
             <label className={box}>
               <div className="text-[11px] font-bold text-ink-2">Salida</div>
-              <input type="time" value={dep} onChange={(e) => setDep(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
+              <TimeInput value={dep} onChange={setDep} label="Hora de salida" />
             </label>
             <label className={box}>
               <div className="text-[11px] font-bold text-ink-2">Llegada</div>
-              <input type="time" value={arr} onChange={(e) => setArr(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
+              <TimeInput value={arr} onChange={setArr} label="Hora de llegada" />
             </label>
           </div>
           <div className="mt-2 text-[13px] text-ink-2">

@@ -13,6 +13,7 @@ import { parseBooking } from "@/lib/booking-pdf";
 import { namesList } from "@/lib/members";
 import { readDocumentLines } from "@/lib/read-document";
 import { BackButton, BottomSheet } from "../bottom-sheet";
+import { TimeInput } from "../time-input";
 import { SplitEditor } from "../split-editor";
 import { AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
@@ -811,7 +812,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
   return (
     <label className="block min-w-0 rounded-field border border-line px-3 py-2 focus-within:border-ink">
       <span className="block text-[11px] font-bold text-ink-2">{label}</span>
-      <input type="time" value={value} onChange={(e) => onChange(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
+      <TimeInput value={value} onChange={onChange} label={label} />
     </label>
   );
 }
