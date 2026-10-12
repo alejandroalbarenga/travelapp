@@ -79,6 +79,7 @@ export function TripScreen({
   personalActions,
   savePlanned,
   deletePlanned,
+  deleteLeg,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -105,6 +106,7 @@ export function TripScreen({
   /** Planificado (decisión 084). Sin esto (en /demo) los estimados quedan solo en pantalla. */
   savePlanned?: (input: SavePlannedInput) => Promise<{ error: string } | { id: string }>;
   deletePlanned?: (target: { id: string } | { legId: string } | { stayStopId: string }) => Promise<{ error: string } | null>;
+  deleteLeg?: (legId: string) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
@@ -534,6 +536,22 @@ export function TripScreen({
   }
 
   /** Con `ticket`, después de guardar le sube el pasaje que se eligió antes de que existiera el tramo. */
+  /** Borra un tramo con su gasto, sus pasajes y su estimado (decisión 086). */
+  async function removeLeg(legId: string): Promise<string | null> {
+    if (deleteLeg) {
+      const result = await deleteLeg(legId);
+      if (result) return result.error;
+      router.refresh();
+    }
+    setCurrent((t) => ({
+      ...t,
+      legs: t.legs.filter((l) => l.id !== legId),
+      expenses: t.expenses.filter((e) => e.leg_id !== legId),
+      planned: t.planned.filter((p) => p.leg_id !== legId),
+    }));
+    return null;
+  }
+
   /** Guarda un estimado (decisión 084): suelto, de un tramo o del alojamiento de una ciudad. */
   async function storePlanned(input: SavePlannedInput): Promise<string | null> {
     const previous = current.planned.find(
@@ -1007,6 +1025,7 @@ export function TripScreen({
           onSave={storeLeg}
           onAddTicket={(legId, memberId, input) => addAttachment({ kind: "leg", tripId: trip.id, legId, memberId }, input)}
           onRemoveTicket={(legId, ticket) => removeAttachment("leg", legId, ticket)}
+          onDelete={removeLeg}
           onViewTicket={viewTickets}
           readOnly={!canEdit}
         />

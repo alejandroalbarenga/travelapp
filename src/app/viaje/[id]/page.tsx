@@ -9,6 +9,7 @@ import {
   addStop,
   changeStopPlace,
   deleteExpense,
+  deleteLeg,
   deletePersonalCategory,
   deletePersonalExpense,
   deletePlanned,
@@ -53,6 +54,7 @@ async function Trip({ params }: { params: PageProps<"/viaje/[id]">["params"] }) 
       personal={data.personal}
       savePlanned={savePlanned}
       deletePlanned={deletePlanned}
+      deleteLeg={deleteLeg}
       personalActions={{
         saveExpense: savePersonalExpense,
         deleteExpense: deletePersonalExpense,

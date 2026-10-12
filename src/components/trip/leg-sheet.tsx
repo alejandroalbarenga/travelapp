@@ -1,6 +1,6 @@
 "use client";
 
-import { Bus, Car, Clock, Ellipsis, FileText, Pencil, Plane, Ticket, TrainFront, Upload, X, type LucideIcon } from "lucide-react";
+import { Bus, Car, Clock, Ellipsis, FileText, Pencil, Plane, Ticket, TrainFront, Trash2, Upload, X, type LucideIcon } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { sortTickets, ticketTitle } from "@/lib/attachments";
 import { addDays, formatWeekday, stopDates } from "@/lib/dates";
@@ -43,6 +43,7 @@ export function LegSheet({
   onSave,
   onAddTicket,
   onRemoveTicket,
+  onDelete,
   onViewTicket,
   readOnly = false,
 }: {
@@ -64,6 +65,8 @@ export function LegSheet({
   /** Adjunta un pasaje al tramo ya guardado; memberId es de quién es (null: del grupo). */
   onAddTicket: (legId: string, memberId: string | null, input: AttachmentInput) => Promise<string | null>;
   onRemoveTicket: (legId: string, ticket: LegAttachment) => Promise<string | null>;
+  /** Borra el tramo con su gasto, sus pasajes y su estimado (decisión 086). */
+  onDelete?: (legId: string) => Promise<string | null>;
   /** Abre el visor en ese pasaje. */
   onViewTicket: (fromStopId: string, ticketId: string) => void;
   /** Solo ver (decisión 034): todo deshabilitado y sin guardar. */
@@ -119,6 +122,7 @@ export function LegSheet({
   const owners = trip.members.filter((m) => travellers.includes(m.id));
   const [owner, setOwner] = useState<string | null>(myMemberId && travellers.includes(myMemberId) ? myMemberId : null);
   const [pendingTicket, setPendingTicket] = useState<File | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [reading, setReading] = useState(false);
   const [readNote, setReadNote] = useState("");
   const ticketInput = useRef<HTMLInputElement>(null);
@@ -195,6 +199,15 @@ export function LegSheet({
         pendingTicket ? { file: pendingTicket, memberId: owner } : undefined,
         estimated && totalCents ? { amountCents: totalCents, memberIds: split.memberIds.length ? split.memberIds : travellers } : null,
       );
+      if (message) setError(message);
+      else close();
+    });
+  }
+
+  function remove(close: () => void) {
+    if (!savedLegId || !onDelete) return;
+    startTransition(async () => {
+      const message = await onDelete(savedLegId);
       if (message) setError(message);
       else close();
     });
@@ -457,6 +470,29 @@ export function LegSheet({
             ) : (
               <p className="mt-2.5 text-[13px] text-ink-2">{pendingTicket ? "El pasaje se sube al guardar el tramo." : "Guardá el tramo para adjuntar más pasajes."}</p>
             ))}
+
+          {/* Borrar el tramo (decisión 086), con confirmación. */}
+          {!readOnly && savedLegId && onDelete && (
+            <div className="mt-8">
+              {confirmDelete ? (
+                <div className="rounded-[18px] border border-line p-3.5">
+                  <p className="text-[13px] leading-[1.4] text-ink-2">Se borra el tramo con su gasto, sus pasajes y su estimado. No se puede deshacer.</p>
+                  <div className="mt-3 grid grid-cols-[1fr_2fr] gap-2">
+                    <button type="button" onClick={() => setConfirmDelete(false)} className="h-12 rounded-button bg-surface text-sm font-bold">
+                      Cancelar
+                    </button>
+                    <button type="button" onClick={() => remove(close)} disabled={pending} className="h-12 rounded-button bg-delete text-sm font-bold text-white disabled:opacity-50">
+                      Borrar el tramo
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setConfirmDelete(true)} className="flex h-11 items-center gap-2 px-1 text-[13px] font-bold text-danger">
+                  <Trash2 size={16} /> Borrar este tramo
+                </button>
+              )}
+            </div>
+          )}
         </div>
         )}
 

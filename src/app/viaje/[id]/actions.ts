@@ -161,6 +161,18 @@ export async function deleteStop(stopId: string): Promise<{ error: string } | nu
   return error ? { error: lockedError(error) ?? "No pudimos borrar la ciudad." } : null;
 }
 
+// Borrar un tramo (decisión 086). Su gasto, sus pasajes y su estimado se borran en cascada en la
+// base; los archivos de los pasajes se sacan del bucket. RLS: solo los que pueden editar.
+export async function deleteLeg(legId: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { data: files } = await supabase.from("leg_attachments").select("storage_path").eq("leg_id", legId);
+  const { data, error } = await supabase.from("legs").delete().eq("id", legId).select("id");
+  if (error || !data?.length) return { error: lockedError(error) ?? "No pudimos borrar el tramo." };
+  const paths = (files ?? []).map((f) => f.storage_path as string | null).filter((p): p is string => !!p);
+  if (paths.length) await supabase.storage.from("attachments").remove(paths);
+  return null;
+}
+
 export type SaveLegInput = {
   tripId: string;
   fromStopId: string;
