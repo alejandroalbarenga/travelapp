@@ -82,8 +82,11 @@ export function LegSheet({
   const toTz = to?.timezone ?? fromTz;
   const leg = trip.legs.find((l) => l.from_stop_id === fromStopId);
   const order = trip.members.map((m) => m.id);
-  // Viajan los que están en la ciudad de la que se sale (decisión 085): de Bruselas a Brujas, los de Bruselas.
-  const travellers = from.member_ids;
+  // Viajan los que están en la ciudad de salida y también en la de llegada (decisión 092): el que se
+  // queda o se vuelve desde Riga no va a Oslo, y el que se suma en Oslo llega por su cuenta. La vuelta
+  // a casa, los de la última ciudad. Si no hay nadie en las dos, los de la salida.
+  const both = to ? from.member_ids.filter((id) => to.member_ids.includes(id)) : from.member_ids;
+  const travellers = both.length ? both : from.member_ids;
 
   const [mode, setMode] = useState<LegMode | null>(leg?.mode ?? null);
   const [dep, setDep] = useState(leg?.departs_at ? localTime(leg.departs_at, fromTz) : "");
