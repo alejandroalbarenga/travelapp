@@ -576,3 +576,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-12
 **Decisión:** el tramo tiene un **Link** (dónde comprarlo o buscarlo, ej. "omio.com/…"; si no tiene https:// se lo agrega) y **Notas** libres ("Lo compro en Omio"). Se cargan al editar el tramo, abajo del precio, y en la vista del tramo aparecen en una tarjeta: el link se abre en otra pestaña. Sirven sobre todo mientras el tramo está estimado (084), pero valen siempre. Columnas `legs.link_url` y `legs.notes` (migración 0012), guardadas con un update aparte después de `save_leg()`. Sin la migración, el tramo se guarda igual y avisa que falta.
 **Por qué:** pedido de Ale, para anotar dónde va a comprar cada pasaje mientras planifica.
+
+### 091 · Actualizar el viaje
+**Fecha:** 2026-10-13
+**Decisión:** instalada en la pantalla de inicio del iPhone, la app no tiene "recargar". En el viaje, la pastilla del nombre (arriba, en el celular) tiene un ícono de flechas: tocarla trae lo último de la base (lo que cargaron los demás), y el ícono gira mientras tanto. En la web el mismo botón va al lado del calendario. Además, si volvés a la app después de más de 30 segundos afuera, se actualiza sola.
+**Por qué:** pedido de Ale; no había forma de ver lo que cargaban los demás sin cerrar la app.

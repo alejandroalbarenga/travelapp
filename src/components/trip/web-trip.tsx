@@ -1,6 +1,6 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
+import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, RotateCw, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { LegMode, Member } from "@/lib/trip-types";
@@ -51,6 +51,8 @@ export function WebTrip({
   onLock,
   onDelete,
   onCalendar,
+  onRefresh,
+  refreshing = false,
   onMembers,
   expenses,
 }: {
@@ -75,6 +77,9 @@ export function WebTrip({
   onLock: (stopId: string) => void;
   onDelete: (stopId: string) => void;
   onCalendar: () => void;
+  /** Actualizar el viaje con lo último de la base (decisión 091). */
+  onRefresh?: () => void;
+  refreshing?: boolean;
   onMembers: () => void;
   /** La pantalla de Gastos, ya armada para el panel. */
   expenses: ReactNode;
@@ -132,6 +137,11 @@ export function WebTrip({
             {tab === "trip" && (
               <button type="button" onClick={() => onTab("expenses")} className="flex h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-white px-4 text-sm font-bold">
                 <Wallet size={17} /> Gastos
+              </button>
+            )}
+            {onRefresh && (
+              <button type="button" onClick={onRefresh} aria-label="Actualizar el viaje" title="Actualizar" className={iconButton}>
+                <RotateCw size={17} className={refreshing ? "animate-spin" : ""} />
               </button>
             )}
             <button type="button" onClick={onCalendar} aria-label="Calendario" className={iconButton}>

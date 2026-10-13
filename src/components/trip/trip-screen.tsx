@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, RotateCw, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
@@ -154,6 +154,20 @@ export function TripScreen({
   const sheetRadius = Math.min(28, sheetTop);
   const openness = 1 - sheetTop / LIST_TOP; // 0 abajo, 1 arriba del todo
   const [, startTransition] = useTransition();
+
+  // Actualizar el viaje (decisión 091): con el botón de la pastilla del nombre, o solo cuando volvés a
+  // la app después de un rato (en la pantalla de inicio del iPhone no hay "recargar").
+  const [refreshing, startRefresh] = useTransition();
+  const refresh = useCallback(() => startRefresh(() => router.refresh()), [router]);
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt > 30_000) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [refresh]);
 
   /** Con `receipts`, después de guardar le sube las reservas que se eligieron antes de que existiera el alojamiento. */
   async function storeStop(
@@ -694,6 +708,8 @@ export function TripScreen({
     <div className="fixed inset-0 overflow-hidden bg-white">
       {isWeb ? (
         <WebTrip
+          onRefresh={refresh}
+          refreshing={refreshing}
           view={view}
           members={current.members}
           points={points}
@@ -899,12 +915,18 @@ export function TripScreen({
           <ChevronLeft size={20} />
         </Link>
         <div className="absolute top-0 right-[54px] left-[54px] flex h-11 justify-center">
-          <div className="glass flex h-11 max-w-full items-center rounded-full px-[18px] text-center leading-[1.15]">
+          <button
+            type="button"
+            onClick={refresh}
+            aria-label="Actualizar el viaje"
+            className="glass pointer-events-auto flex h-11 max-w-full items-center gap-2.5 rounded-full pr-3.5 pl-[18px] text-center leading-[1.15]"
+          >
             <div className="min-w-0">
               <div className="truncate text-sm font-extrabold">{view.name}</div>
               <div className="text-[11px] font-semibold whitespace-nowrap text-ink-2">{view.range}</div>
             </div>
-          </div>
+            <RotateCw size={16} className={`shrink-0 text-ink-2 ${refreshing ? "animate-spin" : ""}`} />
+          </button>
         </div>
         <div className="absolute top-0 right-0 flex flex-col gap-2.5">
           <button
