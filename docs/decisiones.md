@@ -581,3 +581,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-13
 **Decisión:** instalada en la pantalla de inicio del iPhone, la app no tiene "recargar". En el viaje, la pastilla del nombre (arriba, en el celular) tiene un ícono de flechas: tocarla trae lo último de la base (lo que cargaron los demás), y el ícono gira mientras tanto. En la web el mismo botón va al lado del calendario. Además, si volvés a la app después de más de 30 segundos afuera, se actualiza sola.
 **Por qué:** pedido de Ale; no había forma de ver lo que cargaban los demás sin cerrar la app.
+
+### 092 · En un tramo viajan los que están en las dos ciudades
+**Fecha:** 2026-10-13
+**Decisión:** reemplaza la 085. Los que van en un tramo (pasajeros, división por defecto del precio, el estimado por persona y de quién pueden ser los pasajes) son los que están en la ciudad de salida **y** en la de llegada. Si alguien se queda en Riga (cuenta para el alojamiento de Riga) pero no sigue a Oslo, no entra en el tramo Riga → Oslo; y el que se suma recién en Oslo tampoco, porque llega por su cuenta. La vuelta a casa la hacen los de la última ciudad. Si no hay nadie en las dos ciudades, se usan los de la salida. Los tramos ya guardados conservan su división.
+**Por qué:** pedido de Ale; con la 085, el amigo que se iba en Riga se contaba en el tramo a Oslo y el estimado se multiplicaba de más.
