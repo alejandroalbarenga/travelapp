@@ -586,3 +586,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-13
 **Decisión:** reemplaza la 085. Los que van en un tramo (pasajeros, división por defecto del precio, el estimado por persona y de quién pueden ser los pasajes) son los que están en la ciudad de salida **y** en la de llegada. Si alguien se queda en Riga (cuenta para el alojamiento de Riga) pero no sigue a Oslo, no entra en el tramo Riga → Oslo; y el que se suma recién en Oslo tampoco, porque llega por su cuenta. La vuelta a casa la hacen los de la última ciudad. Si no hay nadie en las dos ciudades, se usan los de la salida. Los tramos ya guardados conservan su división.
 **Por qué:** pedido de Ale; con la 085, el amigo que se iba en Riga se contaba en el tramo a Oslo y el estimado se multiplicaba de más.
+
+### 093 · En la web, las ciudades se leen de izquierda a derecha
+**Fecha:** 2026-10-14
+**Decisión:** la grilla de ciudades de la web deja de ir en zigzag (048): todas las filas van de izquierda a derecha, como se lee, y el tramo de cada ciudad queda siempre a la derecha de su número. Al final de una fila, la línea punteada baja hasta la mitad del hueco entre filas, cruza hacia la izquierda y entra a la primera ciudad de la fila siguiente. Funciona con 2, 3 o 4 columnas.
+**Por qué:** pedido de Ale; en zigzag había que leer la segunda fila de derecha a izquierda.

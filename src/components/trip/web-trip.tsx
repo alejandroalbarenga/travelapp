@@ -236,7 +236,9 @@ type CardHandlers = {
   onDelete: (stopId: string) => void;
 };
 
-// La grilla en zigzag del diseño: las filas pares van de izquierda a derecha y las impares vuelven.
+// La grilla de ciudades (decisión 093): todas las filas van de izquierda a derecha, como se lee. Al
+// final de una fila la línea punteada baja, cruza hacia la izquierda por el hueco entre filas y entra
+// a la primera ciudad de la fila siguiente.
 function Grid({ stops, ...handlers }: { stops: StopView[] } & CardHandlers) {
   const box = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(2);
@@ -274,7 +276,6 @@ function WebStopCard({
   onDelete,
 }: { stop: StopView; index: number; last: boolean; cols: number } & CardHandlers) {
   const row = Math.floor(i / cols);
-  const even = row % 2 === 0;
   const col = i % cols;
   const rowStart = col === 0;
   const rowEnd = col === cols - 1 || last;
@@ -282,8 +283,8 @@ function WebStopCard({
   // en el hueco para encontrarse con la línea que baja (igual que el diseño).
   const prevEdge = i > 0 ? (rowStart ? "-28px" : "0") : "50%";
   const nextEdge = !last ? (rowEnd ? "-28px" : "0") : "50%";
-  const railLeft = even ? prevEdge : nextEdge;
-  const railRight = even ? nextEdge : prevEdge;
+  const railLeft = prevEdge;
+  const railRight = nextEdge;
   const goesDown = !last && col === cols - 1;
   const crossesGap = !last && col !== cols - 1;
 
@@ -296,7 +297,7 @@ function WebStopCard({
       onMouseEnter={() => onHover(stop.id)}
       onMouseLeave={() => onHover(null)}
       className="group relative flex min-w-0 flex-col gap-2.5 pt-[50px]"
-      style={{ gridRow: row + 1, gridColumn: (even ? col : cols - 1 - col) + 1 }}
+      style={{ gridRow: row + 1, gridColumn: col + 1 }}
     >
       <div className="absolute top-[17px]" style={{ left: railLeft, right: railRight, borderTop: DOTS }} />
       <div className="absolute top-9 left-1/2 h-3.5" style={{ borderLeft: DOTS }} />
@@ -315,7 +316,7 @@ function WebStopCard({
           aria-label={leg ? `Tramo · ${leg.text}` : stop.legEmptyLabel}
           title={leg?.timeZoneChange ?? undefined}
           className="absolute top-0 z-[2] flex h-9"
-          style={{ width: "calc(50% + 10px)", left: even ? "calc(50% + 24px)" : "auto", right: even ? "auto" : "calc(50% + 24px)", justifyContent: even ? "flex-start" : "flex-end" }}
+          style={{ width: "calc(50% + 10px)", left: "calc(50% + 24px)", justifyContent: "flex-start" }}
         >
           <span
             className={`flex h-9 max-w-full items-center gap-1.5 overflow-hidden rounded-full bg-white pr-2.5 pl-1 text-xs font-bold whitespace-nowrap shadow-[0_2px_8px_rgb(0_0_0/0.1)] ${leg?.estimate ? "border-[1.5px] border-dashed border-orange text-ink" : leg ? "border border-line text-ink" : "border-[1.5px] border-dashed border-dots text-ink-2"}`}
@@ -331,8 +332,21 @@ function WebStopCard({
           </span>
         </button>
       )}
+      {/* Fin de fila: baja hasta la mitad del hueco, cruza a la izquierda hasta antes de la primera
+          columna y baja hasta el riel de la fila siguiente. La primera columna está a (cols − 1) ×
+          (ancho + hueco) a la izquierda de esta tarjeta. */}
       {goesDown && (
-        <div className="absolute top-[18px] z-[2] w-0" style={{ height: `calc(100% + ${ROW_GAP}px)`, borderLeft: DOTS, left: even ? "auto" : "-29px", right: even ? "-29px" : "auto" }} />
+        <>
+          <div className="absolute top-[18px] right-[-29px] z-[2] w-0" style={{ height: `calc(100% - 18px + ${ROW_GAP / 2}px)`, borderLeft: DOTS }} />
+          <div
+            className="absolute right-[-29px] z-[2] h-0"
+            style={{ top: `calc(100% + ${ROW_GAP / 2}px)`, left: `calc(${-(cols - 1)} * (100% + ${COL_GAP}px) - 29px)`, borderTop: DOTS }}
+          />
+          <div
+            className="absolute z-[2] w-0"
+            style={{ top: `calc(100% + ${ROW_GAP / 2}px)`, height: ROW_GAP / 2 + 18, left: `calc(${-(cols - 1)} * (100% + ${COL_GAP}px) - 29px)`, borderLeft: DOTS }}
+          />
+        </>
       )}
 
       <div className="relative">
@@ -382,7 +396,7 @@ function WebStopCard({
             )}
           </span>
         )}
-        {crossesGap && <div className="absolute -top-[33px] z-[2] h-0" style={{ width: COL_GAP, borderTop: DOTS, left: even ? "100%" : "auto", right: even ? "auto" : "100%" }} />}
+        {crossesGap && <div className="absolute -top-[33px] left-full z-[2] h-0" style={{ width: COL_GAP, borderTop: DOTS }} />}
       </div>
 
       <div className="flex items-start justify-between gap-2">
