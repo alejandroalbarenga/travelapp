@@ -635,3 +635,8 @@ El área crece proporcional a la plata (el radio, con la raíz). Reemplaza el ta
 **Fecha:** 2026-10-15
 **Decisión:** el lector de pasajes (decisión 069) ignora los horarios de compra o emisión ("Sales time", compra, venta, emisión, "order"), que antes tomaba como salida; lee el precio cuando la palabra ("Price") está en un renglón y el monto ("€ 10.80") en el de abajo; y reconoce como tren a SNCB/NMBS, SBB, ÖBB y Deutsche Bahn. Un pasaje sin horario (válido todo el día) deja la salida vacía. Si el PDF trae ida y vuelta, completa con la ida.
 **Por qué:** el pasaje de SNCB de Ale (Bruselas → Brujas) ponía de salida las 23:36, que era la hora en que lo compró, y no leía el precio.
+
+### 100 · Los recordatorios, con el día y la hora del celular
+**Fecha:** 2026-10-15
+**Decisión:** en la pantalla "Recordatorios", el "hoy", "mañana" o el día y la hora se calculan en la zona horaria del teléfono, no en la de la ciudad del recordatorio. Si la ciudad tiene otra hora, se agrega la de allá: antes del viaje, desde Uruguay, el recordatorio de la noche antes del vuelo de Madrid dice "mañana · 15:00 (20:00 allá)". Cuándo se manda la notificación no cambia: sigue siendo a la hora de la ciudad (095).
+**Por qué:** pedido de Ale; desde Uruguay, cuando en Madrid ya era el día siguiente, los recordatorios de mañana aparecían como "hoy".

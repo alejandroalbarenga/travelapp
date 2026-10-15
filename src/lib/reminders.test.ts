@@ -90,9 +90,15 @@ describe("upcomingReminders y reminderWhen", () => {
     expect(mine.some((r) => r.key.startsWith("leg-eve:l0:"))).toBe(false);
   });
 
-  it("cuándo llega, en la hora de la ciudad", () => {
+  it("cuándo llega, en la hora del celular", () => {
     const now = new Date("2026-10-16T12:00:00.000Z");
-    expect(reminderWhen("2026-10-16T18:00:00.000Z", "Europe/Madrid", now)).toBe("hoy · 20:00");
-    expect(reminderWhen("2026-10-17T07:00:00.000Z", "Europe/Brussels", now)).toBe("mañana · 09:00");
+    expect(reminderWhen("2026-10-16T18:00:00.000Z", "Europe/Madrid", now, "Europe/Madrid")).toBe("hoy · 20:00");
+    expect(reminderWhen("2026-10-17T07:00:00.000Z", "Europe/Brussels", now, "Europe/Brussels")).toBe("mañana · 09:00");
+  });
+
+  it("desde Uruguay, el día y la hora de acá, con la de allá al lado", () => {
+    // 15 oct 19:27 en Montevideo = 16 oct 00:27 en Madrid: el recordatorio del 16 a las 20 h (Madrid) es mañana.
+    const now = new Date("2026-10-15T22:27:00.000Z");
+    expect(reminderWhen("2026-10-16T18:00:00.000Z", "Europe/Madrid", now, "America/Montevideo")).toBe("mañana · 15:00 (20:00 allá)");
   });
 });
