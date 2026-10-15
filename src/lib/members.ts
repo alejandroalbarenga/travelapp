@@ -14,3 +14,8 @@ export function pickColor(usedColors: string[]): string {
   const used = new Set(usedColors.map((c) => c.toUpperCase()));
   return AVATAR_COLORS.find((c) => !used.has(c)) ?? AVATAR_COLORS[usedColors.length % AVATAR_COLORS.length];
 }
+
+/** ["Ale", "Ro", "Jo"] → "Ale, Ro y Jo" */
+export function namesList(names: string[]): string {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
+}

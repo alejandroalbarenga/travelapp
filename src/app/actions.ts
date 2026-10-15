@@ -69,7 +69,7 @@ export async function deleteTrip(tripId: string): Promise<{ error: string } | nu
   return error ? { error: "No pudimos borrar el viaje." } : null;
 }
 
-// Notificaciones de gastos (decisión 065): la suscripción de Web Push de este teléfono.
+// Notificaciones de gastos (decisión 094): la suscripción de Web Push de este teléfono.
 export async function savePushSubscription(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<{ error: string } | null> {
   const supabase = await createClient();
   const { error } = await supabase

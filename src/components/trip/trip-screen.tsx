@@ -1,34 +1,40 @@
 "use client";
 
-import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, RotateCw, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { deleteLock, lockMessage, nightsLock } from "@/lib/stop-lock";
 import { foldLabel, myPart } from "@/lib/my-part";
 import { formatWeekday } from "@/lib/dates";
-import type { SaveExpenseInput, SaveLegInput, SaveStopInput } from "@/app/viaje/[id]/actions";
+import type { SaveExpenseInput, SaveLegInput, SavePlannedInput, SaveStopInput } from "@/app/viaje/[id]/actions";
+import { buildPlanView, type PlannedRowView } from "@/lib/planning";
+
+type PlanTarget = PlannedRowView["target"];
 import { buildExpensesView, type ExpenseRowView, type TransferView } from "@/lib/expenses-view";
 import type { ChipDisplay } from "@/lib/legs";
 import type { Place } from "@/lib/places";
 import { fileKind, sortTickets, ticketTitle } from "@/lib/attachments";
 import { addLinkAttachment, deleteAttachment, signedUrl, uploadAttachment, type AttachmentTarget } from "@/lib/supabase/attachments";
 import { initialsFor, pickColor } from "@/lib/members";
-import type { Activity, Attachment, Expense, Leg, LegAttachment, LegMode, Member, MemberRole, Stay, Trip } from "@/lib/trip-types";
+import type { Activity, Attachment, Expense, Leg, LegAttachment, LegMode, Member, MemberRole, PlannedItem, Stay, Trip } from "@/lib/trip-types";
 import { buildTripView, type StopView } from "@/lib/trip-view";
 import type { TripTab } from "../trip-tabs";
 import { CitySheet } from "./city-sheet";
 import { CitySearchSheet, type CitySearchMode } from "./city-search-sheet";
 import { LegSheet, type LegDraft } from "./leg-sheet";
 import { ExpenseSheet } from "./expense-sheet";
+import type { PersonalData } from "@/lib/personal";
 import { ExpensesScreen } from "./expenses-screen";
+import { PlannedSheet } from "./planned-sheet";
+import type { PersonalActions } from "./personal-expenses";
 import { MembersSheet } from "./members-sheet";
 import { TransferSheet, type TransferInput } from "./transfer-sheet";
 import type { AttachmentInput } from "./attachment-controls";
 import { TicketViewer, type ViewerItem } from "./ticket-viewer";
 import { SwipeRow, type SwipeSide } from "./swipe-row";
 import { NightsRing } from "./nights-ring";
-import { WEB_HEADER_HEIGHT, WebTrip } from "./web-trip";
+import { WebTrip } from "./web-trip";
 import { SheetPanelContext } from "../bottom-sheet";
 import { useIsWeb } from "@/lib/use-is-web";
 import { CalendarSheet, type CalendarMode } from "./calendar-sheet";
@@ -38,7 +44,7 @@ import { useDragSheet } from "./use-drag-sheet";
 
 // Pantalla 01 · Viaje (docs/diseño.md): mapa de fondo y la lista de ciudades encima como sheet.
 
-const WEB_SHEET_PANEL = { left: "0px", width: "58%", top: `${WEB_HEADER_HEIGHT}px` };
+const WEB_SHEET_PANEL = { left: "0px", width: "58%" };
 const LIST_TOP = 340; // donde arranca la lista; el resto de arriba es mapa
 const PEEK = 170; // lo que se ve de la lista abajo del todo (rayita + "Empieza el viaje" + aire para los botones de abajo)
 
@@ -69,6 +75,11 @@ export function TripScreen({
   deleteTrip,
   setStopLocked,
   addMember,
+  personal = null,
+  personalActions,
+  savePlanned,
+  deletePlanned,
+  deleteLeg,
 }: {
   trip: Trip;
   chipDisplay: ChipDisplay;
@@ -77,7 +88,7 @@ export function TripScreen({
   saveNights?: (stopId: string, nights: number) => Promise<{ error: string } | null>;
   setStopLocked?: (stopId: string, locked: boolean) => Promise<{ error: string } | null>;
   addMember?: (tripId: string, name: string) => Promise<{ member: Member } | { error: string }>;
-  saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | null>;
+  saveLeg?: (input: SaveLegInput) => Promise<{ error: string } | { legId: string }>;
   saveStop?: (input: SaveStopInput) => Promise<{ error: string } | { stayId: string | null }>;
   deleteStop?: (stopId: string) => Promise<{ error: string } | null>;
   setMemberRole?: (memberId: string, role: "editor" | "viewer") => Promise<{ error: string } | null>;
@@ -89,6 +100,13 @@ export function TripScreen({
   settleDebt?: (tripId: string, from: string, to: string, amountCents: number, note?: string | null) => Promise<{ id: string } | { error: string }>;
   undoSettlement?: (settlementId: string) => Promise<{ error: string } | null>;
   deleteTrip?: (tripId: string) => Promise<{ error: string } | null>;
+  /** Tus gastos personales (decisión 076); null si la base no tiene la migración 0010. */
+  personal?: PersonalData | null;
+  personalActions?: PersonalActions;
+  /** Planificado (decisión 084). Sin esto (en /demo) los estimados quedan solo en pantalla. */
+  savePlanned?: (input: SavePlannedInput) => Promise<{ error: string } | { id: string }>;
+  deletePlanned?: (target: { id: string } | { legId: string } | { stayStopId: string }) => Promise<{ error: string } | null>;
+  deleteLeg?: (legId: string) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
@@ -107,6 +125,7 @@ export function TripScreen({
   // Gasto abierto: "new" para uno nuevo, o el id del que se edita.
   const [openExpense, setOpenExpense] = useState<string | null>(null);
   const [openTransfer, setOpenTransfer] = useState(false);
+  const [openPlanned, setOpenPlanned] = useState<PlannedItem | "new" | null>(null);
   const [calendar, setCalendar] = useState<CalendarMode | null>(null);
   // Tu parte del viaje (decisión 054): lo de antes de que llegues y después de que te vas, plegado.
   const [showBefore, setShowBefore] = useState(false);
@@ -136,8 +155,27 @@ export function TripScreen({
   const openness = 1 - sheetTop / LIST_TOP; // 0 abajo, 1 arriba del todo
   const [, startTransition] = useTransition();
 
-  /** Con `receipt`, después de guardar le sube la reserva que se eligió antes de que existiera el alojamiento. */
-  async function storeStop(input: SaveStopInput, stay: Stay | null, receipt?: File): Promise<string | null> {
+  // Actualizar el viaje (decisión 091): con el botón de la pastilla del nombre, o solo cuando volvés a
+  // la app después de un rato (en la pantalla de inicio del iPhone no hay "recargar").
+  const [refreshing, startRefresh] = useTransition();
+  const refresh = useCallback(() => startRefresh(() => router.refresh()), [router]);
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt > 30_000) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [refresh]);
+
+  /** Con `receipts`, después de guardar le sube las reservas que se eligieron antes de que existiera el alojamiento. */
+  async function storeStop(
+    input: SaveStopInput,
+    stay: Stay | null,
+    receipts: File[] = [],
+    estimate?: { amountCents: number; memberIds: string[] } | null,
+  ): Promise<string | null> {
     let stayId = stay?.id ?? null;
     if (saveStop) {
       const result = await saveStop(input);
@@ -150,7 +188,26 @@ export function TripScreen({
       stops: t.stops.map((s) => (s.id === input.stopId ? { ...s, member_ids: input.memberIds, notes: input.notes || null } : s)),
       stays: [...t.stays.filter((s) => s.stop_id !== input.stopId), ...(stay && stayId ? [{ ...stay, id: stayId }] : [])],
     }));
-    if (receipt && stayId) return addAttachment({ kind: "stay", tripId: trip.id, stayId }, { file: receipt });
+    // El estimado del alojamiento (decisión 084), aparte; o se borra si ya está pagado.
+    const planned = estimate
+      ? await storePlanned({
+          id: null,
+          tripId: trip.id,
+          stayStopId: input.stopId,
+          stopId: input.stopId,
+          description: input.stayDescription,
+          category: "lodging",
+          amountCents: estimate.amountCents,
+          memberIds: estimate.memberIds,
+        })
+      : await removePlanned({ stayStopId: input.stopId });
+    if (planned) return planned;
+    if (stayId) {
+      for (const file of receipts) {
+        const message = await addAttachment({ kind: "stay", tripId: trip.id, stayId }, { file });
+        if (message) return message;
+      }
+    }
     return null;
   }
 
@@ -492,7 +549,69 @@ export function TripScreen({
     return null;
   }
 
-  async function storeLeg(draft: LegDraft, description: string): Promise<string | null> {
+  /** Con `ticket`, después de guardar le sube el pasaje que se eligió antes de que existiera el tramo. */
+  /** Borra un tramo con su gasto, sus pasajes y su estimado (decisión 086). */
+  async function removeLeg(legId: string): Promise<string | null> {
+    if (deleteLeg) {
+      const result = await deleteLeg(legId);
+      if (result) return result.error;
+      router.refresh();
+    }
+    setCurrent((t) => ({
+      ...t,
+      legs: t.legs.filter((l) => l.id !== legId),
+      expenses: t.expenses.filter((e) => e.leg_id !== legId),
+      planned: t.planned.filter((p) => p.leg_id !== legId),
+    }));
+    return null;
+  }
+
+  /** Guarda un estimado (decisión 084): suelto, de un tramo o del alojamiento de una ciudad. */
+  async function storePlanned(input: SavePlannedInput): Promise<string | null> {
+    const previous = current.planned.find(
+      (p) => p.id === input.id || (!!input.legId && p.leg_id === input.legId) || (!!input.stayStopId && p.stay_stop_id === input.stayStopId),
+    );
+    let id = previous?.id ?? `estimado-${Date.now()}`;
+    if (savePlanned) {
+      const result = await savePlanned({ ...input, id: previous && !previous.id.startsWith("estimado-") ? previous.id : input.id });
+      if ("error" in result) return result.error;
+      id = result.id;
+      router.refresh();
+    }
+    const item: PlannedItem = {
+      id,
+      leg_id: input.legId ?? null,
+      stay_stop_id: input.stayStopId ?? null,
+      stop_id: input.stopId,
+      description: input.description,
+      category: input.category,
+      amount_cents: input.amountCents,
+      member_ids: input.memberIds,
+      created_at: previous?.created_at ?? new Date().toISOString(),
+    };
+    setCurrent((t) => ({ ...t, planned: [...t.planned.filter((p) => p.id !== previous?.id), item] }));
+    return null;
+  }
+
+  async function removePlanned(target: { id: string } | { legId: string } | { stayStopId: string }): Promise<string | null> {
+    const match = (p: PlannedItem) => ("id" in target ? p.id === target.id : "legId" in target ? p.leg_id === target.legId : p.stay_stop_id === target.stayStopId);
+    if (!current.planned.some(match)) return null;
+    if (deletePlanned) {
+      const result = await deletePlanned(target);
+      if (result) return result.error;
+      router.refresh();
+    }
+    setCurrent((t) => ({ ...t, planned: t.planned.filter((p) => !match(p)) }));
+    return null;
+  }
+
+  async function storeLeg(
+    draft: LegDraft,
+    description: string,
+    ticket?: { file: File; memberId: string | null },
+    estimate?: { amountCents: number; memberIds: string[] } | null,
+  ): Promise<string | null> {
+    let legId = draft.id ?? `nuevo-${draft.from_stop_id}`;
     if (saveLeg) {
       const result = await saveLeg({
         tripId: trip.id,
@@ -505,15 +624,24 @@ export function TripScreen({
         paidByMemberId: draft.paid_by_member_id,
         description,
         splits: draft.split,
+        linkUrl: draft.link_url ?? null,
+        notes: draft.notes ?? null,
       });
-      if (result) return result.error;
+      if ("error" in result) return result.error;
+      legId = result.legId;
       router.refresh();
     }
     setCurrent((t) => {
       const previous = t.legs.find((l) => l.from_stop_id === draft.from_stop_id);
-      const leg: Leg = { ...draft, id: draft.id ?? `nuevo-${draft.from_stop_id}`, attachments: previous?.attachments ?? [] };
+      const leg: Leg = { ...draft, id: legId, attachments: previous?.attachments ?? [] };
       return { ...t, legs: [...t.legs.filter((l) => l.from_stop_id !== draft.from_stop_id), leg] };
     });
+    // El estimado del tramo (decisión 084): se guarda aparte, o se borra si ya está pagado.
+    const planned = estimate
+      ? await storePlanned({ id: null, tripId: trip.id, legId, stopId: draft.from_stop_id, description, category: "transport", amountCents: estimate.amountCents, memberIds: estimate.memberIds })
+      : await removePlanned({ legId });
+    if (planned) return planned;
+    if (ticket) return addAttachment({ kind: "leg", tripId: trip.id, legId, memberId: ticket.memberId }, { file: ticket.file });
     return null;
   }
   const listTrip = hidden.length ? { ...current, stops: current.stops.filter((s) => !hidden.includes(s.id)) } : current;
@@ -561,9 +689,15 @@ export function TripScreen({
     .flatMap((s, i) => (s.lat != null && s.lng != null ? [{ lat: s.lat, lng: s.lng, label: String(i + 1), stopId: s.id, city: s.city }] : []));
 
   const ordered = [...current.stops].sort((a, b) => a.position - b.position);
-  // "Agregar ciudad" desde el +: antes de la última (que suele ser la vuelta), como en el diseño.
-  const lastBeforeReturn = (ordered[ordered.length - 2] ?? ordered[ordered.length - 1])?.id ?? null;
+  // "Agregar ciudad" desde el +: después de la última ciudad (decisión 068).
+  const lastStop = ordered[ordered.length - 1]?.id ?? null;
   const expensesView = buildExpensesView(current, myMemberId);
+  const planView = buildPlanView(current, myMemberId);
+  function openPlanTarget(target: PlanTarget) {
+    if (target.kind === "leg") setOpenLeg(target.fromStopId);
+    else if (target.kind === "stay") setOpenCity(target.stopId);
+    else setOpenPlanned(current.planned.find((p) => p.id === target.id) ?? null);
+  }
   const firstMissingLeg = ordered.slice(0, -1).find((s) => !current.legs.some((l) => l.from_stop_id === s.id))?.id ?? null;
 
   const travellers = trip.members.length;
@@ -574,6 +708,8 @@ export function TripScreen({
     <div className="fixed inset-0 overflow-hidden bg-white">
       {isWeb ? (
         <WebTrip
+          onRefresh={refresh}
+          refreshing={refreshing}
           view={view}
           members={current.members}
           points={points}
@@ -586,7 +722,7 @@ export function TripScreen({
           focusStopId={openCity}
           part={part}
           partStopIds={partStopIds}
-          onAddCity={(afterStopId) => setCitySearch({ kind: "add", afterStopId: afterStopId === undefined ? lastBeforeReturn : afterStopId })}
+          onAddCity={(afterStopId) => setCitySearch({ kind: "add", afterStopId: afterStopId === undefined ? lastStop : afterStopId })}
           onAddExpense={() => setOpenExpense("new")}
           onNights={changeNights}
           onLock={(stopId) => toggleLock(stopId)}
@@ -605,6 +741,8 @@ export function TripScreen({
               onUndo={undoSettle}
               onTransfer={() => setOpenTransfer(true)}
               foldStopIds={foldStopIds}
+              personal={{ tripId: trip.id, initial: personal, actions: personalActions }}
+              plan={{ view: planView, onOpen: openPlanTarget, onAdd: canEdit ? () => setOpenPlanned("new") : undefined }}
               embedded
             />
           }
@@ -762,6 +900,8 @@ export function TripScreen({
           onUndo={undoSettle}
           onTransfer={() => setOpenTransfer(true)}
           foldStopIds={foldStopIds}
+          personal={{ tripId: trip.id, initial: personal, actions: personalActions }}
+          plan={{ view: planView, onOpen: openPlanTarget, onAdd: canEdit ? () => setOpenPlanned("new") : undefined }}
           onBack={() => {
             setTab("trip");
             setFabOpen(false);
@@ -775,12 +915,18 @@ export function TripScreen({
           <ChevronLeft size={20} />
         </Link>
         <div className="absolute top-0 right-[54px] left-[54px] flex h-11 justify-center">
-          <div className="glass flex h-11 max-w-full items-center rounded-full px-[18px] text-center leading-[1.15]">
+          <button
+            type="button"
+            onClick={refresh}
+            aria-label="Actualizar el viaje"
+            className="glass pointer-events-auto flex h-11 max-w-full items-center gap-2.5 rounded-full pr-3.5 pl-[18px] text-center leading-[1.15]"
+          >
             <div className="min-w-0">
               <div className="truncate text-sm font-extrabold">{view.name}</div>
               <div className="text-[11px] font-semibold whitespace-nowrap text-ink-2">{view.range}</div>
             </div>
-          </div>
+            <RotateCw size={16} className={`shrink-0 text-ink-2 ${refreshing ? "animate-spin" : ""}`} />
+          </button>
         </div>
         <div className="absolute top-0 right-0 flex flex-col gap-2.5">
           <button
@@ -823,7 +969,7 @@ export function TripScreen({
                   { label: "Registrar transferencia", Icon: ArrowLeftRight, onClick: () => setOpenTransfer(true), disabled: false },
                 ]
               : [
-                  { label: "Agregar ciudad", Icon: MapPin, onClick: () => setCitySearch({ kind: "add", afterStopId: lastBeforeReturn }), disabled: false },
+                  { label: "Agregar ciudad", Icon: MapPin, onClick: () => setCitySearch({ kind: "add", afterStopId: lastStop }), disabled: false },
                   { label: "Agregar tramo", Icon: Route, onClick: () => (firstMissingLeg ? setOpenLeg(firstMissingLeg) : undefined), disabled: !firstMissingLeg },
                   { label: "Agregar gasto", Icon: Receipt, onClick: () => setOpenExpense("new"), disabled: false },
                 ]
@@ -903,6 +1049,7 @@ export function TripScreen({
           onSave={storeLeg}
           onAddTicket={(legId, memberId, input) => addAttachment({ kind: "leg", tripId: trip.id, legId, memberId }, input)}
           onRemoveTicket={(legId, ticket) => removeAttachment("leg", legId, ticket)}
+          onDelete={removeLeg}
           onViewTicket={viewTickets}
           readOnly={!canEdit}
         />
@@ -1001,6 +1148,16 @@ export function TripScreen({
           onClose={() => setViewer(null)}
         />
       )}
+      {openPlanned && (
+        <PlannedSheet
+          trip={current}
+          item={openPlanned === "new" ? null : openPlanned}
+          readOnly={!canEdit}
+          onClose={() => setOpenPlanned(null)}
+          onSave={storePlanned}
+          onDelete={(id) => removePlanned({ id })}
+        />
+      )}
       {openTransfer && (
         <TransferSheet
           members={current.members}
@@ -1083,7 +1240,7 @@ function StopCard({
         <span className="truncate text-[17px] font-bold">{stop.name}</span>
         <span className="text-[13px] text-ink-2">{stop.dates}</span>
         {stop.stay && (
-          <span className={`flex items-center gap-1 truncate text-[11px] font-bold ${stop.stay.paid ? "text-success" : "text-ink-2"}`}>
+          <span className={`flex items-center gap-1 truncate text-[11px] font-bold ${stop.stay.paid ? "text-success" : stop.stay.estimated ? "text-tz-text" : "text-ink-2"}`}>
             <Bed size={14} className="shrink-0" />
             <span className="truncate">{stop.stay.text}</span>
           </span>
@@ -1159,11 +1316,17 @@ function LegRow({
       )}
       {leg && Icon ? (
         <>
-          <button type="button" onClick={onOpen} className="relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full border border-line bg-white pr-3 pl-1.5">
+          {/* Un tramo con precio estimado, todavía sin pagar (decisión 088): borde punteado naranja y "~€90". */}
+          <button
+            type="button"
+            onClick={onOpen}
+            className={`relative ml-1.5 flex h-11 min-w-0 items-center gap-2 rounded-full bg-white pr-3 pl-1.5 ${leg.estimate ? "border-[1.5px] border-dashed border-orange" : "border border-line"}`}
+          >
             <span className={`flex size-8 shrink-0 items-center justify-center rounded-full ${MODE_CLASS[leg.mode]}`}>
               <Icon size={16} />
             </span>
             <span className="min-w-0 truncate text-[13px] font-bold">{leg.text}</span>
+            {leg.estimate && <span className="shrink-0 rounded-full bg-tz-bg px-2 py-0.5 text-[11px] font-bold text-tz-text">{leg.estimate}</span>}
             {leg.timeZoneChange && (
               <span title={leg.timeZoneChange} className="flex size-5 shrink-0 items-center justify-center rounded-full bg-tz-icon-bg text-orange">
                 <Clock size={14} />

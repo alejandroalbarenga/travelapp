@@ -65,6 +65,9 @@ export type Leg = {
   attachments: LegAttachment[];
   /** División del gasto del tramo; vacía si no tiene precio. */
   split: { member_id: string; amount_cents: number }[];
+  /** Dónde comprarlo o buscarlo, y una nota libre (decisión 090). */
+  link_url?: string | null;
+  notes?: string | null;
 };
 
 export type Stay = {
@@ -140,4 +143,19 @@ export type Trip = {
   settlements: Settlement[];
   /** Historial de movimientos, del más nuevo al más viejo. */
   activity: Activity[];
+  /** Lo planificado: estimados que todavía no son gastos (decisión 084). */
+  planned: PlannedItem[];
+};
+
+/** Un estimado (decisión 084): de un tramo, de un alojamiento o suelto. No entra en el balance. */
+export type PlannedItem = {
+  id: string;
+  leg_id: string | null;
+  stay_stop_id: string | null;
+  stop_id: string | null;
+  description: string;
+  category: ExpenseCategory;
+  amount_cents: number;
+  member_ids: string[];
+  created_at: string;
 };

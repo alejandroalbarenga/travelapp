@@ -4,7 +4,7 @@ import { Bell, BellOff } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { deletePushSubscription, savePushSubscription } from "@/app/actions";
 
-// Activar las notificaciones de gastos en este teléfono (decisión 065). El iPhone solo deja
+// Activar las notificaciones de gastos en este teléfono (decisión 094). El iPhone solo deja
 // pedir permiso cuando la persona toca algo, y solo con la app agregada a la pantalla de inicio.
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;

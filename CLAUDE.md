@@ -21,7 +21,7 @@ El nombre de la rama describe lo que se está haciendo, con un prefijo por tipo:
 
 ## El producto
 
-**Vamo y vamo** (decisión 035): web app mobile para organizar y seguir un viaje en grupo, instalable en la pantalla de inicio del iPhone (PWA). Referencia: la simplicidad de Polarsteps. El repo y el proyecto de Vercel se siguen llamando `travelapp`.
+**Vamo** (decisiones 035 y 078): web app mobile para organizar y seguir un viaje en grupo, instalable en la pantalla de inicio del iPhone (PWA). Referencia: la simplicidad de Polarsteps. El repo y el proyecto de Vercel se siguen llamando `travelapp`.
 
 - Ciudades en orden con sus noches; las fechas se calculan solas.
 - Tramos de transporte entre ciudades con su costo y el pasaje adjunto (PDF, captura o link).
@@ -50,7 +50,7 @@ Proyecto personal de Ale. **MVP usable el 16 de octubre de 2026** (el viaje arra
 - **Vercel** (free tier) para el deploy, conectado a GitHub.
 - **npm** como gestor de paquetes.
 - Fuentes: Plus Jakarta Sans, y Caveat solo para la frase de cada ciudad.
-- Logo e ícono: `public/logo.svg` ("Vamo" en Caveat Bold, blanco sobre navy; decisión 062). Los íconos de cada tamaño se dibujan desde ese archivo en `src/lib/app-icon.tsx`.
+- Logo e ícono: `public/logo.svg` ("Vamo" en Caveat Bold, blanco sobre rosado; decisiones 062 y 066). Los íconos de cada tamaño se dibujan desde ese archivo en `src/lib/app-icon.tsx`.
 - **Mapa**: OpenStreetMap con Leaflet; ubicación de las ciudades con Nominatim (decisión 030).
 
 ## Comandos
@@ -82,11 +82,14 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - `stop_members`: stop_id, member_id (quién está en cada parada)
 - `stays`: id, stop_id, name, address, booked_via (booking/airbnb/hostelworld/direct/other, nullable), total_price_cents, paid_by_member_id, expense_id, notes, check_in_time, check_out_time
 - `stay_attachments`: id, stay_id, kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at
-- `legs`: id, trip_id, from_stop_id, to_stop_id, mode (car/train/plane/bus/other), departs_at, arrives_at, total_price_cents, paid_by_member_id, expense_id
+- `legs`: id, trip_id, from_stop_id, to_stop_id, mode (car/train/plane/bus/other), departs_at, arrives_at, total_price_cents, paid_by_member_id, expense_id, link_url, notes (decisión 090)
 - `leg_attachments`: id, leg_id, member_id (de quién es el pasaje, nullable), kind (pdf/image/link), storage_path, url, file_name, size_bytes, uploaded_by_member_id, created_at
 - `expenses`: id, trip_id, stop_id (opcional), leg_id (opcional), stay_id (opcional), description, category, amount_cents, paid_by_member_id, created_by, created_at
 - `expense_splits`: expense_id, member_id, amount_cents
 - `settlements`: id, trip_id, from_member_id, to_member_id, amount_cents, settled_at, note
+- `personal_categories`: id, trip_id, user_id, name, budget_cents (nullable), position — presupuestos personales (decisión 076)
+- `personal_expenses`: id, trip_id, user_id, category (nombre), description, amount_cents, spent_on, created_at — gastos personales, solo los ve quien los carga
+- `planned_items`: id, trip_id, leg_id (unique, nullable), stay_stop_id (unique, nullable), stop_id, description, category, amount_cents, member_ids, created_by, created_at — estimados que no son gastos (decisión 084)
 - `push_subscriptions`: endpoint, user_id, p256dh, auth, created_at (los teléfonos que activaron las notificaciones; cada uno ve solo las suyas)
 - `activity`: id, trip_id, actor_member_id, actor_name, action, description, from_name, to_name, amount_cents, previous_amount_cents, changes, created_at (historial, solo lectura)
 
@@ -97,22 +100,26 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - Los gastos se guardan **siempre** con `save_expense()`: escribe el gasto y su división en una transacción. Un trigger diferido rechaza cualquier división que no sume el total.
 - Los tramos se guardan con `save_leg()` (crea, actualiza o borra su gasto) y las noches se cambian con `set_stop_nights()`, que corre los horarios de los tramos siguientes en hora local.
 - La pantalla de ciudad guarda con `save_stop()`: quién está, notas y alojamiento con su gasto, todo junto.
-- Los sheets usan `src/components/bottom-sheet.tsx` (entra desde abajo, se cierra con el fondo, Escape o arrastrando el handle).
+- Las pantallas que se abren encima (ciudad, tramo, gasto, etc.) usan `src/components/bottom-sheet.tsx`: en el celular son pantalla completa que entra desde la derecha, con flecha de volver, gesto desde el borde izquierdo y entrada en el historial para el "atrás" (decisión 068); en la web, también pantalla nueva que ocupa el panel izquierdo del viaje, o toda la ventana afuera del viaje (decisión 077). El único panel que se arrastra es el del viaje sobre el mapa.
 - Todo campo donde se escribe (input, select, textarea) lleva letra de 16 px o más: con menos, el iPhone hace zoom al tocarlo (decisión 059).
 - El panel del navegador de Claude a veces no genera cuadros de animación sin una interacción: los sheets no entran y el contenido en streaming queda en "Cargando…" (llegó, pero React lo muestra en el próximo cuadro). Sacar una captura o redimensionar la ventana lo destraba. En un teléfono no pasa.
 - La fecha de un tramo no se elige: es el día de salida de la parada de origen. Si llegada ≤ salida, se toma como llegada al día siguiente.
 - Permisos (migración 0004): `can_edit_trip()` y `is_trip_admin()` en las políticas; un solo `admin` por viaje (índice único) que no se puede degradar ni borrar. En la interfaz, `canEdit` oculta los controles y los sheets reciben `readOnly`. En `/demo`, `?como=jo` muestra la app como alguien de solo ver y `?vacio` un viaje recién creado.
 - Ciudades bloqueadas (decisión 042, migración 0008): `stops.locked`; triggers rechazan cambiar la ciudad, su gente, alojamiento y comprobante, y correr sus fechas. Las reglas para avisar antes están en `src/lib/stop-lock.ts`.
 - Agregar ciudad: `add_stop()` (migración 0005) inserta después de otra, copia quién está y borra el tramo que salía de la anterior. La búsqueda es con Nominatim desde el servidor (`src/lib/places.ts`) y la zona horaria sale de las coordenadas con `@photostructure/tz-lookup`.
+- La reserva del alojamiento y el pasaje del tramo se leen en el teléfono para completar los campos vacíos: `src/lib/read-document.ts` saca los renglones (PDF con pdf.js, imagen con OCR de tesseract.js) y las reglas están en `src/lib/booking-pdf.ts` y `src/lib/ticket-pdf.ts` (decisiones 057, 067 y 069).
+- Gastos personales (migración 0010, decisión 076): pestaña "Míos" de Gastos (`src/components/trip/personal-expenses.tsx`), con la lógica en `src/lib/personal.ts`. RLS: solo el dueño. No entran en el balance. Si la base no tiene la migración, la pestaña lo avisa.
+- Planificado (migración 0011, decisión 084): el precio de un tramo o alojamiento puede ser "Estimado" (sin gasto, va a `planned_items`) y hay estimados sueltos; la pestaña "Planificado" de Gastos suma lo gastado más lo estimado (`src/lib/planning.ts`). Sin la migración, no hay estimados.
+- La foto del ticket completa el gasto (`src/lib/receipt.ts`, decisión 074).
 - Archivos en el bucket privado `attachments`, con ruta `{trip_id}/...`; la política de Storage mira el primer segmento. Se suben desde el navegador (`src/lib/supabase/attachments.ts`) y se abren con URL firmada en `TicketViewer`, que dibuja los PDF con pdf.js (decisión 040).
 - Categorías de gasto (propuesta, ver pregunta abierta en `docs/plan.md`): `transport`, `lodging`, `food`, `activities`, `other`.
 
-Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en la parada (`stop_members`): la del alojamiento, o la de destino del tramo. Se puede pasar a montos distintos (decisión 032).
+Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por defecto se divide entre los que están en la parada (`stop_members`): la del alojamiento; en un tramo, los que están en la ciudad de salida y también en la de llegada (decisión 092). Se puede pasar a montos distintos (decisión 032).
 
 ## Lógica clave
 
 - **Balance**: neto por miembro = lo que pagó − lo que le toca ± settlements. Las deudas se simplifican de forma greedy (el que más debe le paga al que más le deben). "Marcar como saldado" y "Registrar una transferencia" crean un settlement (la transferencia con su nota); "Deshacer" lo borra.
-- **Notificaciones de gastos** (decisión 065, migración 0010): al cargar, cambiar o borrar un gasto suelto (`saveExpense`, `deleteExpense`), `notifyExpense()` (`src/lib/push.ts`, con `after()`) les avisa por Web Push a los del gasto (los que lo dividen y quien pagó), salvo a quien lo hizo. A quién avisar lo da `push_targets()`. Sin las claves VAPID no se manda nada. Se activan desde el inicio (`PushToggle`); en el iPhone, solo con la app en la pantalla de inicio.
+- **Notificaciones de gastos** (decisión 094, migración 0013): al cargar, cambiar o borrar un gasto suelto (`saveExpense`, `deleteExpense`), `notifyExpense()` (`src/lib/push.ts`, con `after()`) les avisa por Web Push a los del gasto (los que lo dividen y quien pagó), salvo a quien lo hizo. A quién avisar lo da `push_targets()`. Sin las claves VAPID no se manda nada. Se activan desde el inicio (`PushToggle`); en el iPhone, solo con la app en la pantalla de inicio.
 - **Historial** (migración 0006): la tabla `activity` la escriben solo los triggers de `expenses` y `settlements` (alta y baja) y `save_expense()` (ediciones, con qué cambió). Nadie la edita ni la borra. En `/demo` se anota en el cliente.
 - **Fechas**: cambiar las noches recalcula todas las fechas posteriores, pero no el fin del viaje (`trips.end_date` es fijo). Las noches cargadas se comparan con la duración del viaje (decisión 029).
 - **Wallet**: la web no puede leer la Wallet del iPhone. Solo se muestra el recordatorio y el link de la aerolínea.

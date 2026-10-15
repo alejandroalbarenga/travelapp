@@ -1,4 +1,4 @@
-import { daysBetween } from "./dates";
+import { daysBetween, stopDates } from "./dates";
 
 // Pantalla 00 · Inicio y 07 · Nuevo viaje (docs/diseño.md): reglas sin interfaz.
 
@@ -36,4 +36,61 @@ export function tripSubtitle(stops: number, start: string, end: string): string 
 /** Fecha de hoy en Uruguay, como "YYYY-MM-DD" (el servidor corre en UTC). */
 export function todayInUruguay(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Montevideo" }).format(now);
+}
+
+export type StatsTrip = {
+  /** Inicio del viaje (no el de tu parte): de ahí salen las fechas de cada ciudad. */
+  trip_start: string;
+  /** Tu parte del viaje (decisión 054). */
+  start_date: string;
+  end_date: string;
+  stops: { nights: number; country: string | null; country_code: string | null; member_ids: string[] }[];
+  myMemberId: string | null;
+};
+
+export type TravelStats = { countries: { code: string; name: string }[]; tripsDone: number; nightsAway: number };
+
+/**
+ * Tus estadísticas del inicio (decisión 071), con lo que ya pasó: los países de las ciudades donde
+ * dormiste al menos una noche (sin escalas), los viajes terminados y las noches afuera (contando el
+ * viaje en curso hasta hoy). null si todavía no empezó ningún viaje.
+ */
+export function travelStats(trips: StatsTrip[], today: string): TravelStats | null {
+  const started = trips.filter((t) => t.start_date <= today);
+  if (!started.length) return null;
+  const countries = new Map<string, string>();
+  let nightsAway = 0;
+  for (const t of started) {
+    nightsAway += Math.max(0, daysBetween(t.start_date, t.end_date < today ? t.end_date : today));
+    const dates = stopDates(t.trip_start, t.stops.map((s) => s.nights));
+    t.stops.forEach((s, i) => {
+      const mine = !t.myMemberId || !s.member_ids.length || s.member_ids.includes(t.myMemberId);
+      if (mine && s.nights > 0 && s.country_code && dates[i].arrival <= today && !countries.has(s.country_code)) {
+        countries.set(s.country_code, s.country ?? s.country_code.toUpperCase());
+      }
+    });
+  }
+  return {
+    countries: [...countries].map(([code, name]) => ({ code, name })),
+    tripsDone: started.filter((t) => t.end_date < today).length,
+    nightsAway,
+  };
+}
+
+/**
+ * La ciudad de la foto de cada viaje en el inicio (decisión 073), dentro de tu parte del viaje: si
+ * está en curso, donde estás hoy; si no, donde pasás más noches (el destino principal, no la salida).
+ * -1 si no tiene ciudades.
+ */
+export function coverStopIndex(nights: number[], tripStart: string, today: string, part: { first: number; last: number } | null): number {
+  if (!nights.length) return -1;
+  const first = part?.first ?? 0;
+  const last = part?.last ?? nights.length - 1;
+  const dates = stopDates(tripStart, nights);
+  for (let i = first; i <= last; i++) {
+    if (nights[i] > 0 && dates[i].arrival <= today && today < dates[i].departure) return i;
+  }
+  let best = first;
+  for (let i = first; i <= last; i++) if (nights[i] > nights[best]) best = i;
+  return best;
 }

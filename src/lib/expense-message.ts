@@ -1,6 +1,6 @@
 import { formatEuros } from "./money";
 
-// El texto de las notificaciones de gastos (decisión 065). Lo manda src/lib/push.ts.
+// El texto de las notificaciones de gastos (decisión 094). Lo manda src/lib/push.ts.
 
 export type ExpenseChange = "new" | "edit" | "delete";
 

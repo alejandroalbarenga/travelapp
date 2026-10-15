@@ -4,14 +4,16 @@ import { Bed, BedDouble, Bus, Calendar, Car, ChevronRight, DoorClosed, DoorOpen,
 import { useRef, useState, useTransition } from "react";
 import type { SaveStopInput } from "@/app/viaje/[id]/actions";
 import { formatDay, formatRange, stopDates } from "@/lib/dates";
-import { largePhoto } from "@/lib/photo-url";
 import { localTime } from "@/lib/legs";
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Attachment, BookingSource, Leg, LegMode, Stay, Trip } from "@/lib/trip-types";
 import { BOOKING_LABEL } from "@/lib/trip-view";
-import { readBookingPdf } from "@/lib/read-booking-pdf";
-import { BottomSheet } from "../bottom-sheet";
+import { parseBooking } from "@/lib/booking-pdf";
+import { namesList } from "@/lib/members";
+import { readDocumentLines } from "@/lib/read-document";
+import { BackButton, BottomSheet } from "../bottom-sheet";
+import { TimeInput } from "../time-input";
 import { SplitEditor } from "../split-editor";
 import { AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
@@ -41,10 +43,6 @@ const MODE_CLASS: Record<LegMode, string> = {
 const WEEKDAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 // Ícono del alojamiento según dónde se reservó: hotel, casa, hostel… (no la foto de la ciudad).
 const STAY_ICON: Record<BookingSource, LucideIcon> = { booking: Hotel, airbnb: House, hostelworld: BedDouble, direct: Hotel, other: Bed };
-
-function namesList(names: string[]): string {
-  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
-}
 
 function weekdayOf(date: string) {
   const [y, m, d] = date.split("-").map(Number);
@@ -77,7 +75,8 @@ export function CitySheet({
   onNights: (delta: number) => void;
   onOpenLeg: (fromStopId: string) => void;
   /** Con `receipt`: la reserva elegida antes de que el alojamiento existiera, para subirla al guardar. */
-  onSave: (input: SaveStopInput, stay: Stay | null, receipt?: File) => Promise<string | null>;
+  /** Con `estimate`, el precio del alojamiento es un estimado (decisión 084); con null se borra el que tuviera. */
+  onSave: (input: SaveStopInput, stay: Stay | null, receipts?: File[], estimate?: { amountCents: number; memberIds: string[] } | null) => Promise<string | null>;
   onDelete: (stopId: string) => Promise<string | null>;
   /** Solo ver (decisión 034): todo deshabilitado, sin guardar ni borrar. */
   readOnly?: boolean;
@@ -112,7 +111,17 @@ export function CitySheet({
   const [notes, setNotes] = useState(stop.notes ?? "");
   const [stayName, setStayName] = useState(stay?.name ?? "");
   const [via, setVia] = useState<BookingSource | null>(stay?.booked_via ?? null);
-  const [price, setPrice] = useState(stay?.total_price_cents ? formatAmountInput(stay.total_price_cents) : "");
+  // Estimado (decisión 084): mientras no está pagado, el precio puede ser un estimado, que no es gasto.
+  const estimate = trip.planned.find((p) => p.stay_stop_id === stopId);
+  const [estimated, setEstimated] = useState(!stay?.total_price_cents && !!estimate);
+  const [price, setPrice] = useState(
+    // El estimado se carga por persona y se multiplica por los que están (decisión 089).
+    stay?.total_price_cents
+      ? formatAmountInput(stay.total_price_cents)
+      : estimate
+        ? formatAmountInput(Math.round(estimate.amount_cents / Math.max(1, estimate.member_ids.length)))
+        : "",
+  );
   const [paidBy, setPaidBy] = useState(stay?.paid_by_member_id ?? myMemberId ?? order[0]);
   const [split, setSplit] = useState<SplitState | null>(null); // null = todavía no se tocó: sigue a "quién está"
   const [checkIn, setCheckIn] = useState(stay?.check_in_time ?? "");
@@ -124,7 +133,7 @@ export function CitySheet({
   const receiptInput = useRef<HTMLInputElement>(null);
   const [reading, setReading] = useState(false);
   // La reserva elegida antes de guardar el alojamiento: se sube al guardar (decisión 057).
-  const [pendingReceipt, setPendingReceipt] = useState<File | null>(null);
+  const [pendingReceipts, setPendingReceipts] = useState<File[]>([]);
   const [readNote, setReadNote] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -142,12 +151,13 @@ export function CitySheet({
     notes !== (stop.notes ?? "") ||
     stayName !== (stay?.name ?? "") ||
     via !== (stay?.booked_via ?? null) ||
-    priceCents !== (stay?.total_price_cents ?? 0) ||
-    (priceCents > 0 && paidBy !== (stay?.paid_by_member_id ?? paidBy)) ||
+    (estimated ? priceCents * people.length : priceCents) !== (estimate && !stay?.total_price_cents ? estimate.amount_cents : (stay?.total_price_cents ?? 0)) ||
+    estimated !== (!stay?.total_price_cents && !!estimate) ||
+    (!estimated && priceCents > 0 && paidBy !== (stay?.paid_by_member_id ?? paidBy)) ||
     split !== null ||
     checkIn !== (stay?.check_in_time ?? "") ||
     checkOut !== (stay?.check_out_time ?? "") ||
-    pendingReceipt !== null;
+    pendingReceipts.length > 0;
 
   const joined = prev ? people.filter((id) => !prev.member_ids.includes(id)) : [];
   const left = prev ? prev.member_ids.filter((id) => !people.includes(id)) : [];
@@ -164,29 +174,39 @@ export function CitySheet({
       : `Los mismos que en ${prev.city}`;
 
   // Debajo del nombre del alojamiento: dónde se reservó y cuánto salió.
-  const staySub = [via ? BOOKING_LABEL[via] : stayName ? "Sin confirmar" : "", priceCents > 0 ? `${formatEuros(priceCents)} · pagó ${name(paidBy)}` : ""]
+  const staySub = [
+    via ? BOOKING_LABEL[via] : stayName ? "Sin confirmar" : "",
+    priceCents > 0 ? (estimated ? `${formatEuros(priceCents * people.length)} estimado` : `${formatEuros(priceCents)} · pagó ${name(paidBy)}`) : "",
+  ]
     .filter(Boolean)
     .join(" · ");
 
-  // Subir la reserva: si es un PDF, completa lo que esté vacío (nombre, dónde se reservó, horarios y
-  // precio). Una imagen se adjunta, pero no se lee.
+  // Subir la reserva: completa lo que esté vacío (nombre, dónde se reservó, horarios y precio). El PDF
+  // se lee con pdf.js y la imagen con OCR (decisión 067), las dos en el teléfono.
+  // Se pueden elegir varios archivos a la vez (decisión 083): se leen los datos del primero y se
+  // adjuntan todos.
   async function pickReceipt(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file) return;
+    if (!files.length) return;
     setReading(true);
-    const message = await addReceipt({ file });
+    for (const [k, file] of files.entries()) {
+      const message = await addReceipt({ file }, k === 0);
+      if (message) {
+        setError(message);
+        break;
+      }
+    }
     setReading(false);
-    if (message) setError(message);
   }
 
-  async function addReceipt(input: AttachmentInput): Promise<string | null> {
+  async function addReceipt(input: AttachmentInput, read = true): Promise<string | null> {
     if ("file" in input && !input.file.type.startsWith("image/") && input.file.type !== "application/pdf" && !input.file.name.toLowerCase().endsWith(".pdf")) {
       return "Tiene que ser un PDF o una imagen.";
     }
-    if ("file" in input && input.file.type.startsWith("image/")) setReadNote("La imagen queda adjunta. Los datos completalos a mano.");
-    if ("file" in input && (input.file.type === "application/pdf" || input.file.name.toLowerCase().endsWith(".pdf"))) {
-      const info = await readBookingPdf(input.file).catch(() => null);
+    if ("file" in input && read) {
+      const file = input.file;
+      const info = await readDocumentLines(file).then(parseBooking).catch(() => null);
       const found: string[] = [];
       if (info?.name && !stayName.trim()) {
         setStayName(info.name);
@@ -211,11 +231,12 @@ export function CitySheet({
       setReadNote(found.length ? `Sacamos de la reserva ${namesList(found)}. Revisá que esté bien.` : "No pudimos leer los datos de la reserva: completalos a mano.");
     }
     if (savedStayId) return onAddReceipt(savedStayId, input);
-    if ("file" in input) setPendingReceipt(input.file);
+    if ("file" in input) setPendingReceipts((list) => [...list, input.file]);
     return null;
   }
 
   function togglePerson(id: string) {
+    if (readOnly) return;
     const on = people.includes(id);
     if (on && people.length === 1) return;
     setPeople(order.filter((m) => (m === id ? !on : people.includes(m))));
@@ -226,13 +247,15 @@ export function CitySheet({
       close();
       return;
     }
-    if (pendingReceipt && !hasStay) {
+    if (pendingReceipts.length && !(stayName.trim() || via || (!estimated && priceCents > 0))) {
       setError("Poné el nombre del alojamiento para guardar la reserva.");
       return;
     }
-    // Con precio pero sin "Reservado en", cuenta como "Otro" para que se guarde con su gasto.
-    const bookedVia = via ?? (priceCents > 0 ? "other" : null);
-    const hasExpense = !!bookedVia && priceCents > 0;
+    // Con precio pero sin "Reservado en", cuenta como "Otro" para que se guarde con su gasto. Un
+    // estimado no crea el alojamiento ni su gasto: se guarda aparte (decisión 084).
+    const bookedVia = via ?? (!estimated && priceCents > 0 ? "other" : null);
+    const hasExpense = !estimated && !!bookedVia && priceCents > 0;
+    const stayRow = !!(stayName.trim() || bookedVia);
     const { splits, remainingCents } = computeSplits(priceCents, splitValue);
     if (hasExpense && remainingCents !== 0) {
       setError("La división del alojamiento no suma el total.");
@@ -245,14 +268,14 @@ export function CitySheet({
       notes,
       stayName,
       bookedVia,
-      stayPriceCents: bookedVia ? priceCents || null : null,
+      stayPriceCents: hasExpense ? priceCents : null,
       stayPaidByMemberId: hasExpense ? paidBy : null,
       stayDescription: `${stayName.trim() || "Alojamiento"} · ${nightsText}`,
       staySplits: hasExpense ? splits : [],
       checkIn: checkIn || null,
       checkOut: checkOut || null,
     };
-    const newStay: Stay | null = hasStay
+    const newStay: Stay | null = stayRow
       ? {
           id: stay?.id ?? `nuevo-${stopId}`,
           stop_id: stopId,
@@ -268,7 +291,7 @@ export function CitySheet({
       : null;
     setError("");
     startTransition(async () => {
-      const message = await onSave(input, newStay, pendingReceipt ?? undefined);
+      const message = await onSave(input, newStay, pendingReceipts, estimated && priceCents > 0 ? { amountCents: priceCents * people.length, memberIds: people } : null);
       if (message) setError(message);
       else close();
     });
@@ -282,43 +305,59 @@ export function CitySheet({
     });
   }
 
-  const photo = stop.photo_url ? largePhoto(stop.photo_url) : null;
   const legIn = prev ? (trip.legs.find((l) => l.from_stop_id === prev.id) ?? null) : null;
   const legOut = trip.legs.find((l) => l.from_stop_id === stopId) ?? null;
 
+  // Quiénes están en esta ciudad: en el formulario del alojamiento, o solo esto si es de paso.
+  const peoplePicker = (
+    <div className="flex flex-wrap gap-2">
+      {trip.members.map((m) => {
+        const on = people.includes(m.id);
+        return (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => togglePerson(m.id)}
+            aria-pressed={on}
+            className={`flex h-11 items-center gap-2 rounded-full border pr-3.5 pl-[5px] text-sm font-bold ${on ? "border-ink bg-white" : "border-line bg-white text-ink-3"}`}
+          >
+            <span className="flex size-[34px] items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: m.color, opacity: on ? 1 : 0.45 }}>
+              {m.initials}
+            </span>
+            {m.display_name}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <BottomSheet onClose={onClose} label={stop.city} top="calc(var(--safe-top) + 12px)" overlayHandle>
+    <BottomSheet onClose={onClose} label={stop.city} overlayHandle>
       {(close) => (
         <>
           <div className="relative flex-1 overflow-y-auto px-4 pb-8 [scrollbar-width:none]">
-            {/* Foto grande de la ciudad con el país, el nombre y la frase encima; volver y cambiar la ciudad. */}
-            <div
-              className="relative -mx-4 h-[280px] bg-cover bg-center"
-              style={{ backgroundColor: "#5E6B78", backgroundImage: photo ? `url("${photo}")` : undefined }}
-            >
-              {/* El único degradé de la app (decisión 050): la foto se funde en el blanco de la ficha. */}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(15_16_18/0.3)_0%,rgb(15_16_18/0.3)_55%,#fff_100%)]" />
-              <div className="relative flex h-full flex-col items-center justify-center px-6 pt-4 text-center text-white">
-                <div className="flex items-center gap-2 text-[15px] font-bold [text-shadow:0_1px_6px_rgb(0_0_0/0.35)]">
-                  {stop.country_code && (
-                    <span
-                      className="size-6 shrink-0 rounded-full bg-white/30 bg-cover bg-center shadow-[0_0_0_2px_rgb(255_255_255/0.6)]"
-                      style={{ backgroundImage: `url("https://flagcdn.com/w80/${stop.country_code}.png")` }}
-                    />
-                  )}
-                  {stop.country}
-                </div>
-                <div className="mt-1.5 w-full truncate text-[42px] leading-[1.1] font-extrabold tracking-[-0.03em] [text-shadow:0_2px_16px_rgb(0_0_0/0.35)]">{stop.city}</div>
-                {stop.tagline && <div className="font-hand mt-1 text-[26px] leading-[1.05] text-balance [text-shadow:0_1px_10px_rgb(0_0_0/0.45)]">{stop.tagline}</div>}
-              </div>
-              <button type="button" onClick={close} aria-label="Cerrar" className="absolute top-4 left-4 flex size-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_4px_14px_rgb(0_0_0/0.18)]">
-                <X size={20} />
-              </button>
+            {/* Sin foto (decisión 072; la foto queda en la lista): volver, el país con su bandera, el
+                nombre y la frase; a la derecha, cambiar la ciudad. */}
+            <div className="flex items-center justify-between pt-[calc(var(--safe-top)+8px)]">
+              <BackButton onClick={close} />
               {!readOnly && onChangePlace && (
-                <button type="button" onClick={onChangePlace} aria-label="Cambiar ciudad" className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_4px_14px_rgb(0_0_0/0.18)]">
+                <button type="button" onClick={onChangePlace} aria-label="Cambiar ciudad" className="flex size-11 items-center justify-center rounded-full bg-surface">
                   <Pencil size={18} />
                 </button>
               )}
+            </div>
+            <div className="mt-3 px-1">
+              <div className="flex items-center gap-2 text-[15px] font-bold text-ink-2">
+                {stop.country_code && (
+                  <span
+                    className="size-6 shrink-0 rounded-full bg-surface bg-cover bg-center shadow-[0_0_0_1px_rgb(0_0_0/0.08)]"
+                    style={{ backgroundImage: `url("https://flagcdn.com/w80/${stop.country_code}.png")` }}
+                  />
+                )}
+                {stop.country}
+              </div>
+              <h2 className="mt-1 truncate text-[38px] leading-[1.1] font-extrabold tracking-[-0.03em]">{stop.city}</h2>
+              {stop.tagline && <div className="font-hand mt-0.5 text-[24px] leading-[1.1] text-ink-2">{stop.tagline}</div>}
             </div>
 
             {/* Planificación: fechas (abren el calendario) y noches. */}
@@ -380,7 +419,7 @@ export function CitySheet({
               </div>
             )}
 
-            <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
+            <div>
               {/* El alojamiento (decisión 064): en vista es una tarjeta con todo lo de la estadía; al editar,
                   la misma tarjeta se convierte en el formulario, con quiénes están adentro. */}
               {editingStay ? (
@@ -392,52 +431,54 @@ export function CitySheet({
                     </button>
                   </div>
 
-                  {/* La reserva primero: un solo botón, PDF o imagen; el PDF completa el resto (decisión 057). */}
-                  {stay && stay.attachments.length > 0 ? (
-                    <div className="overflow-hidden rounded-[16px] border border-line">
+                  {/* La reserva primero (decisión 057): uno o varios archivos, PDF o imagen (decisión 083); el
+                      primero completa el resto. */}
+                  {stay && stay.attachments.length > 0 && (
+                    <div className="mb-2 overflow-hidden rounded-[16px] border border-line">
                       {stay.attachments.map((a, k) => (
                         <AttachmentRow
                           key={a.id}
                           attachment={a}
-                          title="Reserva"
+                          title={stay.attachments.length > 1 ? `Reserva ${k + 1}` : "Reserva"}
                           first={k === 0}
                           onOpen={() => onViewReceipt(stay.id, a.id)}
                           onRemove={readOnly ? undefined : () => onRemoveReceipt(stay.id, a)}
                         />
                       ))}
                     </div>
-                  ) : pendingReceipt ? (
-                    <div className="flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
+                  )}
+                  {pendingReceipts.map((file, k) => (
+                    <div key={`${file.name}-${k}`} className="mb-2 flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
                       <FileText size={18} className="shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-bold">{pendingReceipt.name}</div>
+                        <div className="truncate text-sm font-bold">{file.name}</div>
                         <div className="text-xs text-ink-2">Se sube al guardar</div>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
-                          setPendingReceipt(null);
-                          setReadNote("");
+                          setPendingReceipts((list) => list.filter((_, n) => n !== k));
+                          if (pendingReceipts.length === 1) setReadNote("");
                         }}
-                        aria-label="Sacar la reserva"
+                        aria-label={`Sacar ${file.name}`}
                         className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface"
                       >
                         <X size={16} />
                       </button>
                     </div>
-                  ) : (
-                    <>
-                      <input ref={receiptInput} type="file" accept="application/pdf,.pdf,image/*" hidden onChange={pickReceipt} />
-                      <button
-                        type="button"
-                        disabled={reading}
-                        onClick={() => receiptInput.current?.click()}
-                        className="flex h-[52px] w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold disabled:opacity-60"
-                      >
-                        <Upload size={17} /> {reading ? "Leyendo la reserva…" : "Subir la reserva · PDF o imagen"}
-                      </button>
-                      <p className="mt-1.5 text-xs text-ink-2">Con el PDF completamos el nombre, los horarios y el precio.</p>
-                    </>
+                  ))}
+                  <input ref={receiptInput} type="file" accept="application/pdf,.pdf,image/*" multiple hidden onChange={pickReceipt} />
+                  <button
+                    type="button"
+                    disabled={reading}
+                    onClick={() => receiptInput.current?.click()}
+                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold disabled:opacity-60"
+                  >
+                    <Upload size={17} />{" "}
+                    {reading ? "Leyendo la reserva…" : (stay?.attachments.length ?? 0) + pendingReceipts.length > 0 ? "Agregar otro archivo" : "Subir la reserva · PDF o imagen"}
+                  </button>
+                  {(stay?.attachments.length ?? 0) + pendingReceipts.length === 0 && (
+                    <p className="mt-1.5 text-xs text-ink-2">Podés subir varios. Completamos el nombre, los horarios y el precio; con el PDF sale mejor que con una captura.</p>
                   )}
                   {readNote && <p className="mt-2 text-[13px] text-ink-2">{readNote}</p>}
 
@@ -469,7 +510,35 @@ export function CitySheet({
                     ))}
                   </div>
 
-                  <div className="mt-4 text-xs font-bold text-ink-2">Cuánto salió</div>
+                  <div className="mt-4 mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-ink-2">{estimated ? "Cuánto va a salir por persona" : "Cuánto salió"}</span>
+                    {/* Ya pagado (es un gasto) o estimado (planificado, no entra en el balance). */}
+                    <div className="grid grid-cols-2 rounded-full bg-surface p-0.5">
+                      {(
+                        [
+                          [false, "Pagado"],
+                          [true, "Estimado"],
+                        ] as const
+                      ).map(([value, text]) => (
+                        <button
+                          key={text}
+                          type="button"
+                          onClick={() => {
+                            // Al cambiar, el monto pasa de total a por persona (y al revés).
+                            if (value !== estimated && priceCents) {
+                              const n = Math.max(1, people.length);
+                              setPrice(formatAmountInput(value ? Math.round(priceCents / n) : priceCents * n));
+                            }
+                            setEstimated(value);
+                          }}
+                          aria-pressed={estimated === value}
+                          className={`h-8 rounded-full px-3 text-xs font-bold ${estimated === value ? "bg-white text-ink shadow-[0_1px_3px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
+                        >
+                          {text}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="mt-0.5 flex items-baseline gap-1.5">
                     <span className="text-2xl font-extrabold">€</span>
                     <input
@@ -482,7 +551,13 @@ export function CitySheet({
                       className="h-10 min-w-0 flex-1 bg-transparent text-2xl font-extrabold outline-none placeholder:text-ink-5"
                     />
                   </div>
-                  {priceCents > 0 && (
+                  {estimated && (
+                    <p className="mt-1.5 text-[13px] leading-[1.4] text-ink-2">
+                      {priceCents > 0 && <strong className="text-ink">× {people.length} = {formatEuros(priceCents * people.length)}. </strong>}
+                      Es un estimado por persona, por los {people.length} que están. No es un gasto ni entra en el balance; cuando lo paguen, pasalo a &quot;Pagado&quot;.
+                    </p>
+                  )}
+                  {!estimated && priceCents > 0 && (
                     <>
                       <div className="mt-3 mb-2 text-xs font-bold text-ink-2">Pagó</div>
                       <div className="flex flex-wrap gap-1.5">
@@ -509,28 +584,19 @@ export function CitySheet({
 
                   {/* Quiénes están en esta ciudad. */}
                   <div className="mt-4 mb-2 text-xs font-bold text-ink-2">Quiénes están</div>
-                  <div className="flex flex-wrap gap-2">
-                    {trip.members.map((m) => {
-                      const on = people.includes(m.id);
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => togglePerson(m.id)}
-                          aria-pressed={on}
-                          className={`flex h-11 items-center gap-2 rounded-full border pr-3.5 pl-[5px] text-sm font-bold ${on ? "border-ink bg-white" : "border-line bg-white text-ink-3"}`}
-                        >
-                          <span className="flex size-[34px] items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: m.color, opacity: on ? 1 : 0.45 }}>
-                            {m.initials}
-                          </span>
-                          {m.display_name}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {peoplePicker}
                   {peopleNote && <p className="mx-1 mt-2 text-[13px] text-ink-2">{peopleNote}</p>}
                 </div>
-              ) : hasStay || stop.nights > 0 ? (
+              ) : stop.nights === 0 && !hasStay ? (
+                // De paso (0 noches): no se pide alojamiento (decisión 082), solo quiénes pasan.
+                <div className="mt-5 rounded-[22px] border border-line bg-white p-4">
+                  <div className="text-[17px] font-bold">De paso</div>
+                  <div className="mt-0.5 text-[13px] text-ink-2">Sin noche acá, no hace falta alojamiento.</div>
+                  <div className="mt-4 mb-2 text-xs font-bold text-ink-2">Quiénes pasan</div>
+                  {peoplePicker}
+                  {peopleNote && <p className="mx-1 mt-2 text-[13px] text-ink-2">{peopleNote}</p>}
+                </div>
+              ) : (
                 <div className="mt-5 overflow-hidden rounded-[22px] border border-line bg-white shadow-card">
                   <div className="flex gap-3.5 p-3">
                     <StayIcon via={via} />
@@ -564,7 +630,7 @@ export function CitySheet({
                     </button>
                     {stay && stay.attachments.length > 0 && (
                       <button type="button" onClick={() => onViewReceipt(stay.id, stay.attachments[0].id)} className="h-10 shrink-0 rounded-full bg-surface px-4 text-sm font-bold">
-                        Ver reserva
+                        {stay.attachments.length > 1 ? `Ver reservas (${stay.attachments.length})` : "Ver reserva"}
                       </button>
                     )}
                     {!readOnly && (
@@ -574,16 +640,6 @@ export function CitySheet({
                     )}
                   </div>
                 </div>
-              ) : readOnly ? null : (
-                <button
-                  type="button"
-                  onClick={() => setEditingStay(true)}
-                  className="mt-5 flex h-14 w-full items-center gap-3 rounded-[18px] border-[1.5px] border-dashed border-dash px-4 text-left text-sm"
-                >
-                  <Bed size={18} className="shrink-0 text-ink-3" />
-                  <span className="min-w-0 flex-1 text-ink-2">De paso, sin noche acá</span>
-                  <span className="font-bold">Agregar alojamiento</span>
-                </button>
               )}
 
               {/* Línea de tiempo: el día que llegás y el día que te vas. */}
@@ -652,6 +708,7 @@ export function CitySheet({
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  readOnly={readOnly}
                   rows={notes ? 4 : 1}
                   placeholder="Agregá tus notas"
                   aria-label="Notas"
@@ -667,7 +724,7 @@ export function CitySheet({
                   <Trash2 size={16} /> Borrar {stop.city}
                 </button>
               )}
-            </fieldset>
+            </div>
           </div>
 
           <div className="shrink-0 border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
@@ -770,7 +827,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
   return (
     <label className="block min-w-0 rounded-field border border-line px-3 py-2 focus-within:border-ink">
       <span className="block text-[11px] font-bold text-ink-2">{label}</span>
-      <input type="time" value={value} onChange={(e) => onChange(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
+      <TimeInput value={value} onChange={onChange} label={label} />
     </label>
   );
 }

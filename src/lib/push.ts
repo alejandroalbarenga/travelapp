@@ -2,7 +2,7 @@ import webpush from "web-push";
 import { expenseMessage, type ExpenseChange, type ExpenseForPush } from "./expense-message";
 import { createClient } from "./supabase/server";
 
-// Notificaciones de gastos (decisión 065, migración 0010): cuando alguien carga, cambia o borra un
+// Notificaciones de gastos (decisión 094, migración 0013): cuando alguien carga, cambia o borra un
 // gasto, les llega una notificación a los que están en el gasto (los que lo dividen y quien pagó),
 // salvo a quien lo hizo. Con Web Push: en el iPhone, solo con la app agregada a la pantalla de inicio.
 // Las claves (VAPID) van en las variables de entorno; sin ellas no se manda nada.

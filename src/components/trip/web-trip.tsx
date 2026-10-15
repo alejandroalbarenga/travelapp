@@ -1,6 +1,6 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
+import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, RotateCw, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { LegMode, Member } from "@/lib/trip-types";
@@ -16,7 +16,6 @@ import { TripMap, type MapPoint } from "./trip-map";
 // la línea punteada con el número de la ciudad y el chip del tramo que sale; al final de cada fila
 // la línea baja por el costado a la siguiente. Los sheets suben dentro del panel (BottomSheet).
 
-export const WEB_HEADER_HEIGHT = 128;
 
 const MODE_ICON: Record<LegMode, LucideIcon> = { plane: Plane, train: TrainFront, bus: Bus, car: Car, other: Ellipsis };
 const MODE_CLASS: Record<LegMode, string> = {
@@ -52,6 +51,8 @@ export function WebTrip({
   onLock,
   onDelete,
   onCalendar,
+  onRefresh,
+  refreshing = false,
   onMembers,
   expenses,
 }: {
@@ -76,6 +77,9 @@ export function WebTrip({
   onLock: (stopId: string) => void;
   onDelete: (stopId: string) => void;
   onCalendar: () => void;
+  /** Actualizar el viaje con lo último de la base (decisión 091). */
+  onRefresh?: () => void;
+  refreshing?: boolean;
   onMembers: () => void;
   /** La pantalla de Gastos, ya armada para el panel. */
   expenses: ReactNode;
@@ -88,8 +92,9 @@ export function WebTrip({
 
   return (
     <div className="absolute inset-0 bg-white">
-      <div className="absolute inset-y-0 left-0 w-[58%] overflow-hidden bg-white">
-        <header className="absolute inset-x-0 top-0 z-[2] border-b border-divider bg-white px-8 pt-[18px]" style={{ height: WEB_HEADER_HEIGHT }}>
+      {/* El header crece con lo que tiene (antes tenía alto fijo y los botones se salían por abajo). */}
+      <div className="absolute inset-y-0 left-0 flex w-[58%] flex-col overflow-hidden bg-white">
+        <header className="relative z-[2] shrink-0 border-b border-divider bg-white px-8 pt-[18px] pb-3.5">
           <div className="flex items-center gap-3.5">
             {/* En Gastos, la flecha vuelve al viaje (Viaje y Gastos van separados, como en el celular: decisión 049). */}
             {tab === "expenses" ? (
@@ -119,21 +124,24 @@ export function WebTrip({
             {tab === "trip" && <NightsRing view={view} label="noches planeadas" />}
           </div>
           <div className="mt-3.5 flex min-w-0 items-center gap-2">
-            <button type="button" onClick={onMembers} aria-label="Integrantes" className="flex h-11 shrink-0 items-center rounded-full border border-line bg-white px-1.5">
-              {members.slice(0, 5).map((m, i) => (
-                <span
-                  key={m.id}
-                  className="flex size-[30px] items-center justify-center rounded-full border-2 border-white text-[10px] font-extrabold text-white"
-                  style={{ background: m.color, marginLeft: i ? -9 : 0 }}
-                >
+            {/* Las bolitas sin pisarse (antes se tapaban las iniciales) y cuántos son. */}
+            <button type="button" onClick={onMembers} aria-label="Integrantes" className="flex h-11 shrink-0 items-center gap-1 rounded-full border border-line bg-white pr-3.5 pl-1.5">
+              {members.slice(0, 5).map((m) => (
+                <span key={m.id} className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: m.color }}>
                   {m.initials}
                 </span>
               ))}
+              <span className="ml-1 text-sm font-bold">{members.length > 5 ? `+${members.length - 5}` : members.length === 1 ? "1 viajero" : `${members.length} viajeros`}</span>
             </button>
             <div className="min-w-0 flex-1" />
             {tab === "trip" && (
               <button type="button" onClick={() => onTab("expenses")} className="flex h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-white px-4 text-sm font-bold">
                 <Wallet size={17} /> Gastos
+              </button>
+            )}
+            {onRefresh && (
+              <button type="button" onClick={onRefresh} aria-label="Actualizar el viaje" title="Actualizar" className={iconButton}>
+                <RotateCw size={17} className={refreshing ? "animate-spin" : ""} />
               </button>
             )}
             <button type="button" onClick={onCalendar} aria-label="Calendario" className={iconButton}>
@@ -151,7 +159,7 @@ export function WebTrip({
           </div>
         </header>
 
-        <div className="absolute inset-x-0 bottom-0" style={{ top: WEB_HEADER_HEIGHT }}>
+        <div className="relative min-h-0 flex-1">
           {tab === "expenses" ? (
             expenses
           ) : (
@@ -228,7 +236,9 @@ type CardHandlers = {
   onDelete: (stopId: string) => void;
 };
 
-// La grilla en zigzag del diseño: las filas pares van de izquierda a derecha y las impares vuelven.
+// La grilla de ciudades (decisión 093): todas las filas van de izquierda a derecha, como se lee. Al
+// final de una fila la línea punteada baja, cruza hacia la izquierda por el hueco entre filas y entra
+// a la primera ciudad de la fila siguiente.
 function Grid({ stops, ...handlers }: { stops: StopView[] } & CardHandlers) {
   const box = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(2);
@@ -266,7 +276,6 @@ function WebStopCard({
   onDelete,
 }: { stop: StopView; index: number; last: boolean; cols: number } & CardHandlers) {
   const row = Math.floor(i / cols);
-  const even = row % 2 === 0;
   const col = i % cols;
   const rowStart = col === 0;
   const rowEnd = col === cols - 1 || last;
@@ -274,8 +283,8 @@ function WebStopCard({
   // en el hueco para encontrarse con la línea que baja (igual que el diseño).
   const prevEdge = i > 0 ? (rowStart ? "-28px" : "0") : "50%";
   const nextEdge = !last ? (rowEnd ? "-28px" : "0") : "50%";
-  const railLeft = even ? prevEdge : nextEdge;
-  const railRight = even ? nextEdge : prevEdge;
+  const railLeft = prevEdge;
+  const railRight = nextEdge;
   const goesDown = !last && col === cols - 1;
   const crossesGap = !last && col !== cols - 1;
 
@@ -288,7 +297,7 @@ function WebStopCard({
       onMouseEnter={() => onHover(stop.id)}
       onMouseLeave={() => onHover(null)}
       className="group relative flex min-w-0 flex-col gap-2.5 pt-[50px]"
-      style={{ gridRow: row + 1, gridColumn: (even ? col : cols - 1 - col) + 1 }}
+      style={{ gridRow: row + 1, gridColumn: col + 1 }}
     >
       <div className="absolute top-[17px]" style={{ left: railLeft, right: railRight, borderTop: DOTS }} />
       <div className="absolute top-9 left-1/2 h-3.5" style={{ borderLeft: DOTS }} />
@@ -307,10 +316,10 @@ function WebStopCard({
           aria-label={leg ? `Tramo · ${leg.text}` : stop.legEmptyLabel}
           title={leg?.timeZoneChange ?? undefined}
           className="absolute top-0 z-[2] flex h-9"
-          style={{ width: "calc(50% + 10px)", left: even ? "calc(50% + 24px)" : "auto", right: even ? "auto" : "calc(50% + 24px)", justifyContent: even ? "flex-start" : "flex-end" }}
+          style={{ width: "calc(50% + 10px)", left: "calc(50% + 24px)", justifyContent: "flex-start" }}
         >
           <span
-            className={`flex h-9 max-w-full items-center gap-1.5 overflow-hidden rounded-full bg-white pr-2.5 pl-1 text-xs font-bold whitespace-nowrap shadow-[0_2px_8px_rgb(0_0_0/0.1)] ${leg ? "border border-line text-ink" : "border-[1.5px] border-dashed border-dots text-ink-2"}`}
+            className={`flex h-9 max-w-full items-center gap-1.5 overflow-hidden rounded-full bg-white pr-2.5 pl-1 text-xs font-bold whitespace-nowrap shadow-[0_2px_8px_rgb(0_0_0/0.1)] ${leg?.estimate ? "border-[1.5px] border-dashed border-orange text-ink" : leg ? "border border-line text-ink" : "border-[1.5px] border-dashed border-dots text-ink-2"}`}
           >
             <span className={`relative flex size-7 shrink-0 items-center justify-center rounded-full ${leg ? MODE_CLASS[leg.mode] : "bg-surface text-ink-2"}`}>
               <Icon size={14} />
@@ -319,11 +328,25 @@ function WebStopCard({
               )}
             </span>
             <span className="truncate">{leg ? leg.text : last ? "Vuelta" : "Agregar"}</span>
+            {leg?.estimate && <span className="shrink-0 rounded-full bg-tz-bg px-1.5 py-0.5 text-[10px] font-bold text-tz-text">{leg.estimate}</span>}
           </span>
         </button>
       )}
+      {/* Fin de fila: baja hasta la mitad del hueco, cruza a la izquierda hasta antes de la primera
+          columna y baja hasta el riel de la fila siguiente. La primera columna está a (cols − 1) ×
+          (ancho + hueco) a la izquierda de esta tarjeta. */}
       {goesDown && (
-        <div className="absolute top-[18px] z-[2] w-0" style={{ height: `calc(100% + ${ROW_GAP}px)`, borderLeft: DOTS, left: even ? "auto" : "-29px", right: even ? "-29px" : "auto" }} />
+        <>
+          <div className="absolute top-[18px] right-[-29px] z-[2] w-0" style={{ height: `calc(100% - 18px + ${ROW_GAP / 2}px)`, borderLeft: DOTS }} />
+          <div
+            className="absolute right-[-29px] z-[2] h-0"
+            style={{ top: `calc(100% + ${ROW_GAP / 2}px)`, left: `calc(${-(cols - 1)} * (100% + ${COL_GAP}px) - 29px)`, borderTop: DOTS }}
+          />
+          <div
+            className="absolute z-[2] w-0"
+            style={{ top: `calc(100% + ${ROW_GAP / 2}px)`, height: ROW_GAP / 2 + 18, left: `calc(${-(cols - 1)} * (100% + ${COL_GAP}px) - 29px)`, borderLeft: DOTS }}
+          />
+        </>
       )}
 
       <div className="relative">
@@ -341,7 +364,7 @@ function WebStopCard({
           </span>
           {stop.stay && (
             <span
-              className={`absolute bottom-3 left-3 flex h-[30px] max-w-[calc(100%-24px)] items-center gap-1.5 overflow-hidden rounded-full bg-white/[.88] pr-3 pl-[9px] text-xs font-bold whitespace-nowrap backdrop-blur-[14px] ${stop.stay.paid ? "text-success" : "text-ink-2"}`}
+              className={`absolute bottom-3 left-3 flex h-[30px] max-w-[calc(100%-24px)] items-center gap-1.5 overflow-hidden rounded-full bg-white/[.88] pr-3 pl-[9px] text-xs font-bold whitespace-nowrap backdrop-blur-[14px] ${stop.stay.paid ? "text-success" : stop.stay.estimated ? "text-tz-text" : "text-ink-2"}`}
             >
               <Bed size={14} className="shrink-0" />
               <span className="truncate">{stop.stay.text}</span>
@@ -373,7 +396,7 @@ function WebStopCard({
             )}
           </span>
         )}
-        {crossesGap && <div className="absolute -top-[33px] z-[2] h-0" style={{ width: COL_GAP, borderTop: DOTS, left: even ? "100%" : "auto", right: even ? "auto" : "100%" }} />}
+        {crossesGap && <div className="absolute -top-[33px] left-full z-[2] h-0" style={{ width: COL_GAP, borderTop: DOTS }} />}
       </div>
 
       <div className="flex items-start justify-between gap-2">

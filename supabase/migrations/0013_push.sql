@@ -1,4 +1,4 @@
--- Notificaciones de gastos (decisión 065). Cada teléfono que las activa guarda su suscripción de
+-- Notificaciones de gastos (decisión 094). Cada teléfono que las activa guarda su suscripción de
 -- Web Push. Cuando alguien carga, edita o borra un gasto, el servidor les avisa a los que están en
 -- el gasto (los que lo dividen y quien pagó), salvo a quien lo hizo.
 --

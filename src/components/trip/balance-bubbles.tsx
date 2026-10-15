@@ -3,8 +3,9 @@
 import { packBubbles } from "@/lib/bubbles";
 import type { BubbleView } from "@/lib/expenses-view";
 
-// Burbujas del balance, arriba de Gastos: una por integrante, con su color, medio transparentes
-// y un poco superpuestas. El tamaño va según lo que le deben o debe; el que debe lleva el menos.
+// Burbujas del balance, arriba de Gastos (decisiones 037 y 081): una por integrante, con su color,
+// medio transparentes y un poco superpuestas. El tamaño va según lo que le deben o debe; el que
+// debe lleva el menos, y las grandes dicen abajo qué le pasa ("debe", "le deben", "a mano").
 
 const W = 340;
 const H = 220;
@@ -40,12 +41,17 @@ export function BalanceBubbles({ bubbles }: { bubbles: BubbleView[] }) {
           <g key={b.memberId}>
             <title>{`${b.name}: ${b.label} ${b.cents ? b.amount : ""}`}</title>
             <text x={x} textAnchor="middle" fill="#fff" fontFamily="inherit">
-              <tspan x={x} y={y - (small ? nameSize * 0.2 : amountSize * 0.2)} fontSize={nameSize} fontWeight={600} opacity={0.9}>
+              <tspan x={x} y={y - (small ? nameSize * 0.2 : r >= 48 ? amountSize * 0.55 : amountSize * 0.2)} fontSize={nameSize} fontWeight={600} opacity={0.9}>
                 {b.name}
               </tspan>
               <tspan x={x} dy={small ? nameSize * 1.15 : amountSize * 1.05} fontSize={small ? nameSize : amountSize} fontWeight={800}>
                 {b.cents ? (b.cents < 0 ? "-" : "") + b.amount : "€0"}
               </tspan>
+              {r >= 48 && (
+                <tspan x={x} dy={nameSize * 1.35} fontSize={nameSize} fontWeight={600} opacity={0.9}>
+                  {b.label}
+                </tspan>
+              )}
             </text>
           </g>
         );

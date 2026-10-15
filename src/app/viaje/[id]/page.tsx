@@ -9,11 +9,18 @@ import {
   addStop,
   changeStopPlace,
   deleteExpense,
+  deleteLeg,
+  deletePersonalCategory,
+  deletePersonalExpense,
+  deletePlanned,
   deleteStop,
   findPlaces,
   saveExpense,
   saveLeg,
   saveNights,
+  savePersonalCategory,
+  savePersonalExpense,
+  savePlanned,
   saveStop,
   setMemberRole,
   setStopLocked,
@@ -44,5 +51,15 @@ async function Trip({ params }: { params: PageProps<"/viaje/[id]">["params"] }) 
       deleteTrip={deleteTrip}
       setStopLocked={setStopLocked}
       addMember={addMember}
+      personal={data.personal}
+      savePlanned={savePlanned}
+      deletePlanned={deletePlanned}
+      deleteLeg={deleteLeg}
+      personalActions={{
+        saveExpense: savePersonalExpense,
+        deleteExpense: deletePersonalExpense,
+        saveCategory: savePersonalCategory,
+        deleteCategory: deletePersonalCategory,
+      }}
     />;
 }

@@ -1,4 +1,4 @@
-// Service worker de Vamo y vamo (decisión 047): que la app abra rápido con mala conexión y que
+// Service worker de Vamo (decisión 047): que la app abra rápido con mala conexión y que
 // el viaje y los pasajes ya vistos se puedan ver sin señal. No hay modo offline real: cargar o
 // cambiar cosas necesita conexión (las acciones esperan y se reintentan solas, ver useOffline).
 //
@@ -9,7 +9,7 @@
 //   que ya abriste se ve sin conexión. Cada archivo tiene una ruta única, nunca cambia.
 // - Mapa (OpenStreetMap) y fotos de ciudades (Wikipedia): lo guardado al toque y se actualiza atrás.
 // - Todo lo demás (Supabase, login, acciones) va siempre a la red.
-// - Notificaciones de gastos (decisión 065): las muestra y, al tocarlas, abre el viaje.
+// - Notificaciones de gastos (decisión 094): las muestra y, al tocarlas, abre el viaje.
 
 const VERSION = "v1";
 const STATIC = `static-${VERSION}`;

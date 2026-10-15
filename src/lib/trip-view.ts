@@ -1,5 +1,6 @@
 import { daysBetween, formatDay, formatRange, formatStopDates, formatWeekday, nightsStatus, stopDates, type NightsStatus } from "./dates";
 import { chipText, timeZoneDiffHours, type ChipDisplay } from "./legs";
+import { formatEuros } from "./money";
 import type { BookingSource, LegMode, Trip } from "./trip-types";
 
 // Arma lo que muestra la pantalla del Viaje (diseño: pantalla 01) a partir de los datos del viaje.
@@ -20,6 +21,8 @@ export type LegView = {
   text: string;
   timeZoneChange: string | null;
   hasTicket: boolean;
+  /** Si el precio es un estimado, todavía sin pagar (decisión 088): "~€90". */
+  estimate: string | null;
 };
 
 export type StopView = {
@@ -33,7 +36,7 @@ export type StopView = {
   dates: string;
   nights: number;
   nightsLabel: string;
-  stay: { text: string; paid: boolean } | null;
+  stay: { text: string; paid: boolean; estimated?: boolean } | null;
   /** Bloqueada (decisión 042). */
   locked: boolean;
   leg: LegView | null;
@@ -73,6 +76,7 @@ export function buildTripView(trip: Trip, options: { chipDisplay: ChipDisplay; m
       const isLast = !next;
       const stay = trip.stays.find((s) => s.stop_id === stop.id);
       const leg = trip.legs.find((l) => l.from_stop_id === stop.id);
+      const stayEstimate = trip.planned.find((p) => p.stay_stop_id === stop.id);
 
       let legView: LegView | null = null;
       if (leg) {
@@ -89,6 +93,10 @@ export function buildTripView(trip: Trip, options: { chipDisplay: ChipDisplay; m
             : null,
           // El botón de ticket abre tu pasaje, o el del grupo si no tenés uno propio.
           hasTicket: leg.attachments.some((a) => a.kind !== "link" && (a.member_id === options.myMemberId || a.member_id === null)),
+          estimate: (() => {
+            const planned = leg.total_price_cents ? undefined : trip.planned.find((p) => p.leg_id === leg.id);
+            return planned ? `~${formatEuros(planned.amount_cents)}` : null;
+          })(),
         };
       }
 
@@ -105,7 +113,9 @@ export function buildTripView(trip: Trip, options: { chipDisplay: ChipDisplay; m
         nights: stop.nights,
         nightsLabel: stop.nights === 1 ? "noche" : "noches",
         stay:
-          stay && (stay.name || stay.booked_via)
+          stayEstimate && !stay?.total_price_cents
+            ? { text: `${stay?.name ? `${stay.name} · ` : ""}~${formatEuros(stayEstimate.amount_cents)} estimado`, paid: false, estimated: true }
+            : stay && (stay.name || stay.booked_via)
             ? stay.booked_via
               ? {
                   text: `${BOOKING_LABEL[stay.booked_via]} · ${stay.total_price_cents ? "pagado" : "reservado"}`,

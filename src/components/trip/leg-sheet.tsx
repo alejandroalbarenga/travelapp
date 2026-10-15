@@ -1,14 +1,18 @@
 "use client";
 
-import { Bus, Car, Clock, Ellipsis, Pencil, Plane, Ticket, TrainFront, X, type LucideIcon } from "lucide-react";
-import { useState, useTransition } from "react";
-import { sortTickets, ticketTitle } from "@/lib/attachments";
+import { Bus, Car, Clock, Ellipsis, ExternalLink, FileText, Pencil, Plane, Ticket, TrainFront, Trash2, Upload, X, type LucideIcon } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
+import { normalizeUrl, sortTickets, ticketTitle } from "@/lib/attachments";
 import { addDays, formatWeekday, stopDates } from "@/lib/dates";
+import { namesList } from "@/lib/members";
 import { durationMinutes, formatDuration, localTime, timeZoneDiffHours, zonedToInstant } from "@/lib/legs";
 import { formatAmountInput, formatEuros, parseAmount } from "@/lib/money";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
+import { readDocumentLines } from "@/lib/read-document";
+import { parseTicket } from "@/lib/ticket-pdf";
 import type { Leg, LegAttachment, LegMode, Trip } from "@/lib/trip-types";
-import { BottomSheet } from "../bottom-sheet";
+import { BackButton, BottomSheet } from "../bottom-sheet";
+import { TimeInput } from "../time-input";
 import { SplitEditor } from "../split-editor";
 import { AddAttachmentButtons, AttachmentRow, type AttachmentInput } from "./attachment-controls";
 
@@ -40,6 +44,7 @@ export function LegSheet({
   onSave,
   onAddTicket,
   onRemoveTicket,
+  onDelete,
   onViewTicket,
   readOnly = false,
 }: {
@@ -47,11 +52,22 @@ export function LegSheet({
   fromStopId: string;
   myMemberId: string | null;
   onClose: () => void;
-  /** Guarda el tramo. Devuelve un mensaje si falló. */
-  onSave: (draft: LegDraft, description: string) => Promise<string | null>;
+  /**
+   * Guarda el tramo (y después sube el pasaje elegido antes de guardarlo). Con `estimate`, el precio es
+   * un estimado (decisión 084): el tramo queda sin precio ni gasto y se guarda el estimado aparte;
+   * con null se borra el estimado que tuviera. Devuelve un mensaje si falló.
+   */
+  onSave: (
+    draft: LegDraft,
+    description: string,
+    ticket?: { file: File; memberId: string | null },
+    estimate?: { amountCents: number; memberIds: string[] } | null,
+  ) => Promise<string | null>;
   /** Adjunta un pasaje al tramo ya guardado; memberId es de quién es (null: del grupo). */
   onAddTicket: (legId: string, memberId: string | null, input: AttachmentInput) => Promise<string | null>;
   onRemoveTicket: (legId: string, ticket: LegAttachment) => Promise<string | null>;
+  /** Borra el tramo con su gasto, sus pasajes y su estimado (decisión 086). */
+  onDelete?: (legId: string) => Promise<string | null>;
   /** Abre el visor en ese pasaje. */
   onViewTicket: (fromStopId: string, ticketId: string) => void;
   /** Solo ver (decisión 034): todo deshabilitado y sin guardar. */
@@ -66,18 +82,34 @@ export function LegSheet({
   const toTz = to?.timezone ?? fromTz;
   const leg = trip.legs.find((l) => l.from_stop_id === fromStopId);
   const order = trip.members.map((m) => m.id);
-  const travellers = to ? to.member_ids : from.member_ids;
+  // Viajan los que están en la ciudad de salida y también en la de llegada (decisión 092): el que se
+  // queda o se vuelve desde Riga no va a Oslo, y el que se suma en Oslo llega por su cuenta. La vuelta
+  // a casa, los de la última ciudad. Si no hay nadie en las dos, los de la salida.
+  const both = to ? from.member_ids.filter((id) => to.member_ids.includes(id)) : from.member_ids;
+  const travellers = both.length ? both : from.member_ids;
 
   const [mode, setMode] = useState<LegMode | null>(leg?.mode ?? null);
   const [dep, setDep] = useState(leg?.departs_at ? localTime(leg.departs_at, fromTz) : "");
   const [arr, setArr] = useState(leg?.arrives_at ? localTime(leg.arrives_at, toTz) : "");
-  const [price, setPrice] = useState(leg?.total_price_cents ? formatAmountInput(leg.total_price_cents) : "");
+  // Estimado (decisión 084): mientras no está pagado, el precio puede ser un estimado, que no es gasto.
+  const estimate = leg ? trip.planned.find((p) => p.leg_id === leg.id) : undefined;
+  const [estimated, setEstimated] = useState(!leg?.total_price_cents && !!estimate);
+  // El estimado se carga por persona y se multiplica por los que viajan (decisión 089).
+  const [price, setPrice] = useState(
+    leg?.total_price_cents
+      ? formatAmountInput(leg.total_price_cents)
+      : estimate
+        ? formatAmountInput(Math.round(estimate.amount_cents / Math.max(1, estimate.member_ids.length)))
+        : "",
+  );
   const [paidBy, setPaidBy] = useState(leg?.paid_by_member_id ?? myMemberId ?? order[0]);
   const [split, setSplit] = useState<SplitState>(() =>
     leg && leg.split.length && leg.total_price_cents
       ? splitStateFrom(leg.total_price_cents, leg.split, order)
       : { memberIds: order.filter((id) => travellers.includes(id)), mode: "equal", custom: {} },
   );
+  const [linkText, setLinkText] = useState(leg?.link_url ?? "");
+  const [notes, setNotes] = useState(leg?.notes ?? "");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   // Modo vista (decisión 055): un tramo ya cargado se abre para leerlo, como un itinerario; "Editar"
@@ -85,6 +117,7 @@ export function LegSheet({
   const [editing, setEditing] = useState(!readOnly && !leg);
 
   const totalCents = parseAmount(price);
+  const estimateMembers = split.memberIds.length ? split.memberIds : travellers;
   const departsAt = dep ? zonedToInstant(date, dep, fromTz) : null;
   let arrivesAt = arr ? zonedToInstant(date, arr, toTz) : null;
   if (departsAt && arrivesAt && arrivesAt <= departsAt) arrivesAt = zonedToInstant(addDays(date, 1), arr, toTz); // llega al día siguiente
@@ -100,6 +133,53 @@ export function LegSheet({
   const savedLegId = leg && !leg.id.startsWith("nuevo-") ? leg.id : null;
   const owners = trip.members.filter((m) => travellers.includes(m.id));
   const [owner, setOwner] = useState<string | null>(myMemberId && travellers.includes(myMemberId) ? myMemberId : null);
+  const [pendingTicket, setPendingTicket] = useState<File | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState("");
+  const ticketInput = useRef<HTMLInputElement>(null);
+
+  // Subir el pasaje completa lo que esté vacío: el medio, los horarios y el precio (decisión 069).
+  async function fillFromTicket(file: File) {
+    const info = await readDocumentLines(file).then(parseTicket).catch(() => null);
+    const found: string[] = [];
+    if (info?.mode && !mode) {
+      setMode(info.mode);
+      found.push("el medio de transporte");
+    }
+    if (info?.departs && !dep) {
+      setDep(info.departs);
+      found.push("la salida");
+    }
+    if (info?.arrives && !arr) {
+      setArr(info.arrives);
+      found.push("la llegada");
+    }
+    if (info?.priceCents && !totalCents) {
+      setPrice(formatAmountInput(info.priceCents));
+      found.push("el precio");
+    }
+    setReadNote(found.length ? `Sacamos del pasaje ${namesList(found)}. Revisá que esté bien.` : "No pudimos leer los datos del pasaje: completalos a mano.");
+  }
+
+  /** Un pasaje nuevo: lo lee y, si el tramo ya está guardado, lo adjunta; si no, se sube al guardar. */
+  async function addTicket(input: AttachmentInput): Promise<string | null> {
+    if ("file" in input) {
+      setReading(true);
+      await fillFromTicket(input.file);
+      setReading(false);
+    }
+    if (savedLegId) return onAddTicket(savedLegId, owner, input);
+    if ("file" in input) setPendingTicket(input.file);
+    return null;
+  }
+
+  function pickTicket(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    addTicket({ file }).then((message) => message && setError(message));
+  }
 
   function save(close: () => void) {
     if (!mode) {
@@ -107,8 +187,13 @@ export function LegSheet({
       return;
     }
     const { splits, remainingCents } = computeSplits(totalCents, split);
-    if (totalCents > 0 && remainingCents !== 0) {
+    if (!estimated && totalCents > 0 && remainingCents !== 0) {
       setError("La división no suma el total.");
+      return;
+    }
+    const link = linkText.trim() ? normalizeUrl(linkText) : null;
+    if (linkText.trim() && !link) {
+      setError("El link no parece una dirección web.");
       return;
     }
     const name = MODES.find((m) => m.mode === mode)!.name;
@@ -123,12 +208,25 @@ export function LegSheet({
           mode,
           departs_at: departsAt,
           arrives_at: arrivesAt,
-          total_price_cents: totalCents || null,
-          paid_by_member_id: totalCents ? paidBy : null,
-          split: totalCents ? splits : [],
+          total_price_cents: estimated ? null : totalCents || null,
+          paid_by_member_id: !estimated && totalCents ? paidBy : null,
+          split: !estimated && totalCents ? splits : [],
+          link_url: link,
+          notes: notes.trim() || null,
         },
         description,
+        pendingTicket ? { file: pendingTicket, memberId: owner } : undefined,
+        estimated && totalCents ? { amountCents: totalCents * estimateMembers.length, memberIds: estimateMembers } : null,
       );
+      if (message) setError(message);
+      else close();
+    });
+  }
+
+  function remove(close: () => void) {
+    if (!savedLegId || !onDelete) return;
+    startTransition(async () => {
+      const message = await onDelete(savedLegId);
       if (message) setError(message);
       else close();
     });
@@ -141,7 +239,8 @@ export function LegSheet({
     <BottomSheet onClose={onClose} label={`Tramo de ${from.city} a ${to?.city ?? "casa"}`}>
       {(close) => (
       <>
-        <div className="flex items-start gap-3 px-5 pt-2 pb-1">
+        <div className="flex items-start gap-3 px-3 pt-2 pb-1">
+          <BackButton onClick={close} />
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-bold text-ink-2">
               {to ? `Tramo ${i + 1} de ${stops.length - 1}` : "Vuelta a casa"}
@@ -156,14 +255,14 @@ export function LegSheet({
               <Pencil size={15} /> Editar
             </button>
           )}
-          <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface">
-            <X size={20} />
-          </button>
         </div>
 
         {!editing && leg ? (
           <div className="flex-1 overflow-y-auto px-5 pt-2 pb-6 [scrollbar-width:none]">
             <LegView
+              estimateCents={estimate?.amount_cents ?? null}
+              link={leg.link_url ?? null}
+              notes={leg.notes ?? null}
               leg={leg}
               fromCity={from.city}
               toCity={to?.city ?? "casa"}
@@ -188,6 +287,45 @@ export function LegSheet({
         ) : (
         <div className="flex-1 overflow-y-auto px-5 pt-1 pb-6 [scrollbar-width:none]">
           <fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
+          {/* El pasaje primero: completa el medio, los horarios y el precio (decisión 069). */}
+          {!readOnly && tickets.length === 0 && (
+            <div className="mt-3">
+              {pendingTicket ? (
+                <div className="flex items-center gap-3 rounded-[16px] border border-line px-3.5 py-3">
+                  <FileText size={18} className="shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold">{pendingTicket.name}</div>
+                    <div className="text-xs text-ink-2">Se sube al guardar</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingTicket(null);
+                      setReadNote("");
+                    }}
+                    aria-label="Sacar el pasaje"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input ref={ticketInput} type="file" accept="application/pdf,.pdf,image/*" hidden onChange={pickTicket} />
+                  <button
+                    type="button"
+                    disabled={reading}
+                    onClick={() => ticketInput.current?.click()}
+                    className="flex h-[52px] w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold disabled:opacity-60"
+                  >
+                    <Upload size={17} /> {reading ? "Leyendo el pasaje…" : "Subir el pasaje · PDF o imagen"}
+                  </button>
+                  <p className="mt-1.5 text-xs text-ink-2">Completamos el medio, los horarios y el precio. Con el PDF sale mejor que con una captura.</p>
+                </>
+              )}
+              {readNote && <p className="mt-2 text-[13px] text-ink-2">{readNote}</p>}
+            </div>
+          )}
           <div className={label}>Medio de transporte</div>
           <div className="grid grid-cols-5 gap-2">
             {MODES.map(({ mode: m, label: l, Icon, on }) => (
@@ -212,11 +350,11 @@ export function LegSheet({
             </div>
             <label className={box}>
               <div className="text-[11px] font-bold text-ink-2">Salida</div>
-              <input type="time" value={dep} onChange={(e) => setDep(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
+              <TimeInput value={dep} onChange={setDep} label="Hora de salida" />
             </label>
             <label className={box}>
               <div className="text-[11px] font-bold text-ink-2">Llegada</div>
-              <input type="time" value={arr} onChange={(e) => setArr(e.target.value)} className="mt-0.5 w-full min-w-0 bg-transparent text-[16px] font-bold outline-none" />
+              <TimeInput value={arr} onChange={setArr} label="Hora de llegada" />
             </label>
           </div>
           <div className="mt-2 text-[13px] text-ink-2">
@@ -233,9 +371,39 @@ export function LegSheet({
           )}
 
           <div className={label}>Precio</div>
+          {/* Ya pagado (es un gasto) o estimado (planificado, no entra en el balance). */}
+          <div className="mb-2 grid grid-cols-2 rounded-full bg-surface p-1">
+            {(
+              [
+                [false, "Ya pagado"],
+                [true, "Estimado"],
+              ] as const
+            ).map(([value, text]) => (
+              <button
+                key={text}
+                type="button"
+                onClick={() => {
+                  // Al cambiar, el monto pasa de total a por persona (y al revés).
+                  if (value !== estimated && totalCents) {
+                    const n = Math.max(1, estimateMembers.length);
+                    setPrice(formatAmountInput(value ? Math.round(totalCents / n) : totalCents * n));
+                  }
+                  setEstimated(value);
+                }}
+                aria-pressed={estimated === value}
+                className={`h-9 rounded-full text-[13px] font-bold ${estimated === value ? "bg-white text-ink shadow-[0_1px_3px_rgb(0_0_0/0.12)]" : "text-ink-2"}`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
           <label className="flex items-center gap-3 rounded-field border border-line py-2.5 pr-2.5 pl-3.5">
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-ink-2">Total del grupo{perPerson}</div>
+              <div className="text-xs font-semibold text-ink-2">
+                {estimated
+                  ? `Estimado por persona${totalCents ? ` · × ${estimateMembers.length} = ${formatEuros(totalCents * estimateMembers.length)}` : ""}`
+                  : `Total del grupo${perPerson}`}
+              </div>
               <div className="mt-0.5 flex items-baseline gap-1.5">
                 <span className="text-xl font-extrabold">€</span>
                 <input
@@ -250,7 +418,13 @@ export function LegSheet({
             </div>
           </label>
 
-          {totalCents > 0 && (
+          {estimated && (
+            <p className="mt-2 text-[13px] leading-[1.4] text-ink-2">
+              Es un estimado por persona: se multiplica por los {estimateMembers.length} que viajan. No es un gasto ni entra en el balance, pero suma en lo que sale el viaje. Cuando lo paguen, pasalo a &quot;Ya pagado&quot;.
+            </p>
+          )}
+
+          {!estimated && totalCents > 0 && (
             <>
               <div className={label}>Pagó</div>
               <div className="flex flex-wrap gap-1.5">
@@ -275,6 +449,25 @@ export function LegSheet({
             </>
           )}
 
+          {/* Dónde comprarlo o buscarlo, y una nota (decisión 090). */}
+          <div className={label}>Link</div>
+          <input
+            type="url"
+            inputMode="url"
+            autoComplete="off"
+            value={linkText}
+            onChange={(e) => setLinkText(e.target.value)}
+            placeholder="Dónde comprarlo o buscarlo (ej. omio.com)"
+            className="h-[50px] w-full rounded-field border border-line bg-white px-4 text-[16px] outline-none focus:border-navy"
+          />
+          <div className={label}>Notas</div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={notes ? 3 : 2}
+            placeholder="Ej. Lo compro en Omio, sale más barato a la mañana"
+            className="w-full resize-none rounded-field border border-line bg-white px-4 py-3 text-[16px] leading-[1.45] outline-none focus:border-navy"
+          />
           </fieldset>
 
           <div className="mt-[22px] mb-2.5 flex items-baseline justify-between">
@@ -322,11 +515,35 @@ export function LegSheet({
                     </button>
                   ))}
                 </div>
-                <AddAttachmentButtons onAdd={(input) => onAddTicket(savedLegId, owner, input)} />
+                <AddAttachmentButtons onAdd={addTicket} />
+                {tickets.length > 0 && readNote && <p className="mt-2 text-[13px] text-ink-2">{readNote}</p>}
               </>
             ) : (
-              <p className="mt-2.5 text-[13px] text-ink-2">Guardá el tramo para adjuntar los pasajes.</p>
+              <p className="mt-2.5 text-[13px] text-ink-2">{pendingTicket ? "El pasaje se sube al guardar el tramo." : "Guardá el tramo para adjuntar más pasajes."}</p>
             ))}
+
+          {/* Borrar el tramo (decisión 086), con confirmación. */}
+          {!readOnly && savedLegId && onDelete && (
+            <div className="mt-8">
+              {confirmDelete ? (
+                <div className="rounded-[18px] border border-line p-3.5">
+                  <p className="text-[13px] leading-[1.4] text-ink-2">Se borra el tramo con su gasto, sus pasajes y su estimado. No se puede deshacer.</p>
+                  <div className="mt-3 grid grid-cols-[1fr_2fr] gap-2">
+                    <button type="button" onClick={() => setConfirmDelete(false)} className="h-12 rounded-button bg-surface text-sm font-bold">
+                      Cancelar
+                    </button>
+                    <button type="button" onClick={() => remove(close)} disabled={pending} className="h-12 rounded-button bg-delete text-sm font-bold text-white disabled:opacity-50">
+                      Borrar el tramo
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setConfirmDelete(true)} className="flex h-11 items-center gap-2 px-1 text-[13px] font-bold text-danger">
+                  <Trash2 size={16} /> Borrar este tramo
+                </button>
+              )}
+            </div>
+          )}
         </div>
         )}
 
@@ -390,7 +607,13 @@ function LegView({
   tickets,
   withTicket,
   onOpenTicket,
+  estimateCents,
+  link,
+  notes,
 }: {
+  estimateCents: number | null;
+  link: string | null;
+  notes: string | null;
   leg: Leg;
   fromCity: string;
   toCity: string;
@@ -468,9 +691,24 @@ function LegView({
         <div className="min-w-0 text-sm text-ink-2">
           {leg.total_price_cents
             ? `${formatEuros(leg.total_price_cents)}${payer ? ` · pagó ${payer.display_name}` : ""}${mine ? ` · tu parte ${formatEuros(mine.amount_cents)}` : ""}`
-            : "Sin precio cargado"}
+            : estimateCents
+              ? `${formatEuros(estimateCents)} estimado · todavía sin pagar`
+              : "Sin precio cargado"}
         </div>
       </div>
+
+      {/* Link y notas (decisión 090). */}
+      {(link || notes) && (
+        <div className="mt-5 rounded-[18px] border border-line p-3.5">
+          {link && (
+            <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-[15px] font-bold text-navy">
+              <ExternalLink size={17} className="shrink-0" />
+              <span className="min-w-0 truncate">{link.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</span>
+            </a>
+          )}
+          {notes && <p className={`text-[15px] leading-[1.45] whitespace-pre-wrap ${link ? "mt-2.5 border-t border-divider pt-2.5" : ""}`}>{notes}</p>}
+        </div>
+      )}
 
       {/* Pasajes */}
       <div className="mt-6 mb-2.5 flex items-baseline justify-between">

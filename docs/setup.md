@@ -45,7 +45,7 @@ El mail que trae Supabase solo manda a los miembros del equipo del proyecto y ti
 3. [ ] En Supabase → SMTP Settings → **Enable custom SMTP**:
    - Host: `smtp.gmail.com` · Port: `465`
    - Username: tu Gmail · Password: la contraseña de aplicación (16 letras, sin espacios)
-   - Sender email: tu Gmail · Sender name: `Vamo y vamo`
+   - Sender email: tu Gmail · Sender name: `Vamo`
 4. [ ] En **Authentication → Rate Limits**, subí el límite de mails por hora (por ejemplo a 30).
 
 **Opción B · Resend (si tenés un dominio propio)**
@@ -76,7 +76,7 @@ El mail que trae Supabase solo manda a los miembros del equipo del proyecto y ti
 
 Si más adelante hace falta algún secreto del lado del servidor (por ejemplo la secret key de Supabase), se agrega acá y solo en Vercel, nunca con prefijo `NEXT_PUBLIC_`.
 
-## Notificaciones de gastos (decisión 065)
+## Notificaciones de gastos (decisión 094)
 
 Usan Web Push, que necesita un par de claves (VAPID) propias de la app. Se generan una sola vez:
 

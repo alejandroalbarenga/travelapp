@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { findCityPhoto } from "@/lib/city-photo";
 import { formatRange } from "@/lib/dates";
-import { countdown, splitTrips, todayInUruguay, tripSubtitle } from "@/lib/home";
+import { countdown, coverStopIndex, splitTrips, todayInUruguay, travelStats, tripSubtitle, type TravelStats } from "@/lib/home";
 import { myPart, type MyPart } from "@/lib/my-part";
 import { createClient } from "@/lib/supabase/server";
 import { PushToggle } from "@/components/push-toggle";
@@ -11,8 +11,8 @@ import { NewTripButton } from "./new-trip";
 import { SignOutButton } from "./sign-out-button";
 import { LoadingScreen } from "@/components/loading-screen";
 
-// Pantalla 00 · Inicio (docs/diseño.md): tus viajes próximos con foto y cuenta regresiva, el botón
-// "Nuevo viaje" y los viajes pasados. Las estadísticas (países, noches afuera) quedan para después.
+// Pantalla 00 · Inicio (docs/diseño.md): tus estadísticas (decisión 071), tus viajes próximos con foto
+// y cuenta regresiva, el botón "Nuevo viaje" y los viajes pasados.
 export default function Home() {
   return (
     <main
@@ -32,7 +32,7 @@ type TripRow = {
   start_date: string;
   end_date: string;
   trip_members: { id: string; display_name: string; initials: string; color: string; user_id: string | null }[];
-  stops: { city: string; position: number; nights: number; country_code: string | null; photo_url: string | null; stop_members: { member_id: string }[] }[];
+  stops: { city: string; position: number; nights: number; country: string | null; country_code: string | null; photo_url: string | null; stop_members: { member_id: string }[] }[];
 };
 
 /** "uy" → 🇺🇾 */
@@ -50,7 +50,7 @@ async function Trips() {
   const { data } = await supabase
     .from("trips")
     .select(
-      "id, name, start_date, end_date, trip_members (id, display_name, initials, color, user_id), stops (city, position, nights, country_code, photo_url, stop_members (member_id))",
+      "id, name, start_date, end_date, trip_members (id, display_name, initials, color, user_id), stops (city, position, nights, country, country_code, photo_url, stop_members (member_id))",
     )
     .order("start_date");
   // Cada viaje con tus fechas (decisión 054): si te sumás más tarde o te vas antes, la tarjeta muestra
@@ -67,18 +67,23 @@ async function Trips() {
       ...t,
       stops,
       part,
+      myId,
+      trip_start: t.start_date,
       start_date: part?.arrival ?? t.start_date,
       end_date: part?.departure ?? t.end_date,
     };
   });
   const today = todayInUruguay();
   const { upcoming, past } = splitTrips(trips, today);
+  const stats = travelStats(
+    trips.map((t) => ({ ...t, myMemberId: t.myId, stops: t.stops.map((s) => ({ ...s, member_ids: s.stop_members.map((m) => m.member_id) })) })),
+    today,
+  );
 
-  // Foto de cada viaje: la de su primera ciudad de verdad (no la escala de salida si es la misma que la vuelta).
+  // Foto de cada viaje (decisión 073): la ciudad donde estás hoy o, si no, donde pasás más noches.
   const photos = await Promise.all(
     trips.map(async (t) => {
-      // Si te sumás más tarde, la foto es la de tu primera ciudad.
-      const stop = t.part ? t.stops[t.part.first] : (t.stops.find((s, i) => i > 0 || t.stops.length === 1) ?? t.stops[0]);
+      const stop = t.stops[coverStopIndex(t.stops.map((s) => s.nights), t.trip_start, today, t.part)];
       return [t.id, stop ? (stop.photo_url ?? (await findCityPhoto(stop.city))) : null] as const;
     }),
   );
@@ -103,6 +108,7 @@ async function Trips() {
         <SignOutButton />
       </div>
 
+      {stats && <StatsCard stats={stats} />}
       {trips.length > 0 && <PushToggle />}
 
       <div className="mt-8 mb-3 flex items-center justify-between gap-3">
@@ -175,5 +181,41 @@ async function Trips() {
         </>
       )}
     </>
+  );
+}
+
+/** Países visitados, viajes hechos y noches afuera, con las banderas superpuestas y la lista de países. */
+function StatsCard({ stats }: { stats: TravelStats }) {
+  const numbers = [
+    { value: stats.countries.length, label: stats.countries.length === 1 ? "país visitado" : "países visitados" },
+    { value: stats.tripsDone, label: stats.tripsDone === 1 ? "viaje hecho" : "viajes hechos" },
+    { value: stats.nightsAway, label: stats.nightsAway === 1 ? "noche afuera" : "noches afuera" },
+  ];
+  return (
+    <section className="mt-6 rounded-card border border-line p-4">
+      <div className="grid grid-cols-3 gap-2">
+        {numbers.map((n) => (
+          <div key={n.label} className="min-w-0">
+            <div className="text-[28px] leading-none font-extrabold tracking-[-0.02em]">{n.value}</div>
+            <div className="mt-1 text-[13px] leading-[1.25] text-ink-2">{n.label}</div>
+          </div>
+        ))}
+      </div>
+      {stats.countries.length > 0 && (
+        <div className="mt-4 flex items-center gap-3 border-t border-divider pt-3.5">
+          <div className="flex shrink-0 -space-x-2">
+            {stats.countries.slice(0, 6).map((c) => (
+              <span
+                key={c.code}
+                className="size-7 rounded-full border-2 border-white bg-surface bg-cover bg-center"
+                style={{ backgroundImage: `url("https://flagcdn.com/w80/${c.code}.png")` }}
+                title={c.name}
+              />
+            ))}
+          </div>
+          <div className="min-w-0 flex-1 truncate text-[13px] font-semibold">{stats.countries.map((c) => c.name).join(" · ")}</div>
+        </div>
+      )}
+    </section>
   );
 }

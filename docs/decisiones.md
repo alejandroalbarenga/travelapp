@@ -433,12 +433,171 @@ También: con el teclado abierto en el iPhone, los sheets se acomodan a la parte
 Del PDF de la reserva ahora también sale el precio total, si está en euros. Una imagen se adjunta pero no se lee.
 **Por qué:** pedido de Ale; la tarjeta y el formulario separados confundían y no se veía dónde cambiar quiénes están.
 
-### 065 · Notificaciones de gastos
+### 065 · El campo donde escribís queda arriba del teclado
+**Fecha:** 2026-10-09
+**Decisión:** el sheet sigue sin achicarse con el teclado (060), pero al tocar un campo la lista del sheet se scrollea sola hasta que el campo quede arriba del teclado. Para que los últimos campos también puedan subir, mientras el teclado está abierto las listas del sheet suman abajo un espacio del alto del teclado.
+**Por qué:** pedido de Ale; el teclado tapaba el campo que se estaba editando.
+
+### 066 · El ícono pasa a rosado
+**Fecha:** 2026-10-09
+**Decisión:** el fondo del logo y del ícono de la app pasa del navy `#032F45` al rosado `#FF385C` de la paleta de la 050, con "Vamo" en blanco. Cambia en `public/logo.svg` (de ahí salen todos los íconos) y en la pantalla de carga. En el iPhone, para ver el ícono nuevo hay que borrar la app de la pantalla de inicio y volver a agregarla.
+**Por qué:** pedido de Ale; el navy ya no está en la paleta de la app.
+
+### 067 · La captura de la reserva también se lee
+**Fecha:** 2026-10-09
+**Decisión:** si la reserva que se sube es una imagen (captura o foto), se lee en el teléfono con OCR (Tesseract, `src/lib/read-booking-image.ts`) y se completa lo que esté vacío con las mismas reglas que el PDF (057): el nombre (el renglón más alto), dónde se reservó, los horarios y el precio. La imagen no sale del teléfono; la primera vez se bajan Tesseract y el español y el inglés (unos megas, de la CDN jsDelivr) y tarda unos segundos. Con el PDF sigue saliendo mejor. Reemplaza lo de la 057 y la 064 de que una imagen se adjunta sin leerse.
+**Por qué:** pedido de Ale; muchas reservas están como captura del mail o de la app. Gratis, en vez de leerlas con un modelo de IA.
+
+### 068 · Pantallas completas en vez de sheets
+**Fecha:** 2026-10-09
+**Decisión:**
+- En el celular ya no hay sheets: la ciudad, el tramo, el gasto, la transferencia, el calendario, los integrantes, agregar ciudad y nuevo viaje son pantallas completas que entran desde la derecha, sin fondo oscuro ni handle. Arriba a la izquierda tienen la flecha de volver (en la web sigue la cruz). Se vuelve con la flecha, deslizando desde el borde izquierdo hacia la derecha, con el "atrás" del teléfono o del navegador (cada pantalla abierta es una entrada del historial, con la misma URL) o con Escape. La foto de la ciudad llega hasta arriba, debajo de la barra de estado. El único panel que se arrastra es el del viaje sobre el mapa. En la web no cambia nada.
+- "Agregar ciudad" desde el chip "Agregar" propone ponerla después de la última ciudad (antes era antes de la última).
+- El logo de la pantalla de carga va sin sombra.
+**Por qué:** pedido de Ale; los sheets ya ocupaban casi toda la pantalla y con el teclado se rompían.
+
+### 069 · El tramo se completa desde el pasaje
+**Fecha:** 2026-10-09
+**Decisión:** arriba del formulario del tramo va "Subir el pasaje · PDF o imagen" (mientras el tramo no tenga pasajes). Se lee en el teléfono, igual que la reserva del alojamiento (057, 067), y se completa lo que esté vacío: el medio de transporte (por las palabras del pasaje: vuelo, embarque, Ryanair, Renfe, tren, FlixBus, autobús…), la hora de salida y de llegada (sin contar la hora de embarque; también si vienen en tabla) y el precio en euros. Las reglas están en `src/lib/ticket-pdf.ts`. Si el tramo todavía no está guardado, el pasaje se sube al guardar (`save_leg` devuelve el id del tramo) y queda como pasaje tuyo. Los pasajes que se agregan abajo también completan lo vacío.
+**Por qué:** pedido de Ale; el pasaje ya tiene todo, no hace falta tipearlo.
+
+### 070 · Las fechas de "Nuevo viaje" con el mismo aspecto que los otros campos
+**Fecha:** 2026-10-09
+**Decisión:** "Desde" y "Hasta" muestran la fecha escrita ("sáb 17 oct", con el año si no es el actual) con un ícono de calendario, y "Elegir" si están vacías. Encima va el campo de fecha nativo transparente, que abre el selector del teléfono (en la compu, el calendario).
+**Por qué:** pedido de Ale; en el iPhone el campo de fecha nativo quedaba desalineado.
+
+### 071 · Tus estadísticas en el inicio
+**Fecha:** 2026-10-09
+**Decisión:** arriba de "Próximos viajes" va una tarjeta con tus **países visitados**, **viajes hechos** y **noches afuera**, y abajo las banderas superpuestas (hasta seis) con la lista de países. Cuenta solo lo que ya pasó: los países de las ciudades de tu parte del viaje donde dormiste al menos una noche (las escalas no cuentan), los viajes terminados y las noches desde que empezó tu parte hasta hoy. Mientras no empezó ningún viaje, la tarjeta no aparece. La regla está en `travelStats()` (`src/lib/home.ts`).
+**Por qué:** estaba en el diseño y había quedado para después (041).
+
+### 072 · La ficha de la ciudad sin foto
+**Fecha:** 2026-10-10
+**Decisión:** la pantalla de la ciudad ya no abre con la foto grande: arriba van volver y cambiar la ciudad, y abajo el país con su bandera, el nombre y la frase sobre blanco. La foto sigue en la lista de ciudades del viaje.
+**Por qué:** pedido de Ale, para ver cómo queda más limpia.
+
+### 073 · La foto de cada viaje en el inicio
+**Fecha:** 2026-10-10
+**Decisión:** la tarjeta de cada viaje usa la foto de la ciudad donde estás hoy (si el viaje está en curso) o, si no, la de la ciudad de tu parte del viaje donde pasás más noches. Antes era siempre la primera ciudad. Un viaje sin ciudades sigue sin foto. La regla está en `coverStopIndex()` (`src/lib/home.ts`).
+**Por qué:** pedido de Ale; todas las tarjetas mostraban la ciudad de salida.
+
+### 074 · El gasto se completa desde la foto del ticket
+**Fecha:** 2026-10-10
+**Decisión:** en "Nuevo gasto" (y en el gasto personal) va "Escanear el ticket": la foto (o PDF) se lee en el teléfono con OCR, como la reserva (067), y completa lo vacío: el monto (el más alto de los renglones con "total", sin subtotal ni IVA; si no hay, el más alto del ticket), el concepto (el nombre del comercio, el renglón más grande de arriba) y una categoría probable (restaurante o súper → Comida, museo o entrada → Actividades, taxi o metro → Transporte). Las reglas están en `src/lib/receipt.ts`. La foto no se guarda.
+**Por qué:** pedido de Ale.
+
+### 075 · Gastos más fáciles de leer
+**Fecha:** 2026-10-10
+**Decisión:** la pantalla de Gastos se reordena: arriba **lo tuyo** (cuánto te tocó gastar, cuánto pusiste y "Te deben €X" / "Debés €X" en verde o rojo); después **Para quedar a mano**, contado desde vos ("Josué te debe €193,33", "Le debés €50 a Ale"; las tuyas primero) con un botón chico "Saldado"; **Cómo está cada uno** en una grilla de tarjetas con palabras en vez de las burbujas (037); los **gastos** por ciudad con una sola línea de concepto y abajo la fecha y quién pagó ("Pagaste vos"); y al final **Ya saldado** y los movimientos. El total del grupo pasa a ser el subtítulo de "Gastos".
+**Por qué:** pedido de Ale; costaba leerla. Las burbujas con signos (−€177) no dejaban claro quién le debía a quién.
+
+### 076 · Gastos personales con presupuesto
+**Fecha:** 2026-10-10
+**Decisión:** en Gastos hay dos pestañas, **Del grupo** y **Míos**. En "Míos" cada uno carga sus gastos personales del viaje (monto o foto del ticket, concepto, categoría y día) y les pone un presupuesto por categoría, que se va descontando ("Te quedan €80 de €200", en rojo si te pasaste). Arranca con Ropa, Comida, Regalos, Salidas y Otros, y se pueden crear más. Solo los ve quien los carga (ni el organizador) y no entran en el balance del grupo. Tablas `personal_categories` y `personal_expenses` (migración 0010), con RLS por usuario y miembro del viaje.
+**Por qué:** pedido de Ale, para llevar lo que gasta cada uno aparte de las cuentas del grupo.
+
+### 077 · En la web también son pantallas nuevas
+**Fecha:** 2026-10-10
+**Decisión:** en la web (desde 1100 px), agregar ciudad, la ciudad, el tramo, los gastos, el calendario, los integrantes, etc. dejan de subir como panel desde abajo: son una pantalla nueva que entra desde la derecha y ocupa todo el panel izquierdo (con su header), con el mapa a la vista. "Nuevo viaje", afuera del viaje, ocupa toda la ventana con el contenido centrado. Tienen la flecha de volver (ya no la cruz), funcionan con el "atrás" del navegador y con Escape, igual que en el celular (068). En el header del viaje, las bolitas de los integrantes ya no se pisan y dicen cuántos son.
+**Por qué:** pedido de Ale; en la web los paneles se veían rotos.
+
+### 078 · La app se llama Vamo
+**Fecha:** 2026-10-10
+**Decisión:** el nombre pasa de "Vamo y vamo" a **Vamo**, como dice el logo (062): en el ícono de la pantalla de inicio, la pestaña del navegador, el login y el mail del código. Reemplaza el nombre de la 035. El repo y el proyecto de Vercel siguen siendo `travelapp`.
+**Por qué:** pedido de Ale.
+
+### 079 · El header del viaje en la web crece con su contenido
+**Fecha:** 2026-10-10
+**Decisión:** el header del panel izquierdo ya no tiene alto fijo (128 px): crece con lo que tiene y la lista o los gastos empiezan abajo. Con otra fuente o con el zoom del navegador, los botones quedan siempre adentro de la línea.
+**Por qué:** pedido de Ale; los botones se salían por abajo del header.
+
+### 080 · Guardar abajo en todas las pantallas
+**Fecha:** 2026-10-10
+**Decisión:** en "Nuevo gasto", el gasto personal y "Registrar transferencia", el botón de guardar ("Guardar gasto", "Guardar transferencia") pasa de arriba a la derecha a la barra de abajo, grande y rosado, como en la ciudad y el tramo. Arriba queda la flecha de volver y el título.
+**Por qué:** pedido de Ale, para que todas las pantallas sean iguales.
+
+### 081 · Gastos: las burbujas de vuelta arriba
+**Fecha:** 2026-10-10
+**Decisión:** reemplaza el orden de la 075. La pantalla de Gastos (pestaña "Del grupo") queda, como en Tricount:
+1. **Las burbujas** de cada uno arriba (las de la 037): el tamaño va según cuánto le deben o debe, y las grandes dicen abajo "te deben", "le deben", "debe", "debés" o "a mano". De un vistazo se ve quién está abajo y a quién le toca pagar.
+2. **Total gastado**, con cuántos gastos, tu parte y cuánto pusiste.
+3. **Últimos gastos**: los cuatro más nuevos; "Ver todos los gastos" abre la lista completa por ciudad.
+4. **Quién le debe a quién**, contado desde vos, con "Saldado" y "Registrar una transferencia"; abajo lo ya saldado.
+5. **Movimientos** (el historial).
+Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbujas ya lo dicen.
+**Por qué:** pedido de Ale; al entrar a Gastos lo que importa es cómo está cada uno, y las burbujas lo dejaban claro.
+
+### 082 · De paso, sin alojamiento
+**Fecha:** 2026-10-10
+**Decisión:** una ciudad con 0 noches (de paso) no pide alojamiento: en vez de la tarjeta del alojamiento o "Agregar alojamiento", muestra "De paso · Sin noche acá, no hace falta alojamiento" con **Quiénes pasan** para elegir quién está. Si ya tenía un alojamiento cargado (de antes de pasarla a 0 noches), se sigue viendo para poder editarlo o borrarlo.
+**Por qué:** pedido de Ale.
+
+### 083 · Ver la reserva en una ciudad bloqueada y varios archivos por alojamiento
+**Fecha:** 2026-10-11
+**Decisión:**
+- En una ciudad bloqueada (042), o para quien solo ve (034), se puede abrir la reserva y los tramos de la línea de tiempo. Antes la ficha entera quedaba deshabilitada en modo lectura y "Ver reserva" no andaba; ahora solo se ocultan los controles para editar.
+- El alojamiento acepta varios archivos (varios PDF o capturas de la reserva): se pueden elegir varios a la vez y agregar más después con "Agregar otro archivo". Los datos se completan con el primero. En la tarjeta dice "Ver reservas (3)" y el visor pasa de uno a otro.
+**Por qué:** pedido de Ale.
+
+### 084 · Planificado: estimados que no son gastos
+**Fecha:** 2026-10-12
+**Decisión:** para planificar cuánto sale el viaje sin mezclarlo con lo que ya se pagó:
+- En el **tramo** y en el **alojamiento**, el precio puede ser **Ya pagado** (como siempre: crea el gasto y entra en el balance) o **Estimado**: no crea gasto ni entra en el balance, se divide en partes iguales entre los que van y se guarda aparte. Cuando se paga, se pasa a "Ya pagado" y el estimado se borra. El alojamiento estimado no necesita nombre ni "Reservado en" (se guarda por ciudad).
+- En Gastos hay una pestaña **Planificado** (entre "Del grupo" y "Míos"): arriba **El viaje sale** = lo ya gastado + lo estimado, y **Tu parte** igual; abajo cada estimado (tramos, alojamientos y sueltos), con tu parte. "Agregar estimado" carga uno suelto (entradas, una excursión, una cena) con su ciudad, categoría y entre quiénes.
+- Son del grupo: los ven todos los del viaje y los cambian los que pueden editar. Tabla `planned_items` (migración 0011): un estimado por tramo (`leg_id`) y por alojamiento de cada ciudad (`stay_stop_id`), o suelto. La lógica está en `src/lib/planning.ts`.
+**Por qué:** pedido de Ale; antes lo hacía en un Excel, sumando el estimado de cada cosa para saber cuánto le iba a salir el viaje.
+
+### 085 · En un tramo viajan los de la ciudad de salida
+**Fecha:** 2026-10-12
+**Decisión:** quiénes van en un tramo (los pasajeros, entre quiénes se divide su precio o su estimado y de quién son los pasajes) salen de la ciudad de la que se sale, no de la de destino: de Bruselas a Brujas, los que están en Bruselas. Cambia lo de la 032 para los tramos; los tramos ya guardados conservan su división.
+**Por qué:** pedido de Ale; el que se va de una ciudad es el que toma ese transporte.
+
+### 086 · Borrar un tramo
+**Fecha:** 2026-10-12
+**Decisión:** en el tramo, al editar, abajo de todo va "Borrar este tramo" con confirmación ("Se borra el tramo con su gasto, sus pasajes y su estimado. No se puede deshacer."). En la base, el gasto, los pasajes y el estimado se borran en cascada (queda en el historial como gasto borrado) y los archivos de los pasajes se sacan del bucket. Después, entre esas dos ciudades vuelve a aparecer "Agregar tramo". Si la ciudad de salida está bloqueada, la base lo rechaza con su aviso.
+**Por qué:** pedido de Ale; una vez cargado, un tramo no se podía borrar.
+
+### 087 · Las horas siempre en 24 h
+**Fecha:** 2026-10-12
+**Decisión:** los campos de hora (salida y llegada del tramo, check-in y checkout del alojamiento) dejan de ser el campo de hora del teléfono, que sigue el formato del iPhone (en 12 h pide AM/PM). Son un campo de texto con el teclado numérico que pone los dos puntos solo: "1110" queda "11:10", "930" queda "09:30" y "9" queda "09:00" al salir del campo; lo que no es una hora (24:00, 11:75) vuelve a lo que había. `src/components/time-input.tsx`, con las reglas en `src/lib/time-input.ts`.
+**Por qué:** pedido de Ale; toda la app es en 24 h.
+
+### 088 · Los estimados se distinguen en la lista del viaje
+**Fecha:** 2026-10-12
+**Decisión:** en la lista del viaje (celular y web), un tramo con precio estimado, todavía sin pagar (084), tiene el borde punteado naranja y una etiqueta con el monto ("~€180"). Un alojamiento estimado muestra abajo de la ciudad "~€300 estimado" en naranja (con el nombre adelante si lo tiene), en vez de "Booking · pagado" en verde.
+**Por qué:** pedido de Ale, para ver de un vistazo qué falta pagar.
+
+### 089 · El estimado se carga por persona
+**Fecha:** 2026-10-12
+**Decisión:** los estimados (084) se escriben por persona y la app los multiplica por la cantidad de gente: en el tramo, por los que viajan (los de la ciudad de salida, 085); en el alojamiento, por los que están; en un estimado suelto, por los elegidos en "Se divide entre". Al lado se ve la cuenta ("× 3 = €90"). Se sigue guardando el total en `planned_items.amount_cents`; al abrirlo se muestra el total dividido por la cantidad de gente. Al pasar de "Ya pagado" a "Estimado" el monto se divide, y al volver se multiplica.
+**Por qué:** pedido de Ale; el precio de un pasaje o de una entrada se ve por persona y así no hay que hacer la cuenta cada vez.
+
+### 090 · Link y notas en el tramo
+**Fecha:** 2026-10-12
+**Decisión:** el tramo tiene un **Link** (dónde comprarlo o buscarlo, ej. "omio.com/…"; si no tiene https:// se lo agrega) y **Notas** libres ("Lo compro en Omio"). Se cargan al editar el tramo, abajo del precio, y en la vista del tramo aparecen en una tarjeta: el link se abre en otra pestaña. Sirven sobre todo mientras el tramo está estimado (084), pero valen siempre. Columnas `legs.link_url` y `legs.notes` (migración 0012), guardadas con un update aparte después de `save_leg()`. Sin la migración, el tramo se guarda igual y avisa que falta.
+**Por qué:** pedido de Ale, para anotar dónde va a comprar cada pasaje mientras planifica.
+
+### 091 · Actualizar el viaje
+**Fecha:** 2026-10-13
+**Decisión:** instalada en la pantalla de inicio del iPhone, la app no tiene "recargar". En el viaje, la pastilla del nombre (arriba, en el celular) tiene un ícono de flechas: tocarla trae lo último de la base (lo que cargaron los demás), y el ícono gira mientras tanto. En la web el mismo botón va al lado del calendario. Además, si volvés a la app después de más de 30 segundos afuera, se actualiza sola.
+**Por qué:** pedido de Ale; no había forma de ver lo que cargaban los demás sin cerrar la app.
+
+### 092 · En un tramo viajan los que están en las dos ciudades
+**Fecha:** 2026-10-13
+**Decisión:** reemplaza la 085. Los que van en un tramo (pasajeros, división por defecto del precio, el estimado por persona y de quién pueden ser los pasajes) son los que están en la ciudad de salida **y** en la de llegada. Si alguien se queda en Riga (cuenta para el alojamiento de Riga) pero no sigue a Oslo, no entra en el tramo Riga → Oslo; y el que se suma recién en Oslo tampoco, porque llega por su cuenta. La vuelta a casa la hacen los de la última ciudad. Si no hay nadie en las dos ciudades, se usan los de la salida. Los tramos ya guardados conservan su división.
+**Por qué:** pedido de Ale; con la 085, el amigo que se iba en Riga se contaba en el tramo a Oslo y el estimado se multiplicaba de más.
+
+### 093 · En la web, las ciudades se leen de izquierda a derecha
+**Fecha:** 2026-10-14
+**Decisión:** la grilla de ciudades de la web deja de ir en zigzag (048): todas las filas van de izquierda a derecha, como se lee, y el tramo de cada ciudad queda siempre a la derecha de su número. Al final de una fila, la línea punteada baja hasta la mitad del hueco entre filas, cruza hacia la izquierda y entra a la primera ciudad de la fila siguiente. Funciona con 2, 3 o 4 columnas.
+**Por qué:** pedido de Ale; en zigzag había que leer la segunda fila de derecha a izquierda.
+
+### 094 · Notificaciones de gastos
 **Fecha:** 2026-10-15
 **Decisión:** cuando alguien carga, cambia o borra un gasto suelto, les llega una notificación a los que están en ese gasto (los que lo dividen y quien pagó), salvo a quien lo hizo. A los demás no. Ejemplos: "Cena en Bruselas · €66 — Rodrigo lo cargó: te tocan €22.", "Ale lo cargó: pagaste vos y te tocan €22.", "Rodrigo lo borró.". Al tocarla se abre el viaje.
 - Web Push con claves VAPID propias (ver `docs/setup.md`); sin ellas no se manda nada. En el iPhone solo funciona con la app agregada a la pantalla de inicio (iOS 16.4 o más).
 - Cada uno las activa desde el inicio ("Notificaciones de gastos · Activar"); el iPhone solo deja pedir el permiso cuando la persona toca algo.
-- Las suscripciones van en `push_subscriptions` (migración 0010): cada uno ve solo las suyas, y el servidor pide a quién avisar con `push_targets()`, que solo responde a quien puede editar el viaje. Una suscripción dada de baja se borra sola.
+- Las suscripciones van en `push_subscriptions` (migración 0013): cada uno ve solo las suyas, y el servidor pide a quién avisar con `push_targets()`, que solo responde a quien puede editar el viaje. Una suscripción dada de baja se borra sola.
 - Se mandan después de responder (`after()`), así guardar el gasto no espera.
 - Por ahora no avisan los gastos de tramos y alojamientos, ni los pagos entre integrantes.
 **Por qué:** pedido de Ale; solo a los involucrados, para que no sea ruido.

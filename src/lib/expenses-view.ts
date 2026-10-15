@@ -17,16 +17,31 @@ export type ExpenseRowView = {
   amount: string;
   sub: string;
   myShare: string;
+  createdAt: string;
 };
 
 export type ExpenseGroupView = { key: string; name: string; dates: string; rows: ExpenseRowView[] };
 
-export type TransferView = { from: string; to: string; amountCents: number; fromName: string; toName: string; amount: string };
+export type TransferView = {
+  from: string;
+  to: string;
+  amountCents: number;
+  fromName: string;
+  toName: string;
+  amount: string;
+  /** Contado desde vos: "Josué te debe €193,33", "Le debés €50 a Ale" (decisión 075). */
+  text: string;
+  /** Si sos uno de los dos: va primero. */
+  mine: boolean;
+};
 
 export type SettledView = TransferView & { id: string; when: string; note: string | null };
 
-/** Una burbuja del balance de arriba: cuánto le deben (+) o debe (−) cada uno. */
+/** Una burbuja de arriba (decisión 081): cuánto le deben (+) o debe (−) cada uno; el tamaño va según el monto. */
 export type BubbleView = { memberId: string; name: string; color: string; cents: number; amount: string; label: string; isMe: boolean };
+
+/** Lo tuyo, arriba de todo (decisión 075): lo que te tocó, lo que pusiste y cómo quedás. */
+export type MySummaryView = { spent: string; paid: string; cents: number; status: string };
 
 /** Un movimiento del historial, listo para mostrar: "Rodrigo borró un gasto: Entradas · €54". */
 export type ActivityView = {
@@ -46,6 +61,7 @@ export type ExpensesView = {
   total: string;
   summary: string;
   myBalance: string;
+  me: MySummaryView | null;
   groups: ExpenseGroupView[];
   pending: TransferView[];
   settled: SettledView[];
@@ -53,6 +69,9 @@ export type ExpensesView = {
   /** Neto de cada integrante en centavos (positivo: le deben). */
   balances: Record<string, number>;
   bubbles: BubbleView[];
+  /** Los últimos gastos cargados, del más nuevo (decisión 081). */
+  recent: ExpenseRowView[];
+  count: number;
   activity: ActivityView[];
 };
 
@@ -129,14 +148,16 @@ export function buildExpensesView(trip: Trip, myMemberId: string | null): Expens
     trip.settlements.map((s) => ({ from: s.from_member_id, to: s.to_member_id, amountCents: s.amount_cents })),
   );
 
-  const toTransfer = (from: string, to: string, amountCents: number): TransferView => ({
-    from,
-    to,
-    amountCents,
-    fromName: name(from),
-    toName: name(to),
-    amount: formatEuros(amountCents),
-  });
+  const toTransfer = (from: string, to: string, amountCents: number): TransferView => {
+    const amount = formatEuros(amountCents);
+    const text =
+      from === myMemberId
+        ? `Le debés ${amount} a ${name(to)}`
+        : to === myMemberId
+          ? `${name(from)} te debe ${amount}`
+          : `${name(from)} le debe ${amount} a ${name(to)}`;
+    return { from, to, amountCents, fromName: name(from), toName: name(to), amount, text, mine: from === myMemberId || to === myMemberId };
+  };
 
   // Grupos por ciudad, en el orden del viaje; los gastos sin ciudad van al final.
   const order = new Map(stops.map((s, i) => [s.id, i]));
@@ -161,7 +182,6 @@ export function buildExpensesView(trip: Trip, myMemberId: string | null): Expens
     }
     const leg = e.leg_id ? trip.legs.find((l) => l.id === e.leg_id) : undefined;
     const stay = e.stay_id ? trip.stays.find((s) => s.id === e.stay_id) : undefined;
-    const equal = e.splits.every((s) => Math.abs(s.amount_cents - e.amount_cents / e.splits.length) < 1);
     const mine = myMemberId ? e.splits.find((s) => s.member_id === myMemberId) : undefined;
     // Fecha del gasto: la del viaje para pasajes (salida) y alojamientos (llegada); si no, cuándo se cargó.
     const fromIndex = leg ? order.get(leg.from_stop_id) : undefined;
@@ -183,21 +203,29 @@ export function buildExpensesView(trip: Trip, myMemberId: string | null): Expens
           ? { kind: "stay", stopId: stay.stop_id }
           : { kind: "expense", id: e.id },
       amount: formatEuros(e.amount_cents),
-      sub: `${day} · Pagó ${name(e.paid_by_member_id)} · entre ${e.splits.length}${equal ? "" : " · montos distintos"}`,
+      sub: `${day} · ${e.paid_by_member_id === myMemberId ? "Pagaste vos" : `Pagó ${name(e.paid_by_member_id)}`}`,
       myShare: mine ? `tu parte ${formatEuros(mine.amount_cents)}` : "no participás",
+      createdAt: e.created_at,
     });
   }
 
-  const pending = simplifyDebts(net).map((t) => toTransfer(t.from, t.to, t.amountCents));
+  // Primero las que te tocan a vos.
+  const pending = simplifyDebts(net)
+    .map((t) => toTransfer(t.from, t.to, t.amountCents))
+    .sort((a, b) => Number(b.mine) - Number(a.mine));
   const settled = [...trip.settlements]
     .sort((a, b) => a.settled_at.localeCompare(b.settled_at))
     .map((s) => ({ ...toTransfer(s.from_member_id, s.to_member_id, s.amount_cents), id: s.id, when: formatInstantDay(s.settled_at), note: s.note }));
 
   const mine = myMemberId ? (net[myMemberId] ?? 0) : 0;
+  const myBalance = mine > 0 ? `Te deben ${formatEuros(mine)}` : mine < 0 ? `Debés ${formatEuros(-mine)}` : "Estás a mano";
+  const spent = trip.expenses.reduce((sum, e) => sum + (e.splits.find((s) => s.member_id === myMemberId)?.amount_cents ?? 0), 0);
+  const paid = trip.expenses.reduce((sum, e) => sum + (e.paid_by_member_id === myMemberId ? e.amount_cents : 0), 0);
   return {
     total: formatEuros(total),
     summary: `${trip.expenses.length} ${trip.expenses.length === 1 ? "gasto" : "gastos"} · ${trip.members.length} viajeros`,
-    myBalance: mine > 0 ? `Te deben ${formatEuros(mine)}` : mine < 0 ? `Debés ${formatEuros(-mine)}` : "Estás a mano",
+    myBalance,
+    me: myMemberId ? { spent: formatEuros(spent), paid: formatEuros(paid), cents: mine, status: myBalance } : null,
     groups,
     pending,
     settled,
@@ -205,16 +233,22 @@ export function buildExpensesView(trip: Trip, myMemberId: string | null): Expens
     balances: net,
     bubbles: trip.members.map((m) => {
       const cents = net[m.id] ?? 0;
+      const isMe = m.id === myMemberId;
       return {
         memberId: m.id,
-        name: m.id === myMemberId ? "Vos" : m.display_name,
+        name: isMe ? "Vos" : m.display_name,
         color: m.color,
         cents,
         amount: formatEuros(Math.abs(cents)),
-        label: cents > 0 ? "le deben" : cents < 0 ? "debe" : "a mano",
-        isMe: m.id === myMemberId,
+        label: cents > 0 ? (isMe ? "te deben" : "le deben") : cents < 0 ? (isMe ? "debés" : "debe") : "a mano",
+        isMe,
       };
     }),
+    recent: groups
+      .flatMap((g) => g.rows)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 4),
+    count: trip.expenses.length,
     activity: buildActivityView(trip),
   };
 }

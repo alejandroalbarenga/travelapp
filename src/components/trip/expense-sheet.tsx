@@ -1,14 +1,17 @@
 "use client";
 
-import { Trash2, X } from "lucide-react";
-import { useState, useTransition } from "react";
+import { Camera, Trash2 } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import type { SaveExpenseInput } from "@/app/viaje/[id]/actions";
 import { defaultStopId } from "@/lib/expense-form";
+import { namesList } from "@/lib/members";
 import { formatAmountInput, parseAmount } from "@/lib/money";
+import { readDocumentLines } from "@/lib/read-document";
+import { parseReceipt } from "@/lib/receipt";
 import { computeSplits, splitStateFrom, type SplitState } from "@/lib/splits";
 import type { Expense, ExpenseCategory, Trip } from "@/lib/trip-types";
 import { AmountField } from "../amount-field";
-import { BottomSheet } from "../bottom-sheet";
+import { BackButton, BottomSheet } from "../bottom-sheet";
 import { SplitEditor } from "../split-editor";
 
 // Pantalla 05 · Nuevo gasto (docs/diseño.md), también para editar un gasto suelto.
@@ -53,6 +56,9 @@ export function ExpenseSheet({
   const [split, setSplit] = useState<SplitState | null>(() =>
     expense ? splitStateFrom(expense.amount_cents, expense.splits, order) : null,
   );
+  const [scanning, setScanning] = useState(false);
+  const [scanNote, setScanNote] = useState("");
+  const receiptInput = useRef<HTMLInputElement>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -61,6 +67,31 @@ export function ExpenseSheet({
   // Mientras no se toque, la división sigue a los que están en la ciudad elegida.
   const cityPeople = stops.find((s) => s.id === stopId)?.member_ids ?? order;
   const splitValue: SplitState = split ?? { memberIds: order.filter((id) => cityPeople.includes(id)), mode: "equal", custom: {} };
+
+  // Foto del ticket (decisión 074): completa el monto, el concepto y la categoría si están vacíos.
+  async function scanReceipt(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setScanning(true);
+    setScanNote("");
+    const info = await readDocumentLines(file).then(parseReceipt).catch(() => null);
+    setScanning(false);
+    const found: string[] = [];
+    if (info?.amountCents && !cents) {
+      setAmount(formatAmountInput(info.amountCents).replace(/\./g, "").replace(/,00$/, ""));
+      found.push("el monto");
+    }
+    if (info?.merchant && !description.trim()) {
+      setDescription(info.merchant);
+      found.push("dónde");
+    }
+    if (info?.category && !expense) {
+      setCategory(info.category);
+      found.push("la categoría");
+    }
+    setScanNote(found.length ? `Sacamos del ticket ${namesList(found)}. Revisá que esté bien.` : "No pudimos leer el ticket: completalo a mano.");
+  }
 
   function save(close: () => void) {
     if (cents <= 0) {
@@ -99,22 +130,30 @@ export function ExpenseSheet({
   }
 
   return (
-    <BottomSheet onClose={onClose} label={expense ? "Editar gasto" : "Nuevo gasto"} top="calc(var(--safe-top) + 12px)">
+    <BottomSheet onClose={onClose} label={expense ? "Editar gasto" : "Nuevo gasto"}>
       {(close) => (
         <>
           <div className="flex h-[52px] shrink-0 items-center justify-between px-3">
-            <button type="button" onClick={close} aria-label="Cerrar" className="flex size-11 items-center justify-center">
-              <X size={20} />
-            </button>
+            <BackButton onClick={close} className="" />
             <span className="text-base font-bold">{expense ? "Editar gasto" : "Nuevo gasto"}</span>
-            <button type="button" onClick={() => save(close)} disabled={pending} className="flex h-11 items-center disabled:opacity-50">
-              <span className="bg-pink flex h-9 items-center rounded-full px-4 text-sm font-bold text-white">{pending ? "…" : "Guardar"}</span>
-            </button>
+            <span className="size-11 shrink-0" />
           </div>
 
           <AmountField value={amount} onChange={setAmount} label="Monto" />
+          <div className="px-5">
+            <input ref={receiptInput} type="file" accept="image/*,application/pdf,.pdf" hidden onChange={scanReceipt} />
+            <button
+              type="button"
+              disabled={scanning}
+              onClick={() => receiptInput.current?.click()}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-field border-[1.5px] border-dashed border-dash text-sm font-bold disabled:opacity-60"
+            >
+              <Camera size={17} /> {scanning ? "Leyendo el ticket…" : "Escanear el ticket"}
+            </button>
+            {scanNote && <p className="mt-1.5 text-[13px] text-ink-2">{scanNote}</p>}
+          </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: "calc(var(--safe-bottom) + 24px)" }}>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: 24 }}>
             <label className="mt-2 block">
               <span className="mb-2 block text-[13px] font-bold text-ink-2">Concepto</span>
               <input
@@ -199,6 +238,12 @@ export function ExpenseSheet({
             {error && <p className="mt-3 text-[13px] font-bold text-danger">{error}</p>}
           </div>
 
+          {/* Guardar abajo, como en el resto de las pantallas. */}
+          <div className="shrink-0 border-t border-divider bg-white px-5 pt-3" style={{ paddingBottom: "calc(var(--safe-bottom) + 16px)" }}>
+            <button type="button" onClick={() => save(close)} disabled={pending} className="bg-pink h-14 w-full rounded-button text-base font-bold text-white disabled:opacity-50">
+              {pending ? "Guardando…" : "Guardar gasto"}
+            </button>
+          </div>
         </>
       )}
     </BottomSheet>

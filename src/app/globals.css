@@ -116,6 +116,15 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Con el teclado abierto, las listas de un sheet suman abajo el alto del teclado, para que el
+   último campo pueda subir hasta quedar arriba del teclado (ver bottom-sheet.tsx). */
+[data-sheet] .overflow-y-auto::after {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  height: var(--keyboard, 0px);
+}
+
 html,
 body {
   background: #fff;
@@ -140,18 +149,17 @@ button {
   border-radius: 6px;
 }
 
-/* Fechas y horas en el iPhone (decisión 059): Safari les pone un ancho mínimo propio y se salen
-   de la grilla; así ocupan lo que les toca y el texto queda a la izquierda como en el resto. */
-input[type="date"],
-input[type="time"] {
+/* Fechas en el iPhone (decisión 059): Safari les pone un ancho mínimo propio y se salen de la
+   grilla; así ocupan lo que les toca y el texto queda a la izquierda como en el resto. Las horas
+   son un campo propio de 24 h (decisión 087). */
+input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
   min-width: 0;
   max-width: 100%;
   display: block;
 }
-input[type="date"]::-webkit-date-and-time-value,
-input[type="time"]::-webkit-date-and-time-value {
+input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
   margin: 0;
 }

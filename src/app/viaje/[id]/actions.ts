@@ -163,6 +163,18 @@ export async function deleteStop(stopId: string): Promise<{ error: string } | nu
   return error ? { error: lockedError(error) ?? "No pudimos borrar la ciudad." } : null;
 }
 
+// Borrar un tramo (decisión 086). Su gasto, sus pasajes y su estimado se borran en cascada en la
+// base; los archivos de los pasajes se sacan del bucket. RLS: solo los que pueden editar.
+export async function deleteLeg(legId: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { data: files } = await supabase.from("leg_attachments").select("storage_path").eq("leg_id", legId);
+  const { data, error } = await supabase.from("legs").delete().eq("id", legId).select("id");
+  if (error || !data?.length) return { error: lockedError(error) ?? "No pudimos borrar el tramo." };
+  const paths = (files ?? []).map((f) => f.storage_path as string | null).filter((p): p is string => !!p);
+  if (paths.length) await supabase.storage.from("attachments").remove(paths);
+  return null;
+}
+
 export type SaveLegInput = {
   tripId: string;
   fromStopId: string;
@@ -174,12 +186,15 @@ export type SaveLegInput = {
   paidByMemberId: string | null;
   description: string;
   splits: { member_id: string; amount_cents: number }[];
+  /** Link de dónde comprarlo o buscarlo y una nota libre (decisión 090). */
+  linkUrl?: string | null;
+  notes?: string | null;
 };
 
 // Guarda el tramo y crea, actualiza o borra su gasto (supabase/migrations/0002_legs.sql).
-export async function saveLeg(input: SaveLegInput): Promise<{ error: string } | null> {
+export async function saveLeg(input: SaveLegInput): Promise<{ error: string } | { legId: string }> {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("save_leg", {
+  const { data, error } = await supabase.rpc("save_leg", {
     p_trip_id: input.tripId,
     p_from_stop_id: input.fromStopId,
     p_to_stop_id: input.toStopId,
@@ -192,7 +207,18 @@ export async function saveLeg(input: SaveLegInput): Promise<{ error: string } | 
     p_splits: input.splits,
   });
   if (error) return { error: error.message.includes("no suma") ? "La división no suma el total." : "No pudimos guardar el tramo." };
-  return null;
+  const legId = data as string;
+  // El link y la nota van aparte (migración 0012); sin la migración, se avisa.
+  if (input.linkUrl !== undefined || input.notes !== undefined) {
+    const { error: extraError } = await supabase
+      .from("legs")
+      .update({ link_url: input.linkUrl || null, notes: input.notes?.trim() || null })
+      .eq("id", legId);
+    if (extraError && (input.linkUrl || input.notes?.trim())) {
+      return { error: extraError.code === "42703" ? "El tramo se guardó, pero falta aplicar la migración 0012 para el link y la nota." : "El tramo se guardó, pero no el link ni la nota." };
+    }
+  }
+  return { legId };
 }
 
 export type SaveExpenseInput = {
@@ -227,7 +253,7 @@ export async function saveExpense(input: SaveExpenseInput): Promise<{ id: string
     if (error?.message.includes("no suma")) return { error: "La división no suma el total." };
     return { error: "No pudimos guardar el gasto." };
   }
-  // Avisa a los del gasto después de responder, así guardar no espera las notificaciones (decisión 065).
+  // Avisa a los del gasto después de responder, así guardar no espera las notificaciones (decisión 094).
   after(() =>
     notifyExpense(input.id ? "edit" : "new", {
       tripId: input.tripId,
@@ -288,4 +314,112 @@ export async function undoSettlement(settlementId: string): Promise<{ error: str
   const supabase = await createClient();
   const { data, error } = await supabase.from("settlements").delete().eq("id", settlementId).select("id");
   return error || !data?.length ? { error: "No pudimos deshacerlo." } : null;
+}
+
+// ─── Gastos personales (decisión 076, migración 0010) ─────────────────────
+// RLS: cada uno ve y cambia solo los suyos, en viajes de los que es miembro.
+
+export type SavePersonalExpenseInput = {
+  id: string | null;
+  tripId: string;
+  category: string;
+  description: string;
+  amountCents: number;
+  spentOn: string;
+};
+
+export async function savePersonalExpense(input: SavePersonalExpenseInput): Promise<{ error: string } | { id: string }> {
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) return { error: "Ingresá un monto." };
+  const supabase = await createClient();
+  const row = {
+    trip_id: input.tripId,
+    category: input.category.trim(),
+    description: input.description.trim(),
+    amount_cents: input.amountCents,
+    spent_on: input.spentOn,
+  };
+  const { data, error } = input.id
+    ? await supabase.from("personal_expenses").update(row).eq("id", input.id).select("id").single()
+    : await supabase.from("personal_expenses").insert(row).select("id").single();
+  return error || !data ? { error: "No pudimos guardar el gasto." } : { id: data.id as string };
+}
+
+export async function deletePersonalExpense(id: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("personal_expenses").delete().eq("id", id);
+  return error ? { error: "No pudimos borrar el gasto." } : null;
+}
+
+/** Crea la categoría o le cambia el presupuesto (null: sin presupuesto). */
+export async function savePersonalCategory(tripId: string, name: string, budgetCents: number | null, position: number): Promise<{ error: string } | null> {
+  if (budgetCents !== null && (!Number.isInteger(budgetCents) || budgetCents < 0)) return { error: "Presupuesto inválido." };
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims.sub;
+  if (!userId) return { error: "Tenés que entrar de nuevo." };
+  const { error } = await supabase
+    .from("personal_categories")
+    .upsert({ trip_id: tripId, user_id: userId, name: name.trim(), budget_cents: budgetCents, position }, { onConflict: "trip_id,user_id,name" });
+  return error ? { error: "No pudimos guardar la categoría." } : null;
+}
+
+export async function deletePersonalCategory(tripId: string, name: string): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("personal_categories").delete().eq("trip_id", tripId).eq("name", name);
+  return error ? { error: "No pudimos borrar la categoría." } : null;
+}
+
+// ─── Planificado (decisión 084, migración 0011) ───────────────────────────
+// Estimados que no son gastos. RLS: los ven todos los del viaje, los cambian los que editan.
+
+export type SavePlannedInput = {
+  id: string | null;
+  tripId: string;
+  /** Si es el estimado de un tramo o del alojamiento de una ciudad (uno por cada uno). */
+  legId?: string | null;
+  stayStopId?: string | null;
+  stopId: string | null;
+  description: string;
+  category: "transport" | "lodging" | "food" | "activities" | "other";
+  amountCents: number;
+  memberIds: string[];
+};
+
+export async function savePlanned(input: SavePlannedInput): Promise<{ error: string } | { id: string }> {
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) return { error: "Ingresá un monto." };
+  if (!input.memberIds.length) return { error: "Elegí entre quiénes se divide." };
+  const supabase = await createClient();
+  const row = {
+    trip_id: input.tripId,
+    leg_id: input.legId ?? null,
+    stay_stop_id: input.stayStopId ?? null,
+    stop_id: input.stopId,
+    description: input.description.trim(),
+    category: input.category,
+    amount_cents: input.amountCents,
+    member_ids: input.memberIds,
+  };
+  // El de un tramo o un alojamiento se pisa: hay uno solo por cada uno.
+  let id = input.id;
+  if (!id && (row.leg_id || row.stay_stop_id)) {
+    const { data } = await supabase
+      .from("planned_items")
+      .select("id")
+      .eq(row.leg_id ? "leg_id" : "stay_stop_id", (row.leg_id ?? row.stay_stop_id)!)
+      .maybeSingle();
+    id = (data?.id as string | undefined) ?? null;
+  }
+  const { data, error } = id
+    ? await supabase.from("planned_items").update(row).eq("id", id).select("id").single()
+    : await supabase.from("planned_items").insert(row).select("id").single();
+  if (error || !data) return { error: error?.code === "42P01" ? "Falta aplicar la migración 0011 en Supabase." : "No pudimos guardar el estimado." };
+  return { id: data.id as string };
+}
+
+/** Borra un estimado; con `legId` o `stayStopId`, el de ese tramo o del alojamiento de esa ciudad (si tenía). */
+export async function deletePlanned(target: { id: string } | { legId: string } | { stayStopId: string }): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const query = supabase.from("planned_items").delete();
+  const { error } = "id" in target ? await query.eq("id", target.id) : "legId" in target ? await query.eq("leg_id", target.legId) : await query.eq("stay_stop_id", target.stayStopId);
+  return error && error.code !== "42P01" ? { error: "No pudimos borrar el estimado." } : null;
 }

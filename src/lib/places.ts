@@ -28,7 +28,7 @@ type NominatimResult = {
   address?: { country?: string; country_code?: string; state?: string; region?: string; province?: string };
 };
 
-const USER_AGENT = "VamoYVamo/0.1 (https://travelapp-two-cyan.vercel.app)";
+const USER_AGENT = "Vamo/0.1 (https://travelapp-two-cyan.vercel.app)";
 
 const PLACE_TYPES = new Set(["city", "town", "village", "municipality", "hamlet", "suburb", "island", "borough"]);
 

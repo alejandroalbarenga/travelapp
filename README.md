@@ -1,4 +1,4 @@
-# Vamo y vamo
+# Vamo
 
 Web app mobile para organizar y seguir un viaje en grupo: ciudades con sus noches, tramos de transporte con el pasaje a mano, y gastos compartidos con el balance de quién le debe a quién. Se instala en la pantalla de inicio del iPhone.
 
