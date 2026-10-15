@@ -26,6 +26,13 @@ export function CitySearchSheet({
   onPick: (place: Place, afterStopId: string | null) => Promise<string | null>;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
+  // No se puede meter una ciudad si el tramo que sale de la anterior ya está pagado o tiene pasaje
+  // (lo borraría, decisión 102) o si alguna de las que siguen está bloqueada (decisión 100).
+  const canInsertAfter = (i: number) => {
+    const leg = trip.legs.find((l) => l.from_stop_id === stops[i].id);
+    const booked = !!leg && (!!leg.total_price_cents || leg.attachments.length > 0);
+    return !booked && !stops.slice(i + 1).some((s) => s.locked);
+  };
   const [after, setAfter] = useState<string | null>(mode.kind === "add" ? mode.afterStopId : null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Place[]>([]);
@@ -70,6 +77,11 @@ export function CitySearchSheet({
   function confirm(close: () => void) {
     if (!picked) {
       setError("Elegí una ciudad de la lista.");
+      return;
+    }
+    const afterIndex = stops.findIndex((s) => s.id === after);
+    if (mode.kind === "add" && afterIndex >= 0 && !canInsertAfter(afterIndex)) {
+      setError(`No se puede agregar después de ${stops[afterIndex].city}: el tramo que sale de ahí ya está pagado o hay una ciudad bloqueada después. Elegí otra ubicación.`);
       return;
     }
     setError("");
@@ -167,8 +179,9 @@ export function CitySearchSheet({
                 >
                   <option value="">Al principio</option>
                   {stops.map((s, i) => (
-                    <option key={s.id} value={s.id}>
+                    <option key={s.id} value={s.id} disabled={!canInsertAfter(i)}>
                       Después de {i + 1}. {s.city}
+                      {canInsertAfter(i) ? "" : " · no se puede"}
                     </option>
                   ))}
                 </select>

@@ -830,8 +830,9 @@ export function TripScreen({
 
           {view.stops.map((stop, i) => {
             // Agregar una ciudad acá correría las fechas de las que siguen: si alguna está bloqueada,
-            // no se puede (decisión 100), así que no se muestra el +.
-            const canAdd = canEdit && !view.stops.slice(i + 1).some((s) => s.locked);
+            // no se puede (decisión 100). Tampoco si el tramo que sale de esta ciudad ya está pagado o
+            // tiene pasaje: agregar en el medio lo borraría (decisión 102). En esos casos no hay +.
+            const canAdd = canEdit && !stop.leg?.booked && !view.stops.slice(i + 1).some((s) => s.locked);
             const beforeHidden = !!part && i < part.first && !showBefore;
             const afterHidden = !!part && i > part.last && !showAfter;
             if (afterHidden) return null;

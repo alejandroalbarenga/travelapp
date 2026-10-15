@@ -645,3 +645,8 @@ El área crece proporcional a la plata (el radio, con la raíz). Reemplaza el ta
 **Fecha:** 2026-10-15
 **Decisión:** en la pantalla "Recordatorios", el "hoy", "mañana" o el día y la hora se calculan en la zona horaria del teléfono, no en la de la ciudad del recordatorio. Si la ciudad tiene otra hora, se agrega la de allá: antes del viaje, desde Uruguay, el recordatorio de la noche antes del vuelo de Madrid dice "mañana · 15:00 (20:00 allá)". Cuándo se manda la notificación no cambia: sigue siendo a la hora de la ciudad (095).
 **Por qué:** pedido de Ale; desde Uruguay, cuando en Madrid ya era el día siguiente, los recordatorios de mañana aparecían como "hoy".
+
+### 102 · Sin "+" donde el tramo ya está pagado
+**Fecha:** 2026-10-15
+**Decisión:** además de lo de la 100, entre dos ciudades no aparece el "+" para agregar una ciudad si el tramo que las une ya está pagado o tiene algún pasaje cargado: agregar una ciudad en el medio borraría ese tramo, con su gasto y su pasaje. En "Agregar ciudad", esas ubicaciones aparecen como "Después de Ámsterdam · no se puede", deshabilitadas, y si igual quedó elegida avisa y no deja. Un tramo estimado (084) no frena: todavía no está comprado.
+**Por qué:** pedido de Ale; con Ámsterdam reservado y el pasaje a Berlín comprado, no tiene sentido meter una ciudad entre las dos.
