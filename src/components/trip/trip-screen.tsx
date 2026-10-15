@@ -829,6 +829,9 @@ export function TripScreen({
           )}
 
           {view.stops.map((stop, i) => {
+            // Agregar una ciudad acá correría las fechas de las que siguen: si alguna está bloqueada,
+            // no se puede (decisión 100), así que no se muestra el +.
+            const canAdd = canEdit && !view.stops.slice(i + 1).some((s) => s.locked);
             const beforeHidden = !!part && i < part.first && !showBefore;
             const afterHidden = !!part && i > part.last && !showAfter;
             if (afterHidden) return null;
@@ -839,6 +842,7 @@ export function TripScreen({
                   key={stop.id}
                   stop={stop}
                   canEdit={canEdit}
+                  canAdd={canAdd}
                   onOpen={() => setOpenLeg(stop.id)}
                   onTicket={() => (stop.leg?.hasTicket ? viewTickets(stop.id) : setOpenLeg(stop.id))}
                   onAddCity={() => setCitySearch({ kind: "add", afterStopId: stop.id })}
@@ -865,6 +869,7 @@ export function TripScreen({
               <LegRow
                 stop={stop}
                 canEdit={canEdit}
+                canAdd={canAdd}
                 onOpen={() => setOpenLeg(stop.id)}
                 onTicket={() => (stop.leg?.hasTicket ? viewTickets(stop.id) : setOpenLeg(stop.id))}
                 onAddCity={() => setCitySearch({ kind: "add", afterStopId: stop.id })}
@@ -1310,12 +1315,15 @@ function StopCard({
 function LegRow({
   stop,
   canEdit,
+  canAdd,
   onOpen,
   onTicket,
   onAddCity,
 }: {
   stop: StopView;
   canEdit: boolean;
+  /** Si se puede agregar una ciudad acá (ninguna de las que siguen está bloqueada). */
+  canAdd: boolean;
   onOpen: () => void;
   onTicket: () => void;
   onAddCity: () => void;
@@ -1325,7 +1333,7 @@ function LegRow({
   return (
     <div className="relative flex h-[54px] items-center">
       <div className="absolute top-0 bottom-0 left-[43px] border-l-2 border-dotted border-dots" />
-      {canEdit ? (
+      {canAdd ? (
         <button type="button" aria-label="Agregar ciudad acá" onClick={onAddCity} className="relative ml-[22px] flex size-11 shrink-0 items-center justify-center">
           <span className="flex size-[30px] items-center justify-center rounded-full border border-line bg-white text-navy shadow-[0_2px_6px_rgb(0_0_0/0.08)]">
             <Plus size={16} />
