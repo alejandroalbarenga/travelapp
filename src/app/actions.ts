@@ -1,10 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import { validateNewTrip } from "@/lib/home";
 import { initialsFor } from "@/lib/members";
-import { pushReady, sendPush } from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signOut() {
@@ -103,25 +101,4 @@ export async function saveNotificationPrefs(prefs: NotificationPrefs): Promise<{
   if (!userId) return { error: "Tenés que entrar de nuevo." };
   const { error } = await supabase.from("notification_prefs").upsert({ user_id: userId, ...prefs, updated_at: new Date().toISOString() });
   return error ? { error: "No pudimos guardar el cambio." } : null;
-}
-
-// Probar las notificaciones (decisión 096): te manda una a vos, a los teléfonos donde las activaste,
-// 5 segundos después, para que dé tiempo de salir de la app y verla como llega de verdad.
-export async function sendMeTestPush(message?: { title: string; body: string; url?: string }): Promise<{ error: string } | null> {
-  if (!pushReady) return { error: "Faltan las claves de las notificaciones en Vercel." };
-  const supabase = await createClient();
-  const { data: subs, error } = await supabase.from("push_subscriptions").select("endpoint, p256dh, auth");
-  if (error) return { error: "No pudimos mandarla." };
-  if (!subs?.length) return { error: "Este teléfono no tiene las notificaciones activadas." };
-  const payload = {
-    title: message?.title ?? "Vamo",
-    body: message?.body ?? "Así te van a llegar las notificaciones.",
-    url: message?.url ?? "/",
-    tag: "prueba",
-  };
-  after(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    await Promise.all(subs.map((s) => sendPush(s, payload)));
-  });
-  return null;
 }
