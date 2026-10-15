@@ -616,3 +616,12 @@ Por detrás: `pg_cron` de Supabase llama cada 15 minutos a `/api/recordatorios` 
 **Fecha:** 2026-10-15
 **Decisión:** hubo un rato botones "Probar" (en la tarjeta de Notificaciones del inicio y en cada recordatorio del viaje) que te mandaban una notificación a vos mismo a los 5 segundos. Una vez que Ale vio que funcionan, se sacaron.
 **Por qué:** sirvieron para probar; en el uso diario sobraban.
+
+### 097 · El tamaño de las burbujas dice si debés o te deben
+**Fecha:** 2026-10-15
+**Decisión:** en las burbujas del balance, el tamaño depende del signo, no solo de la plata:
+- **A mano:** siempre el mismo tamaño (40 px de radio; más chico solo si no entran todas).
+- **Debe:** más grande que el de a mano, y cuanto más debe comparado con los otros que deben, más grande (el que más debe, el doble del de a mano). El que debe 100 es más grande que el que debe 50, y los dos más que el de 0.
+- **Le deben:** más chico que el de a mano (de tres cuartos a la mitad), y cuanto más le deben, más chico.
+El área crece proporcional a la plata (el radio, con la raíz). Reemplaza el tamaño de la 037, que crecía igual para los dos lados.
+**Por qué:** pedido de Ale; de un vistazo se ve quién tiene que poner.

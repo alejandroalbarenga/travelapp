@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { packBubbles, touchDistance, type Bubble } from "./bubbles";
+import { bubbleRadii, packBubbles, touchDistance, ZERO_PX, type Bubble } from "./bubbles";
 
 const W = 340;
 const H = 230;
@@ -26,12 +26,31 @@ describe("packBubbles", () => {
     expect(touching(bubbles)).toBe(true);
   });
 
-  it("más plata, burbuja más grande; el que está a mano igual se ve", () => {
+  it("el que debe es más grande, a mano el del medio, al que le deben más chico", () => {
+    // Ale: le deben 370; Rodrigo y Josué deben; Agustín a mano.
     const [ale, rodrigo, josue, agustin] = packBubbles([37066, -17733, -19333, 0], W, H);
-    expect(ale.r).toBeGreaterThan(josue.r);
     expect(josue.r).toBeGreaterThan(rodrigo.r);
     expect(rodrigo.r).toBeGreaterThan(agustin.r);
-    expect(agustin.r).toBeGreaterThan(15);
+    expect(agustin.r).toBeGreaterThan(ale.r);
+  });
+
+  it("debe 100 más grande que debe 50, y los dos más grandes que el de cero", () => {
+    const [cien, cincuenta, cero] = bubbleRadii([-10000, -5000, 0]);
+    expect(cien).toBeGreaterThan(cincuenta);
+    expect(cincuenta).toBeGreaterThan(cero);
+  });
+
+  it("al que le deben, mucho más chico que el de cero; más chico cuanto más le deben", () => {
+    const [cero, poco, mucho] = bubbleRadii([0, 1000, 8000]);
+    expect(poco).toBeLessThan(cero * 0.8);
+    expect(mucho).toBeLessThan(poco);
+  });
+
+  it("el de a mano siempre del mismo tamaño", () => {
+    const a = packBubbles([0, -5000, 3000], W, H)[0];
+    const b = packBubbles([0, -90000, 10, 200], W, H)[0];
+    expect(a.r).toBeCloseTo(ZERO_PX);
+    expect(b.r).toBeCloseTo(ZERO_PX);
   });
 
   it("todos a mano: mismas burbujas", () => {
@@ -41,10 +60,9 @@ describe("packBubbles", () => {
   });
 
   it("uno solo, en el centro", () => {
-    const [b] = packBubbles([500], W, H);
+    const [b] = packBubbles([-500], W, H);
     expect(b.x).toBeCloseTo(W / 2);
     expect(b.y).toBeCloseTo(H / 2);
-    expect(b.r).toBeCloseTo(H / 2);
   });
 
   it("muchos integrantes", () => {
