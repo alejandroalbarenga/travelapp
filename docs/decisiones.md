@@ -611,3 +611,8 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 Cada uno elige cuáles recibe desde el inicio (Gastos · Viaje · Reservas · Plata; el de Gastos también vale para las de la 094). En el viaje, la campana abre "Recordatorios" con los próximos.
 Por detrás: `pg_cron` de Supabase llama cada 15 minutos a `/api/recordatorios` (con una clave propia), que arma los de cada viaje en curso o próximo, manda los que llegaron a su hora en las últimas 2 h y anota cada uno en `reminder_log` para no repetirlo. Lee los viajes con la secret key de Supabase, solo en el servidor. Los recordatorios a mano ("reservar la Sagrada Familia el 12 nov") quedan para después.
 **Por qué:** pedido de Ale ("está por llegar tal día, hay que reservar tal cosa"); salen solos para que no haya que acordarse de cargarlos.
+
+### 096 · Probar las notificaciones
+**Fecha:** 2026-10-15
+**Decisión:** con las notificaciones activadas, la tarjeta del inicio tiene "Probar" (manda una de prueba) y en "Recordatorios" del viaje cada uno tiene "Probar" (te manda ese mismo recordatorio, con su texto). Llegan solo a tus teléfonos, 5 segundos después de tocar, para que dé tiempo de salir de la app y verlas como llegan de verdad (`sendMeTestPush`). No se anotan como enviadas: el recordatorio real igual llega a su hora.
+**Por qué:** pedido de Ale, para ver cómo funcionan sin esperar a que llegue la hora.
