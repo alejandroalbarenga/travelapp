@@ -3,8 +3,8 @@
 import { packBubbles } from "@/lib/bubbles";
 import type { BubbleView } from "@/lib/expenses-view";
 
-// Burbujas del balance, arriba de Gastos (decisiones 037 y 081): una por integrante, con su color,
-// medio transparentes y un poco superpuestas. El tamaño va según lo que le deben o debe; el que
+// Burbujas del balance, arriba de Gastos (decisiones 037, 081 y 097): una por integrante, con su color,
+// medio transparentes y un poco superpuestas. El que debe es más grande y al que le deben más chico; el que
 // debe lleva el menos, y las grandes dicen abajo qué le pasa ("debe", "le deben", "a mano").
 
 const W = 340;

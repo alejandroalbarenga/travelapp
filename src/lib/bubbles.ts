@@ -1,9 +1,33 @@
-// Burbujas del balance (pantalla Gastos, arriba): una por integrante, más grande cuanto más
-// le deben o más debe. Acomoda los círculos un poco superpuestos y los escala a la caja.
+// Burbujas del balance (pantalla Gastos, arriba): una por integrante (decisión 097). El tamaño dice
+// cómo está cada uno: el que está a mano tiene siempre el mismo tamaño; el que debe es más grande,
+// más cuanto más debe comparado con los otros que deben; al que le deben, más chico, y más chico
+// cuanto más le deben. Acomoda los círculos un poco superpuestos y los centra en la caja.
 
 export type Bubble = { x: number; y: number; r: number };
 
-const MIN_R = 0.38; // el que está a mano también se ve
+// Radios relativos: a mano 1; el que más debe, 2; al que más le deben, la mitad.
+const ZERO_R = 1;
+const DEBT_FROM = 1.12;
+const DEBT_TO = 2;
+const CREDIT_FROM = 0.76;
+const CREDIT_TO = 0.5;
+/** El que está a mano mide siempre esto (en píxeles de la caja), salvo que no entren todos. */
+export const ZERO_PX = 40;
+
+/**
+ * Radio relativo de cada uno. El valor es el balance en centavos: negativo debe, positivo le deben.
+ * Crece con la raíz, así el área es proporcional a la plata, comparando con el que más debe (o al
+ * que más le deben).
+ */
+export function bubbleRadii(values: number[]): number[] {
+  const maxDebt = Math.max(0, ...values.map((v) => -v));
+  const maxCredit = Math.max(0, ...values);
+  return values.map((v) => {
+    if (v < 0) return DEBT_FROM + (DEBT_TO - DEBT_FROM) * Math.sqrt(-v / maxDebt);
+    if (v > 0) return CREDIT_FROM - (CREDIT_FROM - CREDIT_TO) * Math.sqrt(v / maxCredit);
+    return ZERO_R;
+  });
+}
 /** Cuánto se meten las burbujas una en la otra, como parte del radio de la más chica. */
 export const OVERLAP = 0.3;
 
@@ -12,14 +36,10 @@ export function touchDistance(a: number, b: number): number {
   return a + b - OVERLAP * Math.min(a, b);
 }
 
-/**
- * Devuelve un círculo por valor (en el mismo orden), dentro de una caja de width × height.
- * El radio crece con la raíz del valor absoluto, así el área es proporcional a la plata.
- */
+/** Devuelve un círculo por valor (en el mismo orden), dentro de una caja de width × height. */
 export function packBubbles(values: number[], width: number, height: number): Bubble[] {
   if (!values.length) return [];
-  const max = Math.max(...values.map(Math.abs));
-  const radii = values.map((v) => (max ? MIN_R + (1 - MIN_R) * Math.sqrt(Math.abs(v) / max) : MIN_R));
+  const radii = bubbleRadii(values);
   const aspect = width / height;
 
   // De la más grande a la más chica: la primera al centro, cada una pegada a alguna ya puesta,
@@ -46,12 +66,12 @@ export function packBubbles(values: number[], width: number, height: number): Bu
     placed.push({ i, x: best!.x, y: best!.y, r });
   }
 
-  // Escalar y centrar en la caja.
+  // Escalar (el de a mano, siempre ZERO_PX; más chico solo si no entran) y centrar en la caja.
   const minX = Math.min(...placed.map((p) => p.x - p.r));
   const maxX = Math.max(...placed.map((p) => p.x + p.r));
   const minY = Math.min(...placed.map((p) => p.y - p.r));
   const maxY = Math.max(...placed.map((p) => p.y + p.r));
-  const scale = Math.min(width / (maxX - minX), height / (maxY - minY));
+  const scale = Math.min(ZERO_PX / ZERO_R, width / (maxX - minX), height / (maxY - minY));
   const offsetX = width / 2 - ((minX + maxX) / 2) * scale;
   const offsetY = height / 2 - ((minY + maxY) / 2) * scale;
 
