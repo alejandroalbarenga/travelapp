@@ -15,14 +15,15 @@ export type TicketInfo = {
 // Palabras de cada medio; gana el que más aparece.
 const MODE_WORDS: [LegMode, RegExp][] = [
   ["plane", /tarjeta de embarque|boarding pass|\bvuelo\b|\bflight\b|aeropuerto|airport|aerol[íi]nea|airline|ryanair|vueling|iberia|easyjet|air europa|tap air|lufthansa|wizz|volotea|transavia|\bgate\b|terminal \d|asiento \d+[a-f]\b|seat \d+[a-f]\b/gi],
-  ["train", /renfe|\btrenes?\b|\btrains?\b|trenitalia|italo\b|sncf|\bave\b|avlo|alvia|iryo|ouigo|eurostar|comboios|deutsche bahn|\bcoche \d+|vag[óo]n|carriage|\bcoach \d+\b.*\bseat|estaci[óo]n|station/gi],
+  ["train", /renfe|\btrenes?\b|\btrains?\b|trenitalia|italo\b|sncf|sncb|nmbs|\bsbb\b|\bcff\b|[öo]bb\b|\bns international\b|deutsche bahn|\bdb bahn\b|\bave\b|avlo|alvia|iryo|ouigo|eurostar|comboios|deutsche bahn|\bcoche \d+|vag[óo]n|carriage|\bcoach \d+\b.*\bseat|estaci[óo]n|station/gi],
   ["bus", /autob[úu]s|\bbus\b|flixbus|\balsa\b|blablacar bus|\bomnibus\b|rede expressos|estaci[óo]n de autobuses|bus station/gi],
 ];
 
 const DEPART = /salida|departure|departs?\b|\bsale\b|partida/i;
 const ARRIVE = /llegada|arrival|arrives?\b|\bllega\b/i;
-// Horarios que no son ni la salida ni la llegada.
-const NOT_TRIP_TIME = /embarque|boarding|puerta|\bgate\b|cierre|closes|check-?in|facturaci[óo]n/i;
+// Horarios que no son ni la salida ni la llegada: embarque, cierre, y cuándo se compró o emitió
+// (los pasajes de SNCB dicen "Sales time: 23:36", decisión 099).
+const NOT_TRIP_TIME = /embarque|boarding|puerta|\bgate\b|cierre|closes|check-?in|facturaci[óo]n|\bsales?\b|purchase|compra|venta|emisi[óo]n|emitid|issued|booked on|\border\b/i;
 const TIME = /\b\d{1,2}(?::|h)\d{2}\b/;
 const PRICE = /total|precio|importe|price|amount|tarifa|fare|pagado|paid/i;
 
@@ -58,8 +59,14 @@ export function parseTicket(lines: PdfLine[]): TicketInfo {
     if (!info.arrives) delete info.arrives;
   }
 
-  // El precio: primero las líneas con "total", después las que dicen precio, importe, etc.
-  const priced = lines.filter((l) => PRICE.test(l.text) && /€|eur\b/i.test(l.text));
+  // El precio: primero las líneas con "total", después las que dicen precio, importe, etc. Si la
+  // palabra está sola y el monto en el renglón de abajo ("Price" / "€ 10.80"), se juntan.
+  const joined = lines.map((l, i) => {
+    const next = lines[i + 1];
+    const alone = PRICE.test(l.text) && !/\d/.test(l.text);
+    return alone && next && /€|eur\b/i.test(next.text) ? { ...l, text: `${l.text} ${next.text}` } : l;
+  });
+  const priced = joined.filter((l) => PRICE.test(l.text) && /€|eur\b/i.test(l.text));
   for (const l of [...priced.filter((l) => /total/i.test(l.text)).reverse(), ...priced]) {
     const cents = euroCents(l.text);
     if (cents) {

@@ -625,3 +625,8 @@ Por detrás: `pg_cron` de Supabase llama cada 15 minutos a `/api/recordatorios` 
 - **Le deben:** más chico que el de a mano (de tres cuartos a la mitad), y cuanto más le deben, más chico.
 El área crece proporcional a la plata (el radio, con la raíz). Reemplaza el tamaño de la 037, que crecía igual para los dos lados.
 **Por qué:** pedido de Ale; de un vistazo se ve quién tiene que poner.
+
+### 099 · El pasaje de tren de SNCB se lee bien
+**Fecha:** 2026-10-15
+**Decisión:** el lector de pasajes (decisión 069) ignora los horarios de compra o emisión ("Sales time", compra, venta, emisión, "order"), que antes tomaba como salida; lee el precio cuando la palabra ("Price") está en un renglón y el monto ("€ 10.80") en el de abajo; y reconoce como tren a SNCB/NMBS, SBB, ÖBB y Deutsche Bahn. Un pasaje sin horario (válido todo el día) deja la salida vacía. Si el PDF trae ida y vuelta, completa con la ida.
+**Por qué:** el pasaje de SNCB de Ale (Bruselas → Brujas) ponía de salida las 23:36, que era la hora en que lo compró, y no leía el precio.
