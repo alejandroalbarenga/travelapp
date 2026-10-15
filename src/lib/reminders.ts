@@ -219,11 +219,17 @@ export function upcomingReminders(all: Reminder[], memberId: string | null, now:
   return all.filter((r) => new Date(r.at).getTime() > now.getTime() && (!memberId || r.memberIds.includes(memberId))).slice(0, limit);
 }
 
-/** "mañana 20:00", "sáb 17 oct · 09:00": cuándo llega, en la hora de la ciudad. */
-export function reminderWhen(at: string, timeZone: string, now: Date): string {
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(at));
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-  const diff = daysBetween(today, day);
+/**
+ * Cuándo llega, contado desde tu celular (decisión 101): "hoy", "mañana" o el día, y la hora, en la
+ * zona horaria del teléfono. Si la ciudad tiene otra hora, se agrega la de allá: antes del viaje,
+ * desde Uruguay, "mañana · 15:00 (20:00 allá)".
+ */
+export function reminderWhen(at: string, timeZone: string, now: Date, deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone): string {
+  const dayIn = (date: Date, tz: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  const day = dayIn(new Date(at), deviceTimeZone);
+  const diff = daysBetween(dayIn(now, deviceTimeZone), day);
   const label = diff === 0 ? "hoy" : diff === 1 ? "mañana" : formatDay(day);
-  return `${label} · ${localTime(at, timeZone)}`;
+  const mine = localTime(at, deviceTimeZone);
+  const there = localTime(at, timeZone);
+  return `${label} · ${mine}${there !== mine ? ` (${there} allá)` : ""}`;
 }
