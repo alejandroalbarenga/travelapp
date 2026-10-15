@@ -432,3 +432,13 @@ También: con el teclado abierto en el iPhone, los sheets se acomodan a la parte
 - **Edición:** la misma tarjeta pasa a ser el formulario, con un solo botón "Subir la reserva · PDF o imagen", el nombre, check-in y checkout, "Reservado en", "Cuánto salió" (siempre a la vista; sin "Reservado en" cuenta como "Otro"), quién pagó, la división y "Quiénes están", que antes no se encontraba. "Listo" vuelve a la vista.
 Del PDF de la reserva ahora también sale el precio total, si está en euros. Una imagen se adjunta pero no se lee.
 **Por qué:** pedido de Ale; la tarjeta y el formulario separados confundían y no se veía dónde cambiar quiénes están.
+
+### 065 · Notificaciones de gastos
+**Fecha:** 2026-10-15
+**Decisión:** cuando alguien carga, cambia o borra un gasto suelto, les llega una notificación a los que están en ese gasto (los que lo dividen y quien pagó), salvo a quien lo hizo. A los demás no. Ejemplos: "Cena en Bruselas · €66 — Rodrigo lo cargó: te tocan €22.", "Ale lo cargó: pagaste vos y te tocan €22.", "Rodrigo lo borró.". Al tocarla se abre el viaje.
+- Web Push con claves VAPID propias (ver `docs/setup.md`); sin ellas no se manda nada. En el iPhone solo funciona con la app agregada a la pantalla de inicio (iOS 16.4 o más).
+- Cada uno las activa desde el inicio ("Notificaciones de gastos · Activar"); el iPhone solo deja pedir el permiso cuando la persona toca algo.
+- Las suscripciones van en `push_subscriptions` (migración 0010): cada uno ve solo las suyas, y el servidor pide a quién avisar con `push_targets()`, que solo responde a quien puede editar el viaje. Una suscripción dada de baja se borra sola.
+- Se mandan después de responder (`after()`), así guardar el gasto no espera.
+- Por ahora no avisan los gastos de tramos y alojamientos, ni los pagos entre integrantes.
+**Por qué:** pedido de Ale; solo a los involucrados, para que no sea ruido.

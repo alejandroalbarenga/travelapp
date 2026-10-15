@@ -6,6 +6,7 @@ import { formatRange } from "@/lib/dates";
 import { countdown, splitTrips, todayInUruguay, tripSubtitle } from "@/lib/home";
 import { myPart, type MyPart } from "@/lib/my-part";
 import { createClient } from "@/lib/supabase/server";
+import { PushToggle } from "@/components/push-toggle";
 import { NewTripButton } from "./new-trip";
 import { SignOutButton } from "./sign-out-button";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -101,6 +102,8 @@ async function Trips() {
         </div>
         <SignOutButton />
       </div>
+
+      {trips.length > 0 && <PushToggle />}
 
       <div className="mt-8 mb-3 flex items-center justify-between gap-3">
         <h2 className="text-[20px] font-extrabold tracking-[-0.01em]">Próximos viajes</h2>

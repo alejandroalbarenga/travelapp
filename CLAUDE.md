@@ -87,6 +87,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - `expenses`: id, trip_id, stop_id (opcional), leg_id (opcional), stay_id (opcional), description, category, amount_cents, paid_by_member_id, created_by, created_at
 - `expense_splits`: expense_id, member_id, amount_cents
 - `settlements`: id, trip_id, from_member_id, to_member_id, amount_cents, settled_at, note
+- `push_subscriptions`: endpoint, user_id, p256dh, auth, created_at (los teléfonos que activaron las notificaciones; cada uno ve solo las suyas)
 - `activity`: id, trip_id, actor_member_id, actor_name, action, description, from_name, to_name, amount_cents, previous_amount_cents, changes, created_at (historial, solo lectura)
 
 ### Base de datos en la práctica
@@ -111,6 +112,7 @@ Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por def
 ## Lógica clave
 
 - **Balance**: neto por miembro = lo que pagó − lo que le toca ± settlements. Las deudas se simplifican de forma greedy (el que más debe le paga al que más le deben). "Marcar como saldado" y "Registrar una transferencia" crean un settlement (la transferencia con su nota); "Deshacer" lo borra.
+- **Notificaciones de gastos** (decisión 065, migración 0010): al cargar, cambiar o borrar un gasto suelto (`saveExpense`, `deleteExpense`), `notifyExpense()` (`src/lib/push.ts`, con `after()`) les avisa por Web Push a los del gasto (los que lo dividen y quien pagó), salvo a quien lo hizo. A quién avisar lo da `push_targets()`. Sin las claves VAPID no se manda nada. Se activan desde el inicio (`PushToggle`); en el iPhone, solo con la app en la pantalla de inicio.
 - **Historial** (migración 0006): la tabla `activity` la escriben solo los triggers de `expenses` y `settlements` (alta y baja) y `save_expense()` (ediciones, con qué cambió). Nadie la edita ni la borra. En `/demo` se anota en el cliente.
 - **Fechas**: cambiar las noches recalcula todas las fechas posteriores, pero no el fin del viaje (`trips.end_date` es fijo). Las noches cargadas se comparan con la duración del viaje (decisión 029).
 - **Wallet**: la web no puede leer la Wallet del iPhone. Solo se muestra el recordatorio y el link de la aerolínea.

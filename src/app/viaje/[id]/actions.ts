@@ -1,6 +1,8 @@
 "use server";
 
+import { after } from "next/server";
 import { searchPlaces, type Place } from "@/lib/places";
+import { notifyExpense } from "@/lib/push";
 import { initialsFor, pickColor } from "@/lib/members";
 import { createClient } from "@/lib/supabase/server";
 import type { BookingSource, Member } from "@/lib/trip-types";
@@ -225,13 +227,41 @@ export async function saveExpense(input: SaveExpenseInput): Promise<{ id: string
     if (error?.message.includes("no suma")) return { error: "La división no suma el total." };
     return { error: "No pudimos guardar el gasto." };
   }
+  // Avisa a los del gasto después de responder, así guardar no espera las notificaciones (decisión 065).
+  after(() =>
+    notifyExpense(input.id ? "edit" : "new", {
+      tripId: input.tripId,
+      description: input.description.trim() || "Gasto",
+      amountCents: input.amountCents,
+      paidByMemberId: input.paidByMemberId,
+      splits: input.splits,
+    }),
+  );
   return { id: data as string };
 }
 
 export async function deleteExpense(expenseId: string): Promise<{ error: string } | null> {
   const supabase = await createClient();
+  // Lo que hace falta para avisar, antes de que desaparezca.
+  const { data: before } = await supabase
+    .from("expenses")
+    .select("trip_id, description, amount_cents, paid_by_member_id, expense_splits (member_id, amount_cents)")
+    .eq("id", expenseId)
+    .maybeSingle();
   const { data, error } = await supabase.from("expenses").delete().eq("id", expenseId).select("id");
-  return error || !data?.length ? { error: "No pudimos borrar el gasto." } : null;
+  if (error || !data?.length) return { error: "No pudimos borrar el gasto." };
+  if (before) {
+    after(() =>
+      notifyExpense("delete", {
+        tripId: before.trip_id,
+        description: before.description,
+        amountCents: before.amount_cents,
+        paidByMemberId: before.paid_by_member_id,
+        splits: before.expense_splits ?? [],
+      }),
+    );
+  }
+  return null;
 }
 
 // Un pago entre integrantes: "Marcar como saldado" o una transferencia cargada a mano. "Deshacer" lo borra.
