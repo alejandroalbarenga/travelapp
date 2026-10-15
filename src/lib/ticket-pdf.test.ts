@@ -33,6 +33,33 @@ describe("parseTicket", () => {
     expect(info).toEqual({ mode: "bus", departs: "08:00", arrives: "12:10", priceCents: 1999 });
   });
 
+  it("un pasaje de SNCB de día entero: sin horario (la hora de venta no es la salida) y el precio abajo", () => {
+    const info = parseTicket(
+      lines([
+        "BRUXELLES-NORD",
+        "BRUGGE",
+        "Travel type",
+        "Outbound",
+        "Travel date",
+        "18/10/2026",
+        "Price",
+        "€ 10.80",
+        "Depart at any time of the day. Ticket only valid on the date mentioned.",
+        "Sales date: 15/10/2026",
+        "Sales time: 23:36",
+        "Order number: 1ABC23",
+        "Ticket Weekend Youth",
+        "Non-exchangeable ticket, subject to the conditions of carriage of SNCB.",
+        // La vuelta, en la otra página: no cambia nada del tramo de ida.
+        "BRUGGE",
+        "BRUXELLES-NORD",
+        "Price",
+        "€ 12.40",
+      ]),
+    );
+    expect(info).toEqual({ mode: "train", priceCents: 1080 });
+  });
+
   it("sin palabras clave toma los dos primeros horarios", () => {
     expect(parseTicket(lines(["Madrid 14:20", "Alicante 16:10"]))).toEqual({ departs: "14:20", arrives: "16:10" });
   });
