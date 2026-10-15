@@ -625,3 +625,8 @@ Por detrás: `pg_cron` de Supabase llama cada 15 minutos a `/api/recordatorios` 
 - **Le deben:** más chico que el de a mano (de tres cuartos a la mitad), y cuanto más le deben, más chico.
 El área crece proporcional a la plata (el radio, con la raíz). Reemplaza el tamaño de la 037, que crecía igual para los dos lados.
 **Por qué:** pedido de Ale; de un vistazo se ve quién tiene que poner.
+
+### 098 · Con la lista del viaje arriba, se esconden los botones flotantes
+**Fecha:** 2026-10-15
+**Decisión:** en el celular, cuando el panel del viaje sube hasta arriba, el calendario, la campana de recordatorios y los integrantes se desvanecen (como ya hacía el de integrantes) y no se pueden tocar; vuelven al bajar el panel. El botón de Gastos queda, porque es como se pasa a los gastos.
+**Por qué:** pedido de Ale; tapaban la lista.

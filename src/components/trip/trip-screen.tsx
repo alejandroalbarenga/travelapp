@@ -943,13 +943,26 @@ export function TripScreen({
           >
             <Wallet size={20} />
           </button>
-          <button type="button" aria-label="Calendario del viaje" onClick={() => setCalendar({ kind: "view" })} className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
+          {/* Con la lista arriba, el calendario, los recordatorios y los integrantes se esconden para no
+              taparla (decisión 098); Gastos queda. */}
+          <button
+            type="button"
+            aria-label="Calendario del viaje"
+            onClick={() => setCalendar({ kind: "view" })}
+            className={`glass flex size-11 items-center justify-center rounded-full ${headerOpacity > 0.5 ? "pointer-events-none" : "pointer-events-auto"}`}
+            style={{ opacity: 1 - headerOpacity }}
+          >
             <Calendar size={20} />
           </button>
-          <button type="button" aria-label="Recordatorios" onClick={() => setOpenReminders(true)} className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
+          <button
+            type="button"
+            aria-label="Recordatorios"
+            onClick={() => setOpenReminders(true)}
+            className={`glass flex size-11 items-center justify-center rounded-full ${headerOpacity > 0.5 ? "pointer-events-none" : "pointer-events-auto"}`}
+            style={{ opacity: 1 - headerOpacity }}
+          >
             <Bell size={20} />
           </button>
-          {/* Con la lista arriba, estos dos se esconden para no taparla (como en el diseño). */}
           <button
             type="button"
             aria-label="Integrantes"
