@@ -71,8 +71,21 @@ El mail que trae Supabase solo manda a los miembros del equipo del proyecto y ti
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API | No (va al navegador) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Publishable / anon key | No (va al navegador; la protege Row Level Security) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | La generás vos, ver "Notificaciones" abajo | No (va al navegador) |
+| `VAPID_PRIVATE_KEY` | La generás vos, ver "Notificaciones" abajo | **Sí**: solo en Vercel y en tu `.env.local`, nunca en el chat ni en el repo |
 
 Si más adelante hace falta algún secreto del lado del servidor (por ejemplo la secret key de Supabase), se agrega acá y solo en Vercel, nunca con prefijo `NEXT_PUBLIC_`.
+
+## Notificaciones de gastos (decisión 094)
+
+Usan Web Push, que necesita un par de claves (VAPID) propias de la app. Se generan una sola vez:
+
+1. En la carpeta del proyecto: `npx web-push generate-vapid-keys`. Muestra una *Public Key* y una *Private Key*.
+2. En Vercel → el proyecto → Settings → Environment Variables, agregá las dos (para Production y Preview): la pública como `NEXT_PUBLIC_VAPID_PUBLIC_KEY` y la privada como `VAPID_PRIVATE_KEY`.
+3. Agregalas también a tu `.env.local` si querés probar con `npm run build` en tu compu.
+4. Volvé a deployar (Vercel → Deployments → Redeploy), porque la clave pública se mete en la app al construirla.
+
+No se cambian después: si cambian, las suscripciones de los teléfonos dejan de servir y cada uno tiene que volver a activarlas.
 
 ## Qué pasarle a Claude cuando termines
 - `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.

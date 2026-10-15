@@ -591,3 +591,13 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 **Fecha:** 2026-10-14
 **Decisión:** la grilla de ciudades de la web deja de ir en zigzag (048): todas las filas van de izquierda a derecha, como se lee, y el tramo de cada ciudad queda siempre a la derecha de su número. Al final de una fila, la línea punteada baja hasta la mitad del hueco entre filas, cruza hacia la izquierda y entra a la primera ciudad de la fila siguiente. Funciona con 2, 3 o 4 columnas.
 **Por qué:** pedido de Ale; en zigzag había que leer la segunda fila de derecha a izquierda.
+
+### 094 · Notificaciones de gastos
+**Fecha:** 2026-10-15
+**Decisión:** cuando alguien carga, cambia o borra un gasto suelto, les llega una notificación a los que están en ese gasto (los que lo dividen y quien pagó), salvo a quien lo hizo. A los demás no. Ejemplos: "Cena en Bruselas · €66 — Rodrigo lo cargó: te tocan €22.", "Ale lo cargó: pagaste vos y te tocan €22.", "Rodrigo lo borró.". Al tocarla se abre el viaje.
+- Web Push con claves VAPID propias (ver `docs/setup.md`); sin ellas no se manda nada. En el iPhone solo funciona con la app agregada a la pantalla de inicio (iOS 16.4 o más).
+- Cada uno las activa desde el inicio ("Notificaciones de gastos · Activar"); el iPhone solo deja pedir el permiso cuando la persona toca algo.
+- Las suscripciones van en `push_subscriptions` (migración 0013): cada uno ve solo las suyas, y el servidor pide a quién avisar con `push_targets()`, que solo responde a quien puede editar el viaje. Una suscripción dada de baja se borra sola.
+- Se mandan después de responder (`after()`), así guardar el gasto no espera.
+- Por ahora no avisan los gastos de tramos y alojamientos, ni los pagos entre integrantes.
+**Por qué:** pedido de Ale; solo a los involucrados, para que no sea ruido.

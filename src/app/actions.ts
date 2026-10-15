@@ -68,3 +68,18 @@ export async function deleteTrip(tripId: string): Promise<{ error: string } | nu
   const { error } = await supabase.rpc("delete_trip", { p_trip_id: tripId });
   return error ? { error: "No pudimos borrar el viaje." } : null;
 }
+
+// Notificaciones de gastos (decisión 094): la suscripción de Web Push de este teléfono.
+export async function savePushSubscription(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .upsert({ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh, auth: subscription.keys.auth }, { onConflict: "endpoint" });
+  return error ? { error: "No pudimos activar las notificaciones." } : null;
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<null> {
+  const supabase = await createClient();
+  await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+  return null;
+}
