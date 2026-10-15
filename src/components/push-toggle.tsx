@@ -2,7 +2,7 @@
 
 import { Bell, BellOff } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
-import { deletePushSubscription, getNotificationPrefs, saveNotificationPrefs, savePushSubscription, sendMeTestPush, type NotificationPrefs } from "@/app/actions";
+import { deletePushSubscription, getNotificationPrefs, saveNotificationPrefs, savePushSubscription, type NotificationPrefs } from "@/app/actions";
 
 // Activar las notificaciones en este teléfono (decisiones 094 y 095) y elegir cuáles: gastos,
 // recordatorios del viaje, reservas pendientes y plata. El iPhone solo deja
@@ -33,13 +33,6 @@ export function PushToggle() {
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
-  const [testNote, setTestNote] = useState("");
-
-  // Una de prueba (decisión 096): llega en 5 segundos, para salir de la app y verla.
-  function test() {
-    setTestNote("");
-    sendMeTestPush().then((result) => setTestNote(result ? result.error : "Te llega en 5 segundos: salí de la app o bloqueá el teléfono."));
-  }
 
   useEffect(() => {
     if (state === "on" && !prefs) getNotificationPrefs().then(setPrefs, () => {});
@@ -149,12 +142,6 @@ export function PushToggle() {
               <span className="relative h-7 w-12 shrink-0 rounded-full bg-line transition-colors peer-checked:bg-pink after:absolute after:top-0.5 after:left-0.5 after:size-6 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" />
             </label>
           ))}
-          <div className="flex items-center gap-3 border-t border-divider pt-2.5 pb-1">
-            <span className="min-w-0 flex-1 text-xs text-ink-2">{testNote || "Mandate una para ver cómo llega."}</span>
-            <button type="button" onClick={test} className="h-9 shrink-0 rounded-full bg-surface px-4 text-sm font-bold">
-              Probar
-            </button>
-          </div>
         </div>
       )}
     </div>
