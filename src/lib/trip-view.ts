@@ -23,6 +23,8 @@ export type LegView = {
   hasTicket: boolean;
   /** Si el precio es un estimado, todavía sin pagar (decisión 088): "~€90". */
   estimate: string | null;
+  /** Ya pagado o con algún pasaje cargado: no se puede meter una ciudad en el medio (decisión 102). */
+  booked: boolean;
 };
 
 export type StopView = {
@@ -93,6 +95,7 @@ export function buildTripView(trip: Trip, options: { chipDisplay: ChipDisplay; m
             : null,
           // El botón de ticket abre tu pasaje, o el del grupo si no tenés uno propio.
           hasTicket: leg.attachments.some((a) => a.kind !== "link" && (a.member_id === options.myMemberId || a.member_id === null)),
+          booked: !!leg.total_price_cents || leg.attachments.length > 0,
           estimate: (() => {
             const planned = leg.total_price_cents ? undefined : trip.planned.find((p) => p.leg_id === leg.id);
             return planned ? `~${formatEuros(planned.amount_cents)}` : null;
