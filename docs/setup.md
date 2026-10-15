@@ -72,6 +72,8 @@ El mail que trae Supabase solo manda a los miembros del equipo del proyecto y ti
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API | No (va al navegador) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Publishable / anon key | No (va al navegador; la protege Row Level Security) |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | La generás vos, ver "Notificaciones" abajo | No (va al navegador) |
+| `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API Keys → *Secret key* (o *service_role* en la vista vieja) | **Sí**: solo en Vercel. La usa el revisor de recordatorios para leer todos los viajes |
+| `REMINDERS_SECRET` | La inventás vos, ver "Recordatorios" abajo | **Sí**: solo en Vercel y en Vault de Supabase |
 | `VAPID_PRIVATE_KEY` | La generás vos, ver "Notificaciones" abajo | **Sí**: solo en Vercel y en tu `.env.local`, nunca en el chat ni en el repo |
 
 Si más adelante hace falta algún secreto del lado del servidor (por ejemplo la secret key de Supabase), se agrega acá y solo en Vercel, nunca con prefijo `NEXT_PUBLIC_`.
@@ -86,6 +88,16 @@ Usan Web Push, que necesita un par de claves (VAPID) propias de la app. Se gener
 4. Volvé a deployar (Vercel → Deployments → Redeploy), porque la clave pública se mete en la app al construirla.
 
 No se cambian después: si cambian, las suscripciones de los teléfonos dejan de servir y cada uno tiene que volver a activarlas.
+
+## Recordatorios (decisión 095)
+
+Supabase llama cada 15 minutos a `/api/recordatorios`, que manda los recordatorios del viaje. Para eso:
+
+1. Inventá una clave larga y al azar (por ejemplo, 40 letras y números). Es la que le prueba a la app que quien llama es Supabase.
+2. En Vercel → Environment Variables, agregá `REMINDERS_SECRET` (Secret) con esa clave, y `SUPABASE_SECRET_KEY` (Secret) con la *Secret key* de Supabase (Project Settings → API Keys). Las dos para Production.
+3. En el SQL Editor de Supabase, guardá la misma clave en Vault (reemplazá `LA_CLAVE`; no la guardes en ningún archivo):
+   `select vault.create_secret('LA_CLAVE', 'reminders_secret');`
+4. Después pegá y corré `supabase/migrations/0014_reminders.sql`. Si dice que `pg_cron` o `pg_net` no están, activalas en Database → Extensions y volvé a correrla.
 
 ## Qué pasarle a Claude cuando termines
 - `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.

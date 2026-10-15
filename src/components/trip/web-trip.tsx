@@ -1,6 +1,6 @@
 "use client";
 
-import { Bed, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, RotateCw, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
+import { Bed, Bell, Bus, Calendar, Car, ChevronLeft, Ellipsis, Lock, LockOpen, Minus, Plane, Plus, RotateCw, TrainFront, Trash2, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { LegMode, Member } from "@/lib/trip-types";
@@ -51,6 +51,7 @@ export function WebTrip({
   onLock,
   onDelete,
   onCalendar,
+  onReminders,
   onRefresh,
   refreshing = false,
   onMembers,
@@ -77,6 +78,8 @@ export function WebTrip({
   onLock: (stopId: string) => void;
   onDelete: (stopId: string) => void;
   onCalendar: () => void;
+  /** Los próximos recordatorios (decisión 095). */
+  onReminders: () => void;
   /** Actualizar el viaje con lo último de la base (decisión 091). */
   onRefresh?: () => void;
   refreshing?: boolean;
@@ -146,6 +149,9 @@ export function WebTrip({
             )}
             <button type="button" onClick={onCalendar} aria-label="Calendario" className={iconButton}>
               <Calendar size={18} />
+            </button>
+            <button type="button" onClick={onReminders} aria-label="Recordatorios" className={iconButton}>
+              <Bell size={18} />
             </button>
             {canEdit && (
               <button

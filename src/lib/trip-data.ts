@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { withCityPhotos } from "./city-photo";
 import type { ChipDisplay } from "./legs";
 import type { PersonalData } from "./personal";
@@ -38,7 +39,31 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
   const userId = claims?.claims.sub;
   if (!userId) return null;
 
-  const [{ data }, { data: profile }, categories, expenses, legExtras, planned] = await Promise.all([
+  const [trip, { data: profile }, categories, expenses] = await Promise.all([
+    readTrip(supabase, tripId),
+    supabase.from("profiles").select("chip_display").eq("user_id", userId).maybeSingle(),
+    // Tus gastos personales (decisión 076): RLS devuelve solo los tuyos.
+    supabase.from("personal_categories").select("id, name, budget_cents, position").eq("trip_id", tripId),
+    supabase.from("personal_expenses").select("id, category, description, amount_cents, spent_on, created_at").eq("trip_id", tripId),
+  ]);
+  if (!trip) return null;
+
+  trip.stops = await withCityPhotos(trip.stops);
+
+  return {
+    trip,
+    chipDisplay: (profile?.chip_display as ChipDisplay | undefined) ?? "time",
+    myMemberId: trip.members.find((m) => m.user_id === userId)?.id ?? null,
+    personal: categories.error || expenses.error ? null : { categories: categories.data ?? [], expenses: expenses.data ?? [] },
+  };
+}
+
+/**
+ * Lee un viaje con cualquier cliente: el de la sesión (RLS filtra) o el del servidor con la secret
+ * key, que usan los recordatorios (decisión 095). Sin fotos ni lo personal de cada uno.
+ */
+export async function readTrip(supabase: SupabaseClient, tripId: string): Promise<Trip | null> {
+  const [{ data }, legExtras, planned] = await Promise.all([
     supabase
       .from("trips")
       .select(
@@ -61,10 +86,6 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
       .order("created_at", { referencedTable: "activity", ascending: false })
       .limit(300, { referencedTable: "activity" })
       .maybeSingle(),
-    supabase.from("profiles").select("chip_display").eq("user_id", userId).maybeSingle(),
-    // Tus gastos personales (decisión 076): RLS devuelve solo los tuyos.
-    supabase.from("personal_categories").select("id, name, budget_cents, position").eq("trip_id", tripId),
-    supabase.from("personal_expenses").select("id, category, description, amount_cents, spent_on, created_at").eq("trip_id", tripId),
     // Lo planificado (decisión 084). Si la base no tiene la migración 0011, queda vacío.
     // Link y notas de cada tramo (decisión 090), aparte: si la base no tiene la migración 0012, no hay.
     supabase.from("legs").select("id, link_url, notes").eq("trip_id", tripId),
@@ -119,12 +140,5 @@ export async function getTrip(tripId: string): Promise<TripPageData | null> {
     ),
   };
 
-  trip.stops = await withCityPhotos(trip.stops);
-
-  return {
-    trip,
-    chipDisplay: (profile?.chip_display as ChipDisplay | undefined) ?? "time",
-    myMemberId: row.trip_members.find((m) => m.user_id === userId)?.id ?? null,
-    personal: categories.error || expenses.error ? null : { categories: categories.data ?? [], expenses: expenses.data ?? [] },
-  };
+  return trip;
 }

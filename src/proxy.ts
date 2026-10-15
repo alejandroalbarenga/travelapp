@@ -55,6 +55,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Todo menos archivos estáticos, íconos, el manifest y el service worker (los tiene que poder leer
-  // el iPhone sin sesión; el service worker no se puede registrar detrás de una redirección).
-  matcher: ["/((?!_next/static|_next/image|manifest.webmanifest|sw\\.js|icon|apple-icon|.*\\.(?:png|svg|ico|jpg|jpeg|webp)$).*)"],
+  // el iPhone sin sesión; el service worker no se puede registrar detrás de una redirección), y el
+  // revisor de recordatorios, que lo llama Supabase con su propia clave (decisión 095).
+  matcher: ["/((?!_next/static|_next/image|manifest.webmanifest|api/recordatorios|sw\\.js|icon|apple-icon|.*\\.(?:png|svg|ico|jpg|jpeg|webp)$).*)"],
 };
