@@ -2,6 +2,7 @@
 
 import { BedDouble, Bell, Plane, Wallet, type LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { sendMeTestPush } from "@/app/actions";
 import { reminderWhen, tripReminders, upcomingReminders, type ReminderGroup } from "@/lib/reminders";
 import type { Trip } from "@/lib/trip-types";
 import { BackButton, BottomSheet } from "../bottom-sheet";
@@ -14,6 +15,15 @@ const ICON: Record<ReminderGroup, LucideIcon> = { travel: Plane, bookings: BedDo
 export function RemindersSheet({ trip, myMemberId, onClose }: { trip: Trip; myMemberId: string | null; onClose: () => void }) {
   const [now] = useState(() => new Date());
   const upcoming = useMemo(() => upcomingReminders(tripReminders(trip), myMemberId, now, 30), [trip, myMemberId, now]);
+  // Probar uno (decisión 096): te lo manda ahora a vos, con su texto, en 5 segundos.
+  const [tested, setTested] = useState<{ key: string; note: string } | null>(null);
+  function test(key: string, title: string, body: string) {
+    setTested({ key, note: "Mandando…" });
+    sendMeTestPush({ title, body, url: `/viaje/${trip.id}` }).then(
+      (result) => setTested({ key, note: result ? result.error : "Te llega en 5 segundos: salí de la app." }),
+      () => setTested({ key, note: "Para probarlo, entrá con tu cuenta." }),
+    );
+  }
 
   return (
     <BottomSheet onClose={onClose} label="Recordatorios">
@@ -26,7 +36,7 @@ export function RemindersSheet({ trip, myMemberId, onClose }: { trip: Trip; myMe
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 [scrollbar-width:none]" style={{ paddingBottom: "calc(var(--safe-bottom) + 24px)" }}>
             <p className="mb-3 text-[13px] leading-[1.4] text-ink-2">
-              Te llegan como notificación, a la hora de la ciudad donde estés. Para recibirlas, activalas en el inicio.
+              Te llegan como notificación, a la hora de la ciudad donde estés. Para recibirlas, activalas en el inicio. Con “Probar” te mandás uno ahora para ver cómo llega.
             </p>
             {upcoming.length === 0 ? (
               <div className="flex flex-col items-center py-12 text-center">
@@ -46,7 +56,11 @@ export function RemindersSheet({ trip, myMemberId, onClose }: { trip: Trip; myMe
                         <div className="text-xs font-bold text-ink-2">{reminderWhen(r.at, r.timeZone, now)}</div>
                         <div className="text-[15px] leading-[1.3] font-bold">{r.title}</div>
                         <div className="text-sm leading-[1.35] text-ink-2">{r.body}</div>
+                        {tested?.key === r.key && <div className="mt-1 text-xs font-bold text-ink-2">{tested.note}</div>}
                       </div>
+                      <button type="button" onClick={() => test(r.key, r.title, r.body)} className="h-8 shrink-0 self-start rounded-full bg-surface px-3 text-xs font-bold">
+                        Probar
+                      </button>
                     </li>
                   );
                 })}
