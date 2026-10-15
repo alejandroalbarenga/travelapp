@@ -601,3 +601,13 @@ Las tarjetas de "Cómo está cada uno" en palabras de la 075 se sacan: las burbu
 - Se mandan después de responder (`after()`), así guardar el gasto no espera.
 - Por ahora no avisan los gastos de tramos y alojamientos, ni los pagos entre integrantes.
 **Por qué:** pedido de Ale; solo a los involucrados, para que no sea ruido.
+
+### 095 · Recordatorios del viaje
+**Fecha:** 2026-10-15
+**Decisión:** la app manda recordatorios solos, armados con lo que está cargado (nadie los crea), a la hora de la ciudad donde están y nunca entre las 23 y las 8:
+- **Viaje** (a los que viajan o están en esa ciudad): la noche antes de cada tramo a las 20 h ("Mañana: vuelo a Bruselas · sale de Madrid a las 13:40 · los pasajes están en la app"), 3 h antes de salir (4 h en avión), el día que llegan a una ciudad a las 9 h con el check-in, y la noche antes del checkout a las 21 h.
+- **Reservas** (solo a los que pueden editar y están en esa ciudad): una ciudad con noches sin alojamiento y un tramo sin cargar o sin horario, a 14, 7 y 2 días; lo que sigue "Estimado" en Planificado, a 7 y 2 días.
+- **Plata:** los domingos a las 20 h, a quien debe más de €20 ("Le debés €45 a Rodrigo").
+Cada uno elige cuáles recibe desde el inicio (Gastos · Viaje · Reservas · Plata; el de Gastos también vale para las de la 094). En el viaje, la campana abre "Recordatorios" con los próximos.
+Por detrás: `pg_cron` de Supabase llama cada 15 minutos a `/api/recordatorios` (con una clave propia), que arma los de cada viaje en curso o próximo, manda los que llegaron a su hora en las últimas 2 h y anota cada uno en `reminder_log` para no repetirlo. Lee los viajes con la secret key de Supabase, solo en el servidor. Los recordatorios a mano ("reservar la Sagrada Familia el 12 nov") quedan para después.
+**Por qué:** pedido de Ale ("está por llegar tal día, hay que reservar tal cosa"); salen solos para que no haya que acordarse de cargarlos.

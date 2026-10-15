@@ -90,6 +90,7 @@ Reemplaza al borrador de `docs/handoff.md` (ver `docs/decisiones.md`).
 - `personal_categories`: id, trip_id, user_id, name, budget_cents (nullable), position — presupuestos personales (decisión 076)
 - `personal_expenses`: id, trip_id, user_id, category (nombre), description, amount_cents, spent_on, created_at — gastos personales, solo los ve quien los carga
 - `planned_items`: id, trip_id, leg_id (unique, nullable), stay_stop_id (unique, nullable), stop_id, description, category, amount_cents, member_ids, created_by, created_at — estimados que no son gastos (decisión 084)
+- `notification_prefs`: user_id, expenses, travel, bookings, money (qué notificaciones quiere cada uno; sin fila, todas) · `reminder_log`: key, sent_at (recordatorios ya mandados, solo el servidor)
 - `push_subscriptions`: endpoint, user_id, p256dh, auth, created_at (los teléfonos que activaron las notificaciones; cada uno ve solo las suyas)
 - `activity`: id, trip_id, actor_member_id, actor_name, action, description, from_name, to_name, amount_cents, previous_amount_cents, changes, created_at (historial, solo lectura)
 
@@ -120,6 +121,7 @@ Un tramo o un alojamiento con precio crea o actualiza su gasto asociado. Por def
 
 - **Balance**: neto por miembro = lo que pagó − lo que le toca ± settlements. Las deudas se simplifican de forma greedy (el que más debe le paga al que más le deben). "Marcar como saldado" y "Registrar una transferencia" crean un settlement (la transferencia con su nota); "Deshacer" lo borra.
 - **Notificaciones de gastos** (decisión 094, migración 0013): al cargar, cambiar o borrar un gasto suelto (`saveExpense`, `deleteExpense`), `notifyExpense()` (`src/lib/push.ts`, con `after()`) les avisa por Web Push a los del gasto (los que lo dividen y quien pagó), salvo a quien lo hizo. A quién avisar lo da `push_targets()`. Sin las claves VAPID no se manda nada. Se activan desde el inicio (`PushToggle`); en el iPhone, solo con la app en la pantalla de inicio.
+- **Recordatorios** (decisión 095, migración 0014): `tripReminders()` (`src/lib/reminders.ts`) arma los de un viaje con su hora (la noche antes de cada tramo, antes de salir, llegadas, checkout, lo que falta reservar, deudas los domingos). `pg_cron` de Supabase llama cada 15 min a `/api/recordatorios` (con `REMINDERS_SECRET`), que lee los viajes con `SUPABASE_SECRET_KEY` y `readTrip()`, anota cada envío en `reminder_log` y respeta `notification_prefs`. En el viaje, la campana abre `RemindersSheet` con los próximos.
 - **Historial** (migración 0006): la tabla `activity` la escriben solo los triggers de `expenses` y `settlements` (alta y baja) y `save_expense()` (ediciones, con qué cambió). Nadie la edita ni la borra. En `/demo` se anota en el cliente.
 - **Fechas**: cambiar las noches recalcula todas las fechas posteriores, pero no el fin del viaje (`trips.end_date` es fijo). Las noches cargadas se comparan con la duración del viaje (decisión 029).
 - **Wallet**: la web no puede leer la Wallet del iPhone. Solo se muestra el recordatorio y el link de la aerolínea.

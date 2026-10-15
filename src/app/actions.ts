@@ -83,3 +83,22 @@ export async function deletePushSubscription(endpoint: string): Promise<null> {
   await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
   return null;
 }
+
+// Qué notificaciones quiere cada uno (decisión 095). Sin fila, todas.
+export type NotificationPrefs = { expenses: boolean; travel: boolean; bookings: boolean; money: boolean };
+const ALL_ON: NotificationPrefs = { expenses: true, travel: true, bookings: true, money: true };
+
+export async function getNotificationPrefs(): Promise<NotificationPrefs> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("notification_prefs").select("expenses, travel, bookings, money").maybeSingle();
+  return data ?? ALL_ON;
+}
+
+export async function saveNotificationPrefs(prefs: NotificationPrefs): Promise<{ error: string } | null> {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims.sub;
+  if (!userId) return { error: "Tenés que entrar de nuevo." };
+  const { error } = await supabase.from("notification_prefs").upsert({ user_id: userId, ...prefs, updated_at: new Date().toISOString() });
+  return error ? { error: "No pudimos guardar el cambio." } : null;
+}

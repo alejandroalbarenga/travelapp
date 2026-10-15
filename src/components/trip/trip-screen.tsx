@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Bed, Bus, Calendar, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, RotateCw, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Bed, Bell, Bus, Calendar, Car, ChevronDown, ChevronLeft, ChevronRight, Clock, Ellipsis, House, Lock, MapPin, Minus, Plane, Plus, Receipt, RotateCw, Route, Ticket, TrainFront, Users, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
@@ -29,6 +29,7 @@ import { ExpensesScreen } from "./expenses-screen";
 import { PlannedSheet } from "./planned-sheet";
 import type { PersonalActions } from "./personal-expenses";
 import { MembersSheet } from "./members-sheet";
+import { RemindersSheet } from "./reminders-sheet";
 import { TransferSheet, type TransferInput } from "./transfer-sheet";
 import type { AttachmentInput } from "./attachment-controls";
 import { TicketViewer, type ViewerItem } from "./ticket-viewer";
@@ -119,6 +120,7 @@ export function TripScreen({
   const [openLeg, setOpenLeg] = useState<string | null>(null);
   const [openCity, setOpenCity] = useState<string | null>(null);
   const [openMembers, setOpenMembers] = useState(false);
+  const [openReminders, setOpenReminders] = useState(false);
   const [citySearch, setCitySearch] = useState<CitySearchMode | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
   const [tab, setTab] = useState<TripTab>("trip");
@@ -728,6 +730,7 @@ export function TripScreen({
           onLock={(stopId) => toggleLock(stopId)}
           onDelete={swipeDelete}
           onCalendar={() => setCalendar({ kind: "view" })}
+          onReminders={() => setOpenReminders(true)}
           onMembers={() => setOpenMembers(true)}
           expenses={
             <ExpensesScreen
@@ -943,6 +946,9 @@ export function TripScreen({
           <button type="button" aria-label="Calendario del viaje" onClick={() => setCalendar({ kind: "view" })} className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
             <Calendar size={20} />
           </button>
+          <button type="button" aria-label="Recordatorios" onClick={() => setOpenReminders(true)} className="glass pointer-events-auto flex size-11 items-center justify-center rounded-full">
+            <Bell size={20} />
+          </button>
           {/* Con la lista arriba, estos dos se esconden para no taparla (como en el diseño). */}
           <button
             type="button"
@@ -1057,6 +1063,7 @@ export function TripScreen({
       {citySearch && findPlaces && (
         <CitySearchSheet trip={current} mode={citySearch} onClose={() => setCitySearch(null)} search={findPlaces} onPick={pickPlace} />
       )}
+      {openReminders && <RemindersSheet trip={current} myMemberId={myMemberId} onClose={() => setOpenReminders(false)} />}
       {openMembers && (
         <MembersSheet
           trip={current}
