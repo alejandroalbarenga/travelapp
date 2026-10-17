@@ -22,6 +22,12 @@ export type PersonalActions = {
 export function PersonalExpenses({ tripId, initial, actions }: { tripId: string; initial: PersonalData | null; actions?: PersonalActions }) {
   const router = useRouter();
   const [data, setData] = useState<PersonalData>(initial ?? { categories: [], expenses: [] });
+  // Si llegan datos nuevos de afuera (ej. un gasto solo tuyo cargado desde "Nuevo gasto"), se toman.
+  const [seen, setSeen] = useState(initial);
+  if (initial !== seen) {
+    setSeen(initial);
+    setData(initial ?? { categories: [], expenses: [] });
+  }
   const [open, setOpen] = useState<{ expense: PersonalExpense | null; category?: string } | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [budget, setBudget] = useState("");

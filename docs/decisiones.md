@@ -650,3 +650,11 @@ El área crece proporcional a la plata (el radio, con la raíz). Reemplaza el ta
 **Fecha:** 2026-10-15
 **Decisión:** además de lo de la 100, entre dos ciudades no aparece el "+" para agregar una ciudad si el tramo que las une ya está pagado o tiene algún pasaje cargado: agregar una ciudad en el medio borraría ese tramo, con su gasto y su pasaje. En "Agregar ciudad", esas ubicaciones aparecen como "Después de Ámsterdam · no se puede", deshabilitadas, y si igual quedó elegida avisa y no deja. Un tramo estimado (084) no frena: todavía no está comprado.
 **Por qué:** pedido de Ale; con Ámsterdam reservado y el pasaje a Berlín comprado, no tiene sentido meter una ciudad entre las dos.
+
+### 103 · Gasto solo tuyo → personal, monto centrado y pantallas arriba de todo
+**Fecha:** 2026-10-17
+**Decisión:**
+- En "Nuevo gasto", si lo pagaste vos y se divide solo entre vos, se guarda como **gasto personal** (Gastos → Míos, 076) y no en las cuentas del grupo: antes de guardar lo avisa ("Es solo tuyo: se guarda como gasto personal") y después muestra un aviso. La categoría pasa a la personal más parecida (Comida → Comida, Actividades → Salidas, el resto → Otros). Editar un gasto del grupo que ya existe no lo cambia.
+- El monto grande (gasto, gasto personal, transferencia, estimado) mide lo mismo que el número escrito, así queda siempre centrado, también cuando lo completa el ticket.
+- Las pantallas que se abren encima, el visor de pasajes y los avisos se dibujan en el body: quedan arriba de todo aunque se abran desde otra pantalla (ej. el gasto personal desde Gastos), y el menú "Agregar" ya no asoma encima.
+**Por qué:** pedido de Ale.

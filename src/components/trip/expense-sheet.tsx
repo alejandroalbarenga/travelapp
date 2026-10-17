@@ -36,6 +36,7 @@ export function ExpenseSheet({
   myMemberId,
   onClose,
   onSave,
+  onSavePersonal,
   onDelete,
 }: {
   trip: Trip;
@@ -44,6 +45,8 @@ export function ExpenseSheet({
   myMemberId: string | null;
   onClose: () => void;
   onSave: (input: SaveExpenseInput) => Promise<string | null>;
+  /** Un gasto nuevo, pagado por vos y solo tuyo, va a tus gastos personales (decisión 103). */
+  onSavePersonal?: (input: { description: string; category: ExpenseCategory; amountCents: number }) => Promise<string | null>;
   onDelete: (expenseId: string) => Promise<string | null>;
 }) {
   const stops = [...trip.stops].sort((a, b) => a.position - b.position);
@@ -93,6 +96,9 @@ export function ExpenseSheet({
     setScanNote(found.length ? `Sacamos del ticket ${namesList(found)}. Revisá que esté bien.` : "No pudimos leer el ticket: completalo a mano.");
   }
 
+  // Nuevo, pagado por vos y dividido solo entre vos: es un gasto personal (decisión 103).
+  const onlyMine = !expense && !!onSavePersonal && !!myMemberId && paidBy === myMemberId && splitValue.memberIds.length === 1 && splitValue.memberIds[0] === myMemberId;
+
   function save(close: () => void) {
     if (cents <= 0) {
       setError("Ingresá un monto.");
@@ -104,6 +110,14 @@ export function ExpenseSheet({
       return;
     }
     setError("");
+    if (onlyMine && onSavePersonal) {
+      startTransition(async () => {
+        const message = await onSavePersonal({ description, category, amountCents: cents });
+        if (message) setError(message);
+        else close();
+      });
+      return;
+    }
     startTransition(async () => {
       const message = await onSave({
         id: expense?.id ?? null,
@@ -216,6 +230,11 @@ export function ExpenseSheet({
             <div className="mt-4">
               <SplitEditor members={trip.members} totalCents={cents} value={splitValue} onChange={setSplit} />
             </div>
+            {onlyMine && (
+              <p className="mt-3 rounded-field bg-surface px-3.5 py-3 text-[13px] leading-[1.4] text-ink-2">
+                Es solo tuyo: se guarda como <strong className="text-ink">gasto personal</strong> (Gastos → Míos) y no entra en las cuentas del grupo.
+              </p>
+            )}
 
             {expense && (
               <div className="mt-5">

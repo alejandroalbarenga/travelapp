@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ExternalLink, Link2, Share, Wallet } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Attachment } from "@/lib/trip-types";
 
 // Pantalla 03 · Ver pasaje (docs/diseño.md): pantalla completa oscura con el PDF a lo ancho,
@@ -81,7 +82,8 @@ export function TicketViewer({
 
   const subtitle = [a.kind === "link" ? "Link" : a.file_name, a.kind === "pdf" && pages > 1 ? `página ${page + 1} de ${pages}` : ""].filter(Boolean).join(" · ");
 
-  return (
+  // En el body, como las pantallas (decisión 103), para quedar arriba de la ciudad o el tramo.
+  const viewer = (
     <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[60] flex flex-col bg-viewer text-white">
       <div className="flex shrink-0 items-center gap-2 px-3 pb-2" style={{ paddingTop: "calc(var(--safe-top) + 8px)" }}>
         <button type="button" onClick={onClose} aria-label="Volver" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-viewer-chip">
@@ -175,6 +177,7 @@ export function TicketViewer({
       {!wallet && <div className="shrink-0" style={{ height: "calc(var(--safe-bottom) + 12px)" }} />}
     </div>
   );
+  return typeof document === "undefined" ? viewer : createPortal(viewer, document.body);
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
