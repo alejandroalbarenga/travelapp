@@ -65,6 +65,11 @@ describe("travelStats", () => {
     expect(travelStats([europa], "2026-10-21")).toEqual({ countries: [{ code: "es", name: "España" }, { code: "pt", name: "Portugal" }], tripsDone: 0, nightsAway: 4 });
   });
 
+  it("el día que arranca el viaje todavía no cuenta el país (estás viajando)", () => {
+    expect(travelStats([europa], "2026-10-17")).toEqual({ countries: [], tripsDone: 0, nightsAway: 0 });
+    expect(travelStats([europa], "2026-10-18")?.countries).toEqual([{ code: "es", name: "España" }]);
+  });
+
   it("terminado: cuenta el viaje y todas sus noches", () => {
     expect(travelStats([europa], "2026-12-01")).toEqual({ countries: [{ code: "es", name: "España" }, { code: "pt", name: "Portugal" }], tripsDone: 1, nightsAway: 10 });
   });
