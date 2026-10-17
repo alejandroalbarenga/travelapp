@@ -4,6 +4,7 @@ import { ArrowLeftRight, Bed, Bell, Bus, Calendar, Car, ChevronDown, ChevronLeft
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { deleteLock, lockMessage, nightsLock } from "@/lib/stop-lock";
 import { foldLabel, myPart } from "@/lib/my-part";
 import { formatWeekday } from "@/lib/dates";
@@ -110,6 +111,13 @@ export function TripScreen({
   deleteLeg?: (legId: string) => Promise<{ error: string } | null>;
 }) {
   const router = useRouter();
+  // Tus gastos personales: se pueden sumar desde "Nuevo gasto" (decisión 103), así que viven acá.
+  const [personalBase, setPersonalBase] = useState(personal);
+  const [personalData, setPersonalData] = useState(personal);
+  if (personal !== personalBase) {
+    setPersonalBase(personal);
+    setPersonalData(personal);
+  }
   // Copia local del viaje: se actualiza al toque y se reemplaza cuando llegan datos nuevos del servidor.
   const [base, setBase] = useState(trip);
   const [current, setCurrent] = useState(trip);
@@ -365,6 +373,29 @@ export function TripScreen({
       ...entry,
     };
     setCurrent((t) => ({ ...t, activity: [activity, ...t.activity] }));
+  }
+
+  /**
+   * Un gasto nuevo que pagaste vos y es solo tuyo va a tus gastos personales, no a las cuentas del
+   * grupo (decisión 103). La categoría del grupo pasa a la personal más parecida.
+   */
+  async function storePersonalFromGroup(input: { description: string; category: SaveExpenseInput["category"]; amountCents: number }): Promise<string | null> {
+    const category = input.category === "food" ? "Comida" : input.category === "activities" ? "Salidas" : "Otros";
+    const spentOn = localToday();
+    let id = localId("personal");
+    if (personalActions) {
+      if (!personal) return "Para guardarlo como gasto personal falta aplicar la migración 0010 en Supabase.";
+      const result = await personalActions.saveExpense({ id: null, tripId: trip.id, category, description: input.description, amountCents: input.amountCents, spentOn });
+      if ("error" in result) return result.error;
+      id = result.id;
+      router.refresh();
+    }
+    setPersonalData((d) => ({
+      categories: d?.categories ?? [],
+      expenses: [...(d?.expenses ?? []), { id, category, description: input.description, amount_cents: input.amountCents, spent_on: spentOn, created_at: `${spentOn}T12:00:00Z` }],
+    }));
+    showToast("Era solo tuyo: lo guardamos como gasto personal, en Gastos → Míos.");
+    return null;
   }
 
   async function storeExpense(input: SaveExpenseInput): Promise<string | null> {
@@ -744,7 +775,7 @@ export function TripScreen({
               onUndo={undoSettle}
               onTransfer={() => setOpenTransfer(true)}
               foldStopIds={foldStopIds}
-              personal={{ tripId: trip.id, initial: personal, actions: personalActions }}
+              personal={{ tripId: trip.id, initial: personalData, actions: personalActions }}
               plan={{ view: planView, onOpen: openPlanTarget, onAdd: canEdit ? () => setOpenPlanned("new") : undefined }}
               embedded
             />
@@ -909,7 +940,7 @@ export function TripScreen({
           onUndo={undoSettle}
           onTransfer={() => setOpenTransfer(true)}
           foldStopIds={foldStopIds}
-          personal={{ tripId: trip.id, initial: personal, actions: personalActions }}
+          personal={{ tripId: trip.id, initial: personalData, actions: personalActions }}
           plan={{ view: planView, onOpen: openPlanTarget, onAdd: canEdit ? () => setOpenPlanned("new") : undefined }}
           onBack={() => {
             setTab("trip");
@@ -1133,6 +1164,7 @@ export function TripScreen({
           myMemberId={myMemberId}
           onClose={() => setOpenExpense(null)}
           onSave={storeExpense}
+          onSavePersonal={storePersonalFromGroup}
           onDelete={removeExpense}
         />
       )}
@@ -1149,7 +1181,10 @@ export function TripScreen({
           onPickArrival={pickArrival}
         />
       )}
-      {toast && (
+      {/* El aviso va en el body para verse también arriba de una pantalla abierta (decisión 103). */}
+      {toast &&
+        typeof document !== "undefined" &&
+        createPortal(
         <div
           role="status"
           className="fixed inset-x-4 z-[70] mx-auto flex max-w-[440px] items-center gap-3 rounded-2xl bg-navy px-4 py-3 text-sm font-semibold text-white shadow-button"
@@ -1161,8 +1196,9 @@ export function TripScreen({
               {toast.action.label}
             </button>
           )}
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
       {viewer && (
         <TicketViewer
           title={viewer.title}
@@ -1195,6 +1231,11 @@ export function TripScreen({
     </div>
     </SheetPanelContext.Provider>
   );
+}
+
+/** Id provisorio para lo que se guarda solo en pantalla (en /demo). */
+function localId(prefix: string) {
+  return `${prefix}-${Date.now()}`;
 }
 
 /** Fecha de hoy en el teléfono, como "YYYY-MM-DD". */

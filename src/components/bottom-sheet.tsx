@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ChevronLeft } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useIsWeb } from "@/lib/use-is-web";
 
 // En el celular es una pantalla completa que entra desde la derecha (decisión 068: ya no hay sheets,
@@ -247,7 +248,9 @@ export function BottomSheet({
   // En la web, dentro del viaje ocupa todo el panel izquierdo (el mapa queda a la derecha); fuera del
   // viaje (ej. "Nuevo viaje"), toda la pantalla con el contenido centrado.
   const area = web && panel ? { left: panel.left, width: panel.width, top: 0, bottom: 0 } : { left: 0, right: 0, top: web ? 0 : shift, bottom: web ? 0 : -shift };
-  return (
+  // Se abre en el body (decisión 103): así queda arriba de todo aunque se abra desde una pantalla con
+  // su propia capa (ej. el gasto personal desde Gastos), y el menú "Agregar" no asoma encima.
+  const screen = (
     <div className="fixed z-[5] overflow-hidden" style={area} role="dialog" aria-modal="true" aria-label={label}>
       <div
         ref={sheetRef}
@@ -269,4 +272,5 @@ export function BottomSheet({
       </div>
     </div>
   );
+  return typeof document === "undefined" ? screen : createPortal(screen, document.body);
 }
