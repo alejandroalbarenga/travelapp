@@ -65,7 +65,9 @@ export function travelStats(trips: StatsTrip[], today: string): TravelStats | nu
     const dates = stopDates(t.trip_start, t.stops.map((s) => s.nights));
     t.stops.forEach((s, i) => {
       const mine = !t.myMemberId || !s.member_ids.length || s.member_ids.includes(t.myMemberId);
-      if (mine && s.nights > 0 && s.country_code && dates[i].arrival <= today && !countries.has(s.country_code)) {
+      // Cuenta después de la primera noche ahí (decisión 104): el día que llegás todavía podés estar
+      // viajando (ej. el día que arranca el viaje, en el avión).
+      if (mine && s.nights > 0 && s.country_code && dates[i].arrival < today && !countries.has(s.country_code)) {
         countries.set(s.country_code, s.country ?? s.country_code.toUpperCase());
       }
     });

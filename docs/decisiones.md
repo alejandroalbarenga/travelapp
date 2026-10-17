@@ -658,3 +658,8 @@ El área crece proporcional a la plata (el radio, con la raíz). Reemplaza el ta
 - El monto grande (gasto, gasto personal, transferencia, estimado) mide lo mismo que el número escrito, así queda siempre centrado, también cuando lo completa el ticket.
 - Las pantallas que se abren encima, el visor de pasajes y los avisos se dibujan en el body: quedan arriba de todo aunque se abran desde otra pantalla (ej. el gasto personal desde Gastos), y el menú "Agregar" ya no asoma encima.
 **Por qué:** pedido de Ale.
+
+### 104 · Un país cuenta como visitado después de la primera noche
+**Fecha:** 2026-10-17
+**Decisión:** en las estadísticas del inicio (071), una ciudad suma su país recién al día siguiente de llegar, cuando ya dormiste ahí al menos una noche. Antes contaba desde el día de llegada según las fechas del viaje, y el día que arranca el viaje (todavía en el avión) ya decía que habías visitado el país de la primera ciudad.
+**Por qué:** pedido de Ale; el 17 de octubre el inicio decía que ya había visitado Bélgica.
